@@ -1,0 +1,37 @@
+<div>
+    <x-page-header title="Notifications" subtitle="Updates about your requests, rentals, and disputes." maxWidth="max-w-3xl">
+        <x-slot name="actions">
+            <button type="button" wire:click="markAllAsRead" class="text-sm font-medium text-white hover:text-blue-100">Mark all read</button>
+        </x-slot>
+    </x-page-header>
+
+    <div class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+        @if ($notifications->isEmpty())
+            <x-empty-state title="You're all caught up" message="Notifications about your requests and rentals will appear here." />
+        @else
+            <div class="space-y-2">
+                @foreach ($notifications as $notification)
+                    <a
+                        href="{{ $notification->data['url'] ?? '#' }}"
+                        wire:navigate
+                        wire:click="markAsRead('{{ $notification->id }}')"
+                        class="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:bg-slate-50 {{ $notification->read_at ? 'opacity-60' : '' }}"
+                    >
+                        <div class="flex items-center justify-between">
+                            <p class="text-sm font-semibold text-slate-800">{{ $notification->data['title'] }}</p>
+                            @if (! $notification->read_at)
+                                <span class="h-2 w-2 rounded-full bg-blue-600"></span>
+                            @endif
+                        </div>
+                        <p class="mt-1 text-sm text-slate-500">{{ $notification->data['message'] }}</p>
+                        <p class="mt-1 text-xs text-slate-400">{{ $notification->created_at->diffForHumans() }}</p>
+                    </a>
+                @endforeach
+            </div>
+
+            <div class="mt-6">
+                {{ $notifications->links() }}
+            </div>
+        @endif
+    </div>
+</div>
