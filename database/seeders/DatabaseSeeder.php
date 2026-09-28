@@ -35,6 +35,7 @@ class DatabaseSeeder extends Seeder
             MemberSeeder::class,
             ListingSeeder::class,
             TransactionSeeder::class,
+            DemoContentSeeder::class,
         ]);
     }
 }

@@ -1,19 +1,19 @@
 <div>
     <x-page-header eyebrow="Owning" title="My rentals" subtitle="Rentals created from your approved requests." />
 
-    <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div class="w-full px-4 py-8 sm:px-6 lg:px-8">
         @if ($rentals->isEmpty())
             <x-empty-state title="No rentals yet" message="Once you approve a rental request, it will appear here." />
         @else
             <div class="overflow-hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
-                    <thead class="bg-slate-50">
+                    <thead class="border-b-2 border-indigo-100 bg-indigo-50">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium text-slate-500">Item</th>
-                            <th class="px-4 py-3 text-left font-medium text-slate-500">Renter</th>
-                            <th class="px-4 py-3 text-left font-medium text-slate-500">Dates</th>
-                            <th class="px-4 py-3 text-left font-medium text-slate-500">Earnings</th>
-                            <th class="px-4 py-3 text-left font-medium text-slate-500">Status</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-indigo-700">Item</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-indigo-700">Renter</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-indigo-700">Dates</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-indigo-700">Earnings</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-indigo-700">Status</th>
                             <th class="px-4 py-3"></th>
                         </tr>
                     </thead>

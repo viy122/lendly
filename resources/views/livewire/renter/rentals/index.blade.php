@@ -1,7 +1,7 @@
 <div>
     <x-page-header eyebrow="Renting" title="My rentals" subtitle="Approved rentals waiting for payment, and rentals you've paid for." />
 
-    <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div class="w-full px-4 py-8 sm:px-6 lg:px-8">
         @if ($rentals->isEmpty())
             <x-empty-state title="No rentals yet" message="Once an owner approves your rental request, it will appear here for payment." />
         @else

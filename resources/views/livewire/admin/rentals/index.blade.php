@@ -1,7 +1,7 @@
 <div>
     <x-page-header eyebrow="Administration" title="Transactions" subtitle="All rental bookings on the platform, across every owner and renter." />
 
-    <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div class="w-full px-4 py-8 sm:px-6 lg:px-8">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div class="flex flex-wrap gap-2">
                 <button type="button" wire:click="$set('status', '')"
@@ -39,14 +39,14 @@
             @else
                 <div class="overflow-hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
                     <table class="min-w-full divide-y divide-slate-200 text-sm">
-                        <thead class="bg-slate-50">
+                        <thead class="border-b-2 border-indigo-100 bg-indigo-50">
                             <tr>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Item</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Owner</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Renter</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Dates</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Total</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-indigo-700">Item</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-indigo-700">Owner</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-indigo-700">Renter</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-indigo-700">Dates</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-indigo-700">Total</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-indigo-700">Status</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">

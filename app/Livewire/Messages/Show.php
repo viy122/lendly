@@ -3,6 +3,7 @@
 namespace App\Livewire\Messages;
 
 use App\Enums\NotificationType;
+use App\Livewire\Messages\Concerns\ListsThreads;
 use App\Models\Message;
 use App\Models\RentalRequest;
 use App\Notifications\TalaNotification;
@@ -13,6 +14,8 @@ use Livewire\Component;
 #[Layout('layouts.app')]
 class Show extends Component
 {
+    use ListsThreads;
+
     public RentalRequest $rentalRequest;
 
     public string $body = '';
@@ -57,6 +60,7 @@ class Show extends Component
     {
         return view('livewire.messages.show', [
             'otherParty' => $this->rentalRequest->otherPartyFor(auth()->user()),
+            'threads' => $this->threadsForCurrentUser(),
         ]);
     }
 }

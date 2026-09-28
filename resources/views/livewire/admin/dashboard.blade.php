@@ -1,7 +1,7 @@
 <div>
     <x-page-header eyebrow="Administration" title="Admin dashboard" subtitle="Platform overview and user management." />
 
-    <div class="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+    <div class="w-full space-y-8 px-4 py-8 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <x-stat-card label="Total users" :value="$totalUsers" hint="{{ $suspendedUsers }} suspended" icon="user-circle" accent="blue" />
             <x-stat-card label="Active listings" :value="$activeListingsCount" hint="{{ $pendingListingsCount }} pending approval" icon="list" accent="blue" />
@@ -13,16 +13,30 @@
 
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p class="text-xs font-semibold uppercase tracking-wide text-blue-600">Trend</p>
-                <h2 class="mt-0.5 text-base font-bold text-slate-900">Platform revenue, last 6 months</h2>
+                <div class="flex items-center gap-2.5">
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                        <x-icon name="chart-bar" class="h-4 w-4" />
+                    </span>
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-blue-600">Trend</p>
+                        <h2 class="text-base font-bold text-slate-900">Platform revenue, last 6 months</h2>
+                    </div>
+                </div>
                 <div class="mt-5">
-                    <x-bar-chart :data="$monthlyRevenue" />
+                    <x-line-chart :data="$monthlyRevenue" color="#2563eb" />
                 </div>
             </div>
 
             <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p class="text-xs font-semibold uppercase tracking-wide text-blue-600">Breakdown</p>
-                <h2 class="mt-0.5 text-base font-bold text-slate-900">Member activity</h2>
+                <div class="flex items-center gap-2.5">
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                        <x-icon name="user-circle" class="h-4 w-4" />
+                    </span>
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">Breakdown</p>
+                        <h2 class="text-base font-bold text-slate-900">Member activity</h2>
+                    </div>
+                </div>
                 <div class="mt-5">
                     <x-bar-chart :data="$usersByRole" />
                 </div>
@@ -31,17 +45,32 @@
 
         @if ($rentalsByStatus->isNotEmpty())
             <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p class="text-xs font-semibold uppercase tracking-wide text-blue-600">Pipeline</p>
-                <h2 class="mt-0.5 text-base font-bold text-slate-900">Rentals by status</h2>
+                <div class="flex items-center gap-2.5">
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                        <x-icon name="archive" class="h-4 w-4" />
+                    </span>
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-emerald-600">Pipeline</p>
+                        <h2 class="text-base font-bold text-slate-900">Rentals by status</h2>
+                    </div>
+                </div>
                 <div class="mt-5">
-                    <x-bar-chart :data="$rentalsByStatus" />
+                    <x-pie-chart :data="$rentalsByStatus" />
                 </div>
             </div>
         @endif
 
-        <div>
+        <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <div class="flex flex-wrap items-center justify-between gap-3">
-                <h2 class="text-sm font-semibold text-slate-700">Users</h2>
+                <div class="flex items-center gap-2.5">
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                        <x-icon name="user-circle" class="h-4 w-4" />
+                    </span>
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-blue-600">Directory</p>
+                        <h2 class="text-base font-bold text-slate-900">Users</h2>
+                    </div>
+                </div>
                 <div class="relative w-full max-w-xs">
                     <x-icon name="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <input
@@ -53,16 +82,16 @@
                 </div>
             </div>
 
-            <div class="mt-3 overflow-hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div class="mt-4 overflow-hidden overflow-x-auto rounded-xl border border-slate-200">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
-                    <thead class="bg-slate-50">
+                    <thead class="border-b-2 border-indigo-100 bg-indigo-50">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium text-slate-500">Name</th>
-                            <th class="px-4 py-3 text-left font-medium text-slate-500">Email</th>
-                            <th class="px-4 py-3 text-left font-medium text-slate-500">Role</th>
-                            <th class="px-4 py-3 text-left font-medium text-slate-500">Status</th>
-                            <th class="px-4 py-3 text-left font-medium text-slate-500">Joined</th>
-                            <th class="px-4 py-3 text-right font-medium text-slate-500">Actions</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-indigo-700">Name</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-indigo-700">Email</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-indigo-700">Role</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-indigo-700">Status</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-indigo-700">Joined</th>
+                            <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-indigo-700">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">

@@ -1,25 +1,17 @@
 <div>
-    <div class="border-b border-blue-200 bg-gradient-to-r from-blue-100 to-indigo-100 shadow-sm">
-        <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-2.5 sm:px-6 lg:px-8">
-            <div>
-                <p class="text-[11px] font-semibold uppercase tracking-wide text-blue-600">Lendly member</p>
-                <h1 class="mt-0.5 text-xl font-bold tracking-tight text-slate-900">Welcome back, {{ auth()->user()->name }}</h1>
-                <p class="mt-0.5 text-sm text-slate-500">Everything you're renting and everything you're listing, in one place.</p>
-            </div>
-            <div class="flex items-center gap-2">
-                <a href="{{ route('listings.index') }}" wire:navigate class="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
-                    <x-icon name="search" class="h-4 w-4" />
-                    Browse listings
-                </a>
-                <a href="{{ route('owner.listings.create') }}" wire:navigate class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:from-blue-700 hover:to-indigo-700">
-                    <x-icon name="tag" class="h-4 w-4" />
-                    New listing
-                </a>
-            </div>
-        </div>
-    </div>
+    <x-page-header eyebrow="Lendly member" title="Welcome back, {{ auth()->user()->name }}" subtitle="Everything you're renting and everything you're listing, in one place." />
 
-    <div class="mx-auto max-w-7xl space-y-10 px-4 py-8 sm:px-6 lg:px-8">
+    <div class="w-full space-y-10 px-4 py-8 sm:px-6 lg:px-8">
+        <div class="flex flex-wrap items-center justify-end gap-2">
+            <a href="{{ route('listings.index') }}" wire:navigate class="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
+                <x-icon name="search" class="h-4 w-4" />
+                Browse listings
+            </a>
+            <a href="{{ route('owner.listings.create') }}" wire:navigate class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:from-blue-700 hover:to-indigo-700">
+                <x-icon name="tag" class="h-4 w-4" />
+                New listing
+            </a>
+        </div>
         @if ($rentalsAwaitingPayment->isNotEmpty())
             <div class="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
@@ -64,7 +56,7 @@
                     <h3 class="mt-0.5 text-base font-bold text-slate-900">Rentals by status</h3>
                     <p class="mt-1 text-xs text-slate-500">Where your rentals sit right now.</p>
                     <div class="mt-5">
-                        <x-bar-chart :data="$rentalsByStatus" />
+                        <x-pie-chart :data="$rentalsByStatus" />
                     </div>
                 </div>
 
@@ -82,7 +74,7 @@
                 <p class="text-xs font-semibold uppercase tracking-wide text-blue-600">Trend</p>
                 <h3 class="mt-0.5 text-base font-bold text-slate-900">Earnings, last 6 months</h3>
                 <div class="mt-5">
-                    <x-bar-chart :data="$monthlyEarnings" />
+                    <x-line-chart :data="$monthlyEarnings" color="#2563eb" />
                 </div>
             </div>
 

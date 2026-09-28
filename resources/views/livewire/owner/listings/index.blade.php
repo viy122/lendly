@@ -1,14 +1,14 @@
 <div>
-    <x-page-header eyebrow="Owning" title="My listings" subtitle="Manage the items you've listed for rent.">
-        <x-slot name="actions">
-            <a href="{{ route('owner.listings.create') }}" wire:navigate class="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-blue-50">
+    <x-page-header eyebrow="Owning" title="My listings" subtitle="Manage the items you've listed for rent." />
+
+    <div class="w-full px-4 py-8 sm:px-6 lg:px-8">
+        <div class="mb-4 flex justify-end">
+            <a href="{{ route('owner.listings.create') }}" wire:navigate class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:from-blue-700 hover:to-indigo-700">
                 <x-icon name="tag" class="h-4 w-4" />
                 New listing
             </a>
-        </x-slot>
-    </x-page-header>
+        </div>
 
-    <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         @if (session('status'))
             <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
                 {{ session('status') }}
@@ -20,13 +20,13 @@
         @else
             <div class="overflow-hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
-                    <thead class="bg-slate-50">
+                    <thead class="border-b-2 border-indigo-100 bg-indigo-50">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium text-slate-500">Item</th>
-                            <th class="px-4 py-3 text-left font-medium text-slate-500">Category</th>
-                            <th class="px-4 py-3 text-left font-medium text-slate-500">Price/day</th>
-                            <th class="px-4 py-3 text-left font-medium text-slate-500">Status</th>
-                            <th class="px-4 py-3 text-right font-medium text-slate-500">Actions</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-indigo-700">Item</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-indigo-700">Category</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-indigo-700">Price/day</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-indigo-700">Status</th>
+                            <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-indigo-700">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">

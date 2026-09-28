@@ -1,7 +1,7 @@
 <div>
     <x-page-header eyebrow="Renting" title="My rental requests" subtitle="Track the status of items you've requested to rent." />
 
-    <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div class="w-full px-4 py-8 sm:px-6 lg:px-8">
         @if (session('status'))
             <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
                 {{ session('status') }}

@@ -1,7 +1,7 @@
 <div>
     <x-page-header eyebrow="Administration" title="Damage reports" subtitle="Review damage claims filed by owners. Disputed claims await resolution in a later phase." />
 
-    <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div class="w-full px-4 py-8 sm:px-6 lg:px-8">
         <div class="flex flex-wrap gap-2">
             @foreach (['disputed' => 'Disputed', 'pending' => 'Pending', 'accepted' => 'Accepted', 'all' => 'All'] as $value => $label)
                 <button
