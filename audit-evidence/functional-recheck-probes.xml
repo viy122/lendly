@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="FunctionalRecheckTest" file="C:\Users\Admin\lendly\audit-evidence\FunctionalRecheckTest.php" tests="4" assertions="13" errors="0" failures="0" skipped="0" time="1.949585">
+    <testcase name="test_remaining_gap_unverified_renter_can_submit" file="C:\Users\Admin\lendly\audit-evidence\FunctionalRecheckTest.php" line="34" class="FunctionalRecheckTest" classname="FunctionalRecheckTest" assertions="4" time="1.455076"/>
+    <testcase name="test_remaining_gap_authenticated_session_without_interface_can_access_both_areas" file="C:\Users\Admin\lendly\audit-evidence\FunctionalRecheckTest.php" line="44" class="FunctionalRecheckTest" classname="FunctionalRecheckTest" assertions="3" time="0.154901"/>
+    <testcase name="test_zero_coordinate_is_preserved_when_editing" file="C:\Users\Admin\lendly\audit-evidence\FunctionalRecheckTest.php" line="54" class="FunctionalRecheckTest" classname="FunctionalRecheckTest" assertions="3" time="0.145457"/>
+    <testcase name="test_remaining_gap_owner_can_approve_a_request_after_listing_is_paused" file="C:\Users\Admin\lendly\audit-evidence\FunctionalRecheckTest.php" line="64" class="FunctionalRecheckTest" classname="FunctionalRecheckTest" assertions="3" time="0.194150"/>
+  </testsuite>
+</testsuites>

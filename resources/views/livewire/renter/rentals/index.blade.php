@@ -1,9 +1,9 @@
-<div>
-    <x-page-header eyebrow="Renting" title="My rentals" subtitle="Approved rentals waiting for payment, and rentals you've paid for." />
+<div wire:poll.5s.keep-alive>
+    <x-page-header eyebrow="Renting" title="My rentals" subtitle="View current rentals and your complete booking and transaction history." />
 
     <div class="w-full px-4 py-8 sm:px-6 lg:px-8">
         @if ($rentals->isEmpty())
-            <x-empty-state title="No rentals yet" message="Once an owner approves your rental request, it will appear here for payment." />
+            <x-empty-state title="No rentals yet" message="Once both parties accept an approved rental agreement, the booking will appear here for payment." />
         @else
             <div class="space-y-4">
                 @foreach ($rentals as $rental)
@@ -20,11 +20,14 @@
                                         <p class="font-semibold text-slate-800">{{ $rental->listing->name }}</p>
                                         <x-badge :color="$rental->displayStatusColor()">{{ $rental->displayStatusLabel() }}</x-badge>
                                     </div>
+                                    @if ($rental->listing->trashed())
+                                        <p class="mt-1 text-xs text-slate-500">Listing removed</p>
+                                    @endif
                                     <p class="mt-1 text-sm text-slate-500">
                                         {{ $rental->start_date->format('M d, Y') }} &ndash; {{ $rental->end_date->format('M d, Y') }}
                                     </p>
                                     <p class="mt-1 text-xs text-slate-400">
-                                        Owner: {{ $rental->listing->owner->name }} &middot; Total ₱{{ number_format($rental->total_amount, 2) }}
+                                        Owner: {{ $rental->owner->name }} &middot; Total ₱{{ number_format($rental->total_amount, 2) }}
                                     </p>
                                 </div>
                             </div>

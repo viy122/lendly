@@ -1,8 +1,6 @@
 <?php
 
 use App\Livewire\Actions\Logout;
-use App\Models\User;
-use Illuminate\Support\Facades\Auth;
 use Livewire\Volt\Component;
 
 new class extends Component
@@ -14,27 +12,10 @@ new class extends Component
         $this->redirect('/', navigate: true);
     }
 
-    /**
-     * Demo-only quick account switcher (local env, see the gate in the
-     * view) — logs straight into the seeded admin/member accounts so both
-     * account types can be demoed without repeatedly typing credentials.
-     */
+    /** Reject retired demo actions sent by an already-open sidebar. */
     public function switchDemoUser(string $role): void
     {
-        if (! app()->environment('local')) {
-            return;
-        }
-
-        $user = User::where('email', "{$role}@tala.test")->first();
-
-        if (! $user) {
-            return;
-        }
-
-        Auth::login($user);
-        session()->regenerate();
-
-        $this->redirect(route($user->dashboardRouteName()), navigate: true);
+        abort(403, 'Sign in with the credentials for the account you want to use.');
     }
 }; ?>
 
@@ -60,7 +41,7 @@ new class extends Component
                 <span class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/80 bg-white p-0.5 shadow-[0_5px_16px_rgba(37,99,235,0.35)] transition duration-200 group-hover:-translate-y-0.5 group-hover:shadow-[0_8px_20px_rgba(59,130,246,0.45)]">
                     <img src="{{ asset('images/lendlylogo_transparent.png') }}" alt="Lendly logo" class="h-full w-full scale-[1.35] object-contain" />
                 </span>
-                <span class="text-sm font-semibold tracking-tight text-white" x-show="!collapsed" x-cloak x-transition.opacity.duration.100ms>Rent · Share · Earn</span>
+                <span class="text-sm font-semibold tracking-tight text-white" x-show="!collapsed" x-cloak x-transition.opacity.duration.100ms>{{ auth()->check() && ! auth()->user()->isAdmin() ? ucfirst(auth()->user()->activeInterface()).' interface' : 'Rent · Share · Earn' }}</span>
             </a>
             <button @click="open = false" class="rounded-md p-1 text-indigo-300 hover:bg-indigo-900 hover:text-white lg:hidden" aria-label="Close sidebar">
                 <x-icon name="x-mark" class="h-4 w-4" />
@@ -75,32 +56,15 @@ new class extends Component
             <x-icon name="chevron-down" class="h-3.5 w-3.5 transition-transform" x-bind:class="{ '-rotate-90': !collapsed, 'rotate-90': collapsed }" />
         </button>
 
-        @if (app()->environment('local'))
-        <div class="border-b border-indigo-900 px-3 py-3" x-show="!collapsed" x-cloak x-transition>
-            <p class="px-1 pb-1.5 text-xs font-semibold uppercase tracking-wider text-indigo-400">Demo: switch user</p>
-            <div class="grid grid-cols-2 gap-1 rounded-lg bg-indigo-900 p-1">
-                @foreach (['admin' => 'Admin', 'owner' => 'Renter/Owner'] as $role => $label)
-                <button
-                    type="button"
-                    wire:click="switchDemoUser('{{ $role }}')"
-                    @class([ 'rounded-md px-2 py-1.5 text-xs font-semibold transition' , 'bg-white text-blue-700 shadow-sm'=> auth()->check() && auth()->user()->email === "{$role}@tala.test",
-                    'text-indigo-300 hover:text-white' => ! (auth()->check() && auth()->user()->email === "{$role}@tala.test"),
-                    ])
-                    >
-                    {{ $label }}
-                </button>
-                @endforeach
-            </div>
-        </div>
-        @endif
-
         <nav class="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-3 py-4">
-            <x-sidebar-link :href="route('listings.index')" :active="request()->routeIs('listings.*')" icon="search" wire:navigate>
+            @if (! auth()->check() || auth()->user()->isAdmin() || auth()->user()->activeInterface() === 'renter')
+            <x-sidebar-link :href="route('listings.index')" :active="request()->routeIs('listings.*') && ! request()->routeIs('listings.message')" icon="search" wire:navigate>
                 {{ __('Browse') }}
             </x-sidebar-link>
             <x-sidebar-link :href="route('map')" :active="request()->routeIs('map')" icon="map-pin" wire:navigate>
                 {{ __('Map') }}
             </x-sidebar-link>
+            @endif
 
             @auth
             <x-sidebar-link :href="route(auth()->user()->dashboardRouteName())" :active="request()->routeIs('*.dashboard') || request()->routeIs('dashboard')" icon="home" wire:navigate>
@@ -108,7 +72,7 @@ new class extends Component
             </x-sidebar-link>
 
             @if (auth()->user()->isRenter() || auth()->user()->isOwner())
-            <x-sidebar-link :href="route('messages.index')" :active="request()->routeIs('messages.*')" icon="chat" wire:navigate>
+            <x-sidebar-link :href="route('messages.index')" :active="request()->routeIs('messages.*', 'listings.message', 'listing-conversations.show', 'rental-requests.chat')" icon="chat" wire:navigate>
                 {{ __('Messages') }}
                 @if (auth()->user()->unreadMessagesCount() > 0)
                 <x-slot:badge>{{ auth()->user()->unreadMessagesCount() > 9 ? '9+' : auth()->user()->unreadMessagesCount() }}</x-slot:badge>
@@ -116,7 +80,7 @@ new class extends Component
             </x-sidebar-link>
             @endif
 
-            @if (auth()->user()->isRenter())
+            @if (auth()->user()->activeInterface() === 'renter')
             <p class="flex items-center gap-1.5 px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wider text-indigo-400" x-show="!collapsed" x-cloak>
                 <span class="h-1.5 w-1.5 rounded-full bg-blue-400"></span> Renting
             </p>
@@ -128,7 +92,7 @@ new class extends Component
             </x-sidebar-link>
             @endif
 
-            @if (auth()->user()->isOwner())
+            @if (auth()->user()->activeInterface() === 'owner')
             <p class="flex items-center gap-1.5 px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wider text-indigo-400" x-show="!collapsed" x-cloak>
                 <span class="h-1.5 w-1.5 rounded-full bg-violet-400"></span> Owning
             </p>

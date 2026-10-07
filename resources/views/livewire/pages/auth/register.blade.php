@@ -2,7 +2,6 @@
 
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Livewire\Attributes\Layout;
@@ -37,9 +36,9 @@ new #[Layout('layouts.guest')] class extends Component
 
         event(new Registered($user = User::create($validated)));
 
-        Auth::login($user);
+        session()->flash('status', 'Account created successfully. Please log in to continue.');
 
-        $this->redirect(route($user->dashboardRouteName(), absolute: false), navigate: true);
+        $this->redirect(route('login', absolute: false), navigate: true);
     }
 }; ?>
 

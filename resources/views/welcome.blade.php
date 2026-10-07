@@ -6,6 +6,7 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>{{ config('app.name', 'Lendly') }} — Rent anything, from anyone nearby</title>
+        <link rel="icon" type="image/png" href="{{ asset('images/lendly-icon.png') }}">
         <meta name="description" content="Find useful items nearby, rent for only as long as you need, or earn from the things you already own with Lendly.">
 
         <link rel="preconnect" href="https://fonts.bunny.net">

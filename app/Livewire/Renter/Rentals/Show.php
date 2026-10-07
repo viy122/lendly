@@ -4,25 +4,31 @@ namespace App\Livewire\Renter\Rentals;
 
 use App\Enums\DisputeReason;
 use App\Enums\NotificationType;
-use App\Enums\RentalStatus;
 use App\Enums\ReviewType;
 use App\Models\Dispute;
-use App\Models\Payment;
+use App\Models\OfflinePaymentSetting;
 use App\Models\Rental;
-use App\Models\Review;
-use App\Models\SecurityDeposit;
 use App\Notifications\TalaNotification;
 use App\Services\CancellationPolicy;
 use App\Services\RentalLifecycle;
+use App\Services\RentalPayments;
+use App\Services\RentalReviews;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Layout('layouts.app')]
 class Show extends Component
 {
+    use WithFileUploads;
+
     public Rental $rental;
+
+    public string $payment_reference = '';
+
+    public $payment_proof;
 
     public string $damage_response_notes = '';
 
@@ -55,35 +61,18 @@ class Show extends Component
         ]);
     }
 
-    public function confirmPayment(): void
+    public function submitPaymentProof(): void
     {
+        $this->rental->refresh();
         $this->authorize('pay', $this->rental);
-
-        $payment = Payment::create([
-            'rental_id' => $this->rental->id,
-            'transaction_reference' => Payment::generateReference(),
-            'amount' => $this->rental->total_amount,
-            'paid_at' => now(),
+        $this->payment_reference = strtoupper(trim($this->payment_reference));
+        $this->validate([
+            'payment_reference' => ['required', 'string', 'max:100', 'regex:/^[A-Z0-9][A-Z0-9._\/-]*$/'],
+            'payment_proof' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
         ]);
-
-        SecurityDeposit::create([
-            'rental_id' => $this->rental->id,
-            'amount' => $this->rental->security_deposit,
-        ]);
-
-        $this->rental->update([
-            'status' => RentalStatus::Paid,
-            'paid_at' => now(),
-        ]);
-
-        $this->rental->owner->notify(new TalaNotification(
-            NotificationType::PaymentConfirmed->value,
-            'Payment received',
-            "Payment for \"{$this->rental->listing->name}\" has been confirmed.",
-            route('owner.rentals.show', $this->rental),
-        ));
-
-        $this->rental->refresh()->load(['payment', 'securityDeposit']);
+        RentalPayments::submit($this->rental, auth()->user(), $this->payment_reference, $this->payment_proof);
+        $this->reset('payment_reference', 'payment_proof');
+        session()->flash('status', 'Payment proof submitted. Your booking remains unpaid until receipt of the full amount is verified.');
     }
 
     public function cancellationPreview(): ?array
@@ -97,7 +86,7 @@ class Show extends Component
     {
         $this->authorize('cancel', $this->rental);
 
-        $this->validate(['cancellation_reason' => ['required', 'string', 'max:500']]);
+        $this->validate(['cancellation_reason' => ['nullable', 'string', 'max:500']]);
 
         RentalLifecycle::cancel($this->rental, $this->cancellation_reason);
 
@@ -150,40 +139,30 @@ class Show extends Component
 
     public function submitOwnerReview(): void
     {
-        abort_unless($this->rental->isCompleted(), 403);
-        abort_if($this->rental->reviewFromRenterToOwner, 403, 'You already reviewed the owner.');
+        $this->rental->refresh();
+        $this->authorize('review', [$this->rental, ReviewType::RenterToOwner]);
 
         $this->validate([
             'owner_rating' => ['required', 'integer', 'min:1', 'max:5'],
             'owner_comment' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        Review::create([
-            'rental_id' => $this->rental->id,
-            'type' => ReviewType::RenterToOwner,
-            'rating' => $this->owner_rating,
-            'comment' => $this->owner_comment,
-        ]);
+        RentalReviews::submit($this->rental, auth()->user(), ReviewType::RenterToOwner, $this->owner_rating, $this->owner_comment);
 
         $this->rental->refresh()->load('reviewFromRenterToOwner');
     }
 
     public function submitListingReview(): void
     {
-        abort_unless($this->rental->isCompleted(), 403);
-        abort_if($this->rental->reviewFromRenterToListing, 403, 'You already reviewed this item.');
+        $this->rental->refresh();
+        $this->authorize('review', [$this->rental, ReviewType::RenterToListing]);
 
         $this->validate([
             'listing_rating' => ['required', 'integer', 'min:1', 'max:5'],
             'listing_comment' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        Review::create([
-            'rental_id' => $this->rental->id,
-            'type' => ReviewType::RenterToListing,
-            'rating' => $this->listing_rating,
-            'comment' => $this->listing_comment,
-        ]);
+        RentalReviews::submit($this->rental, auth()->user(), ReviewType::RenterToListing, $this->listing_rating, $this->listing_comment);
 
         $this->rental->refresh()->load('reviewFromRenterToListing');
     }
@@ -217,6 +196,16 @@ class Show extends Component
 
     public function render(): View
     {
-        return view('livewire.renter.rentals.show');
+        $this->rental->refresh();
+        $this->authorize('view', $this->rental);
+        RentalLifecycle::synchronizeRentalStatus($this->rental);
+        $this->rental->refresh()->load([
+            'listing', 'owner', 'renter', 'payment', 'securityDeposit',
+            'beforeConditionRecord.photos', 'afterConditionRecord.photos', 'damageReport.photos',
+            'reviewFromRenterToOwner', 'reviewFromRenterToListing', 'disputes',
+            'paymentSubmissions',
+        ]);
+
+        return view('livewire.renter.rentals.show', ['paymentSettings' => OfflinePaymentSetting::current()]);
     }
 }

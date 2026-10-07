@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Forms;
 
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -20,6 +21,36 @@ class LoginForm extends Form
 
     #[Validate('boolean')]
     public bool $remember = false;
+
+    /**
+     * Check credentials without starting an authenticated session.
+     *
+     * @throws ValidationException
+     */
+    public function validateCredentials(): User
+    {
+        $this->ensureIsNotRateLimited();
+
+        $guard = Auth::guard('web');
+
+        if (! $guard->validate($this->only(['email', 'password']))) {
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'form.email' => trans('auth.failed'),
+            ]);
+        }
+
+        $user = $guard->getLastAttempted();
+
+        if ($user->isSuspended()) {
+            throw ValidationException::withMessages([
+                'form.email' => 'Your account has been suspended. Please contact support for assistance.',
+            ]);
+        }
+
+        return $user;
+    }
 
     /**
      * Attempt to authenticate the request's credentials.

@@ -1,5 +1,5 @@
-<div>
-    <x-page-header eyebrow="Owning" title="My rentals" subtitle="Rentals created from your approved requests." />
+<div wire:poll.5s.keep-alive>
+    <x-page-header eyebrow="Owning" title="My rentals" subtitle="View current rentals and your complete booking and transaction history." />
 
     <div class="w-full px-4 py-7 sm:px-6 lg:px-8 lg:py-8">
         <div class="mb-6 flex flex-wrap gap-2">
@@ -23,7 +23,7 @@
         </div>
 
         @if ($rentals->isEmpty())
-            <x-empty-state :title="$filter === 'all' ? 'No rentals yet' : 'Nothing here'" :message="$filter === 'all' ? 'Once you approve a rental request, it will appear here.' : 'No rentals match this status filter right now.'" />
+            <x-empty-state :title="$filter === 'all' ? 'No rentals yet' : 'Nothing here'" :message="$filter === 'all' ? 'Once both parties accept an approved rental agreement, the booking will appear here.' : 'No rentals match this status filter right now.'" />
         @else
             <div class="overflow-hidden overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_14px_42px_rgba(15,45,95,0.07)]">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
@@ -47,7 +47,13 @@
                                         @else
                                             <div class="grid h-12 w-12 place-items-center rounded-xl bg-slate-100 text-slate-300"><x-icon name="archive" class="h-5 w-5" /></div>
                                         @endif
-                                        <div><span class="font-bold text-slate-800">{{ $rental->listing->name }}</span><p class="mt-0.5 text-[11px] text-slate-400">Rental #{{ $rental->id }}</p></div>
+                                        <div>
+                                            <span class="font-bold text-slate-800">{{ $rental->listing->name }}</span>
+                                            <p class="mt-0.5 text-[11px] text-slate-400">Rental #{{ $rental->id }}</p>
+                                            @if ($rental->listing->trashed())
+                                                <p class="mt-0.5 text-xs text-slate-500">Listing removed</p>
+                                            @endif
+                                        </div>
                                     </div>
                                 </td>
                                 <td class="px-5 py-4 font-medium text-slate-600">{{ $rental->renter->name }}</td>

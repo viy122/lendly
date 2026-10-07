@@ -21,42 +21,69 @@
     ];
 @endphp
 
-<div x-data="{ filtersOpen: false }">
+<div x-data="{
+    filtersOpen: false,
+    headerHeight: 128,
+    searchPanelHeight: 80,
+    resizeObserver: null,
+    init() {
+        this.$nextTick(() => {
+            this.resizeObserver = new ResizeObserver(() => {
+                this.headerHeight = this.$root.querySelector('header').offsetHeight;
+                this.searchPanelHeight = this.$refs.searchPanel.offsetHeight;
+            });
+            this.resizeObserver.observe(this.$root.querySelector('header'));
+            this.resizeObserver.observe(this.$refs.searchPanel);
+        });
+    },
+    destroy() {
+        this.resizeObserver?.disconnect();
+    },
+}">
     <x-page-header
         eyebrow="Lendly marketplace"
         title="Find what you need to rent"
-        :subtitle="$listings->total() . ' item' . ($listings->total() === 1 ? '' : 's') . ' available right now.'"
+        :subtitle="$listings->total() . ' item' . ($listings->total() === 1 ? '' : 's') . ' accepting rental requests.'"
     />
 
     <div class="w-full px-4 py-6 sm:px-6 lg:px-8">
-        <div class="mb-4 flex justify-end">
-            <a href="{{ route('map') }}" wire:navigate class="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
-                <x-icon name="map-pin" class="h-4 w-4" />
-                View on map
-            </a>
-        </div>
-
-        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div class="flex flex-col gap-3 sm:flex-row">
-                <div class="relative flex-1">
+        <div x-ref="searchPanel" :style="{ top: (headerHeight + 16) + 'px' }"
+             class="sticky z-10 rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_12px_36px_rgba(15,45,95,0.14)] backdrop-blur-xl">
+            <div class="flex flex-col gap-3 lg:flex-row">
+                <div class="relative min-w-0 flex-1">
                     <x-icon name="search" class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                    <input type="text" wire:model.live.debounce.400ms="keyword" placeholder="Search for tools, cameras, tents..."
+                    <input type="text" wire:model.live.debounce.400ms="keyword" placeholder="Search for tools, cameras, tents..." aria-label="Search items"
                            class="w-full rounded-lg border-slate-300 py-3 pl-11 pr-4 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                 </div>
 
-                <button type="button" @click="filtersOpen = ! filtersOpen"
-                        class="flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
-                    <x-icon name="filter" class="h-4 w-4" />
-                    Filters
-                </button>
+                <div class="relative min-w-0 lg:w-56">
+                    <x-icon name="map-pin" class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                    <input type="text" wire:model.live.debounce.400ms="location" placeholder="City or area" aria-label="Filter by city or area"
+                           class="w-full rounded-lg border-slate-300 py-3 pl-11 pr-4 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
 
-                <button type="button" wire:click="$refresh"
-                        class="rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-3 text-sm font-semibold text-white shadow-sm hover:from-blue-700 hover:to-indigo-700">
-                    Search
-                </button>
+                <div class="flex flex-col gap-3 sm:flex-row">
+                    <button type="button" @click="filtersOpen = ! filtersOpen" :aria-expanded="filtersOpen" aria-controls="listing-filters"
+                            class="flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
+                        <x-icon name="filter" class="h-4 w-4" />
+                        Filters
+                    </button>
+
+                    <div class="flex gap-4">
+                        <button type="button" wire:click="$refresh"
+                                class="flex-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-3 text-sm font-semibold text-white shadow-sm hover:from-blue-700 hover:to-indigo-700 sm:flex-none">
+                            Search
+                        </button>
+
+                        <a href="{{ route('map') }}" wire:navigate class="flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 sm:flex-none">
+                            <x-icon name="map-pin" class="h-4 w-4" />
+                            View on Map
+                        </a>
+                    </div>
+                </div>
             </div>
 
-            <div x-show="filtersOpen" x-transition class="mt-4 grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2 lg:grid-cols-4" style="display: none;">
+            <div id="listing-filters" x-show="filtersOpen" x-transition class="mt-4 grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_minmax(18rem,1.5fr)]" style="display: none;">
                 <select wire:model.live="condition" class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     <option value="">Any condition</option>
                     @foreach ($conditions as $option)
@@ -77,20 +104,20 @@
                     <option value="popular">Most popular</option>
                 </select>
 
-                <div class="flex items-center gap-2">
-                    <input type="number" wire:model.live.debounce.400ms="minPrice" placeholder="Min ₱/day" class="w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                <div class="flex min-w-0 items-center gap-2">
+                    <input type="number" wire:model.live.debounce.400ms="minPrice" placeholder="Min ₱/day" aria-label="Minimum price per day" class="min-w-0 w-full rounded-lg border-slate-300 px-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     <span class="text-slate-400">–</span>
-                    <input type="number" wire:model.live.debounce.400ms="maxPrice" placeholder="Max ₱/day" class="w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <input type="number" wire:model.live.debounce.400ms="maxPrice" placeholder="Max ₱/day" aria-label="Maximum price per day" class="min-w-0 w-full rounded-lg border-slate-300 px-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <button type="button" wire:click="resetFilters" aria-label="Clear filters" title="Clear filters"
+                            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-500 shadow-sm hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                        <x-icon name="x-mark" class="h-4 w-4" aria-hidden="true" />
+                    </button>
                 </div>
-
-                <button type="button" wire:click="resetFilters" class="text-left text-sm font-medium text-slate-500 hover:text-slate-700 sm:col-span-2 lg:col-span-4">
-                    Clear filters
-                </button>
             </div>
         </div>
 
         <div class="mt-6 lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start lg:gap-6">
-            <aside class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-32">
+            <aside :style="{ top: (headerHeight + searchPanelHeight + 32) + 'px' }" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky">
                 <div class="flex items-center justify-between gap-3">
                     <div>
                         <p class="text-xs font-bold uppercase tracking-[0.14em] text-blue-600">Explore</p>
@@ -156,6 +183,8 @@
                             </div>
                             <div class="p-4">
                                 <h3 class="truncate font-semibold text-slate-900">{{ $listing->name }}</h3>
+                                @php($availability = $listing->availabilityStatus())
+                                <div class="mt-2"><x-badge :color="$availability->badgeColor()">{{ $availability->label() }}</x-badge></div>
                                 <p class="mt-1 flex items-center gap-1 text-sm text-slate-500">
                                     <x-icon name="map-pin" class="h-3.5 w-3.5 text-slate-400" />
                                     {{ $listing->location }}

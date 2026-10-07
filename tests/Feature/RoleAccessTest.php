@@ -19,14 +19,55 @@ class RoleAccessTest extends TestCase
         $this->get('/admin/dashboard')->assertRedirect('/login');
     }
 
-    public function test_any_member_can_access_the_unified_dashboard_and_both_owner_and_renter_areas(): void
+    public function test_members_only_see_and_access_their_selected_interface(): void
     {
         $member = User::factory()->renter()->create();
 
-        $this->actingAs($member)->get('/dashboard')->assertOk();
-        $this->actingAs($member)->get('/owner/listings')->assertOk();
-        $this->actingAs($member)->get('/renter/rental-requests')->assertOk();
-        $this->actingAs($member)->get('/admin/dashboard')->assertForbidden();
+        $this->actingAs($member)->withSession(['active_interface' => 'renter']);
+        $this->get('/renter/dashboard')->assertOk()
+            ->assertSee('Renter dashboard')
+            ->assertSee('href="'.route('renter.rental-requests.index').'"', false)
+            ->assertDontSee('href="'.route('owner.listings.index').'"', false)
+            ->assertDontSee('Total earnings')
+            ->assertDontSee('New listing');
+        $this->get('/renter/rental-requests')->assertOk();
+        $this->get('/owner/dashboard')->assertForbidden();
+        $this->get('/owner/listings')->assertForbidden();
+        $this->get('/admin/dashboard')->assertForbidden();
+
+        $this->withSession(['active_interface' => 'owner']);
+        $this->get('/owner/dashboard')->assertOk()
+            ->assertSee('Owner dashboard')
+            ->assertSee('Total earnings')
+            ->assertSee('href="'.route('owner.listings.index').'"', false)
+            ->assertDontSee('href="'.route('renter.rental-requests.index').'"', false)
+            ->assertDontSee('href="'.route('listings.index').'"', false)
+            ->assertDontSee('Recent rental requests');
+        $this->get('/owner/listings')->assertOk();
+        $this->get('/renter/dashboard')->assertForbidden();
+        $this->get('/renter/rental-requests')->assertForbidden();
+        $this->get('/dashboard')->assertOk()->assertSee('Owner dashboard');
+    }
+
+    public function test_interface_access_checks_persist_on_livewire_updates(): void
+    {
+        $member = User::factory()->create();
+        $response = $this->actingAs($member)->withSession(['active_interface' => 'owner'])
+            ->get('/owner/listings/create')->assertOk();
+
+        preg_match_all('/wire:snapshot="([^"]+)"/', $response->getContent(), $matches);
+        $snapshot = collect($matches[1])->map(fn ($value) => html_entity_decode($value, ENT_QUOTES))
+            ->first(fn ($value) => json_decode($value, true)['memo']['name'] === 'owner.listings.form');
+
+        $this->assertNotNull($snapshot);
+
+        $this->withSession(['active_interface' => 'renter'])->postJson('/livewire/update', [
+            'components' => [[
+                'snapshot' => $snapshot,
+                'updates' => [],
+                'calls' => [['path' => '', 'method' => '$refresh', 'params' => []]],
+            ]],
+        ], ['X-Livewire' => ''])->assertForbidden();
     }
 
     public function test_admin_can_access_own_dashboard_but_not_member_areas(): void
@@ -92,7 +133,7 @@ class RoleAccessTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_registering_sends_user_to_the_unified_dashboard_as_a_member(): void
+    public function test_registering_sends_member_to_login(): void
     {
         $component = Volt::test('pages.auth.register')
             ->set('name', 'New Person')
@@ -102,8 +143,9 @@ class RoleAccessTest extends TestCase
 
         $component->call('register');
 
-        $component->assertRedirect(route('dashboard', absolute: false));
+        $component->assertHasNoErrors()->assertRedirect(route('login', absolute: false));
 
-        $this->assertSame('member', auth()->user()->role->value);
+        $this->assertGuest();
+        $this->assertSame('member', User::firstWhere('email', 'new-signup@example.com')->role->value);
     }
 }

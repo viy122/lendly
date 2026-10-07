@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="RequirementsAuditTest" file="C:\Users\Admin\lendly\audit-evidence\RequirementsAuditTest.php" tests="12" assertions="32" errors="0" failures="0" skipped="0" time="21.747837">
+    <testcase name="test_gap_unverified_renter_can_submit_request" file="C:\Users\Admin\lendly\audit-evidence\RequirementsAuditTest.php" line="54" class="RequirementsAuditTest" classname="RequirementsAuditTest" assertions="3" time="1.694605"/>
+    <testcase name="test_gap_approval_does_not_recheck_renter_terms" file="C:\Users\Admin\lendly\audit-evidence\RequirementsAuditTest.php" line="64" class="RequirementsAuditTest" classname="RequirementsAuditTest" assertions="3" time="0.174227"/>
+    <testcase name="test_gap_owner_has_no_booking_confirmation_notification" file="C:\Users\Admin\lendly\audit-evidence\RequirementsAuditTest.php" line="73" class="RequirementsAuditTest" classname="RequirementsAuditTest" assertions="3" time="0.174011"/>
+    <testcase name="test_gap_pending_request_cancellation_does_not_notify_owner" file="C:\Users\Admin\lendly\audit-evidence\RequirementsAuditTest.php" line="81" class="RequirementsAuditTest" classname="RequirementsAuditTest" assertions="2" time="0.168872"/>
+    <testcase name="test_gap_cancellation_is_allowed_after_owner_logged_handover" file="C:\Users\Admin\lendly\audit-evidence\RequirementsAuditTest.php" line="89" class="RequirementsAuditTest" classname="RequirementsAuditTest" assertions="4" time="0.262779"/>
+    <testcase name="test_gap_zero_coordinate_does_not_compute_distance" file="C:\Users\Admin\lendly\audit-evidence\RequirementsAuditTest.php" line="102" class="RequirementsAuditTest" classname="RequirementsAuditTest" assertions="1" time="0.122663"/>
+    <testcase name="test_gap_soft_deleted_listing_is_missing_from_rental_relation" file="C:\Users\Admin\lendly\audit-evidence\RequirementsAuditTest.php" line="109" class="RequirementsAuditTest" classname="RequirementsAuditTest" assertions="3" time="0.148647"/>
+    <testcase name="test_gap_owner_can_submit_renter_to_owner_review_on_own_rental" file="C:\Users\Admin\lendly\audit-evidence\RequirementsAuditTest.php" line="118" class="RequirementsAuditTest" classname="RequirementsAuditTest" assertions="2" time="0.249044"/>
+    <testcase name="test_gap_submit_does_not_recheck_listing_availability" file="C:\Users\Admin\lendly\audit-evidence\RequirementsAuditTest.php" line="128" class="RequirementsAuditTest" classname="RequirementsAuditTest" assertions="2" time="0.190088"/>
+    <testcase name="test_gap_local_demo_switcher_can_enter_admin_without_admin_password" file="C:\Users\Admin\lendly\audit-evidence\RequirementsAuditTest.php" line="137" class="RequirementsAuditTest" classname="RequirementsAuditTest" assertions="3" time="14.088829"/>
+    <testcase name="test_gap_account_deletion_removes_other_partys_rental_history" file="C:\Users\Admin\lendly\audit-evidence\RequirementsAuditTest.php" line="146" class="RequirementsAuditTest" classname="RequirementsAuditTest" assertions="3" time="1.607337"/>
+    <testcase name="test_gap_paid_cancelled_booking_remains_in_full_owner_earnings" file="C:\Users\Admin\lendly\audit-evidence\RequirementsAuditTest.php" line="155" class="RequirementsAuditTest" classname="RequirementsAuditTest" assertions="3" time="2.866736"/>
+  </testsuite>
+</testsuites>

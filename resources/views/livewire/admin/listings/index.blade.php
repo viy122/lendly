@@ -7,7 +7,8 @@
                 <button
                     type="button"
                     wire:click="$set('filter', '{{ $value }}')"
-                    class="rounded-full px-3 py-1.5 text-xs font-semibold {{ $filter === $value ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50' }}"
+                    aria-pressed="{{ $filter === $value ? 'true' : 'false' }}"
+                    class="rounded-full px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 {{ $filter === $value ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50' }}"
                 >
                     {{ $label }}
                 </button>
@@ -43,17 +44,6 @@
                                         @endif
                                     </div>
                                 </div>
-
-                                <div class="flex items-center gap-3 text-xs font-medium">
-                                    <a href="{{ route('listings.show', $listing) }}" wire:navigate target="_blank" class="text-slate-500 hover:text-slate-700">View</a>
-
-                                    @if ($listing->status->value === 'pending_approval')
-                                        <button type="button" wire:click="approve({{ $listing->id }})" class="rounded-lg bg-blue-600 px-3 py-1.5 text-white shadow-sm hover:bg-blue-700">Approve</button>
-                                        <button type="button" wire:click="startRejecting({{ $listing->id }})" class="rounded-lg border border-rose-200 px-3 py-1.5 text-rose-600 hover:bg-rose-50">Reject</button>
-                                    @elseif ($listing->status->value === 'published')
-                                        <button type="button" wire:click="remove({{ $listing->id }})" wire:confirm="Remove this listing from the marketplace?" class="rounded-lg border border-rose-200 px-3 py-1.5 text-rose-600 hover:bg-rose-50">Remove</button>
-                                    @endif
-                                </div>
                             </div>
 
                             @if ($rejecting === $listing->id)
@@ -61,12 +51,38 @@
                                     <x-input-label for="rejection_reason" value="Reason for rejection" />
                                     <textarea wire:model="rejection_reason" id="rejection_reason" rows="2" class="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-rose-500 focus:ring-rose-500"></textarea>
                                     <x-input-error :messages="$errors->get('rejection_reason')" class="mt-2" />
-                                    <div class="mt-3 flex justify-end gap-2">
-                                        <button type="button" wire:click="$set('rejecting', null)" class="text-xs font-medium text-slate-500 hover:text-slate-700">Cancel</button>
-                                        <button type="button" wire:click="confirmReject" class="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-700">Confirm rejection</button>
+                                    <div class="mt-4 flex flex-wrap justify-end gap-2">
+                                        <button type="button" wire:click="$set('rejecting', null)" class="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2">Cancel</button>
+                                        <button type="button" wire:click="confirmReject" wire:loading.attr="disabled" wire:target="confirmReject" class="inline-flex min-h-11 items-center justify-center rounded-xl border border-rose-600 bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:border-rose-700 hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60">
+                                            <span wire:loading.remove wire:target="confirmReject">Confirm rejection</span>
+                                            <span wire:loading wire:target="confirmReject">Rejecting&hellip;</span>
+                                        </button>
                                     </div>
                                 </div>
                             @endif
+                            <div class="-mx-5 -mb-5 mt-5 grid grid-cols-2 gap-2.5 rounded-b-xl border-t border-slate-100 bg-slate-50/60 px-5 py-4 sm:flex sm:flex-wrap sm:items-center sm:justify-end">
+                                <a href="{{ route('listings.show', $listing) }}" wire:navigate target="_blank" class="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:mr-auto">
+                                    <x-icon name="search" class="h-4 w-4 shrink-0" aria-hidden="true" />
+                                    <span>View</span>
+                                </a>
+                                @if ($listing->status->value === 'pending_approval')
+                                    <button type="button" wire:click="approve({{ $listing->id }})" wire:loading.attr="disabled" wire:target="approve({{ $listing->id }}), startRejecting({{ $listing->id }}), confirmReject" class="inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-blue-600 bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:border-blue-700 hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60">
+                                        <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" />
+                                        </svg>
+                                        <span>Approve</span>
+                                    </button>
+                                    <button type="button" wire:click="startRejecting({{ $listing->id }})" wire:loading.attr="disabled" wire:target="approve({{ $listing->id }}), startRejecting({{ $listing->id }}), confirmReject" class="inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-600 shadow-sm transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60">
+                                        <x-icon name="x-mark" class="h-4 w-4 shrink-0" aria-hidden="true" />
+                                        <span>Reject</span>
+                                    </button>
+                                @elseif ($listing->status->value === 'published')
+                                    <button type="button" wire:click="remove({{ $listing->id }})" wire:confirm="Remove this listing from the marketplace?" wire:loading.attr="disabled" wire:target="remove({{ $listing->id }})" class="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-600 shadow-sm transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60">
+                                        <x-icon name="trash" class="h-4 w-4 shrink-0" aria-hidden="true" />
+                                        <span>Remove</span>
+                                    </button>
+                                @endif
+                            </div>
                         </div>
                     @endforeach
                 </div>

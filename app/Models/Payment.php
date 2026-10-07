@@ -18,6 +18,10 @@ class Payment extends Model
         'amount',
         'status',
         'paid_at',
+        'method',
+        'external_reference',
+        'payment_submission_id',
+        'verified_by',
     ];
 
     protected function casts(): array

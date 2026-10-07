@@ -21,6 +21,15 @@ class ListingPolicy
         return $listing->isOwnedBy($user);
     }
 
+    public function message(User $user, Listing $listing): bool
+    {
+        return $listing->isPublished() && ! $listing->trashed()
+            && ! $listing->owner->trashed() && ! $listing->owner->isSuspended()
+            && $user->isRenter() && ! $user->isSuspended()
+            && $user->activeInterface() === 'renter'
+            && ! $listing->isOwnedBy($user);
+    }
+
     public function delete(User $user, Listing $listing): bool
     {
         return $listing->isOwnedBy($user) || $user->isAdmin();

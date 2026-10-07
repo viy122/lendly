@@ -13,9 +13,9 @@ use App\Models\DamageReport;
 use App\Models\DamageReportPhoto;
 use App\Models\Dispute;
 use App\Models\Rental;
-use App\Models\Review;
 use App\Notifications\TalaNotification;
 use App\Services\RentalLifecycle;
+use App\Services\RentalReviews;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -182,21 +182,15 @@ class Show extends Component
 
     public function submitRenterReview(): void
     {
-        abort_unless(auth()->id() === $this->rental->owner_id, 403);
-        abort_unless($this->rental->isCompleted(), 403);
-        abort_if($this->rental->reviewFromOwnerToRenter, 403, 'You already reviewed this renter.');
+        $this->rental->refresh();
+        $this->authorize('review', [$this->rental, ReviewType::OwnerToRenter]);
 
         $this->validate([
             'renter_rating' => ['required', 'integer', 'min:1', 'max:5'],
             'renter_comment' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        Review::create([
-            'rental_id' => $this->rental->id,
-            'type' => ReviewType::OwnerToRenter,
-            'rating' => $this->renter_rating,
-            'comment' => $this->renter_comment,
-        ]);
+        RentalReviews::submit($this->rental, auth()->user(), ReviewType::OwnerToRenter, $this->renter_rating, $this->renter_comment);
 
         $this->rental->refresh()->load('reviewFromOwnerToRenter');
     }
@@ -246,6 +240,15 @@ class Show extends Component
 
     public function render(): View
     {
+        $this->rental->refresh();
+        $this->authorize('view', $this->rental);
+        RentalLifecycle::synchronizeRentalStatus($this->rental);
+        $this->rental->refresh()->load([
+            'listing.images', 'owner', 'renter', 'payment', 'securityDeposit',
+            'beforeConditionRecord.photos', 'afterConditionRecord.photos', 'damageReport.photos',
+            'reviewFromOwnerToRenter', 'disputes',
+        ]);
+
         return view('livewire.owner.rentals.show');
     }
 }

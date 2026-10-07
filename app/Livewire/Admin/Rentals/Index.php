@@ -4,6 +4,7 @@ namespace App\Livewire\Admin\Rentals;
 
 use App\Enums\RentalStatus;
 use App\Models\Rental;
+use App\Services\RentalLifecycle;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -44,9 +45,13 @@ class Index extends Component
 
     public function render(): View
     {
+        $this->authorize('viewAny', Rental::class);
+        RentalLifecycle::markOverdueRentals();
+
         $rentals = $this->baseQuery()
             ->with(['listing', 'owner', 'renter'])
             ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->paginate(15);
 
         return view('livewire.admin.rentals.index', [

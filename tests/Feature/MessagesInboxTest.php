@@ -4,11 +4,15 @@ namespace Tests\Feature;
 
 use App\Enums\ListingStatus;
 use App\Livewire\Messages\Index as MessagesIndex;
+use App\Livewire\Messages\ListingChat;
+use App\Livewire\Messages\Show as MessagesShow;
 use App\Models\Category;
 use App\Models\Listing;
+use App\Models\ListingConversation;
 use App\Models\Message;
 use App\Models\RentalRequest;
 use App\Models\User;
+use App\Notifications\TalaNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -95,6 +99,37 @@ class MessagesInboxTest extends TestCase
         $this->assertCount(0, $component->viewData('threads'));
     }
 
+    public function test_search_filters_both_chat_types_by_person_or_item_without_replacing_the_active_chat(): void
+    {
+        $owner = User::factory()->create();
+        $alice = User::factory()->create(['name' => 'Alice Santos']);
+        $bob = User::factory()->create(['name' => 'Bob Reyes']);
+        $drill = $this->listingFor($owner);
+        $drill->update(['name' => 'Power Drill']);
+        $camera = $this->listingFor($owner);
+        $camera->update(['name' => 'Cinema Camera']);
+        $request = $this->requestFor($owner, $alice, $drill);
+        Message::create(['rental_request_id' => $request->id, 'sender_id' => $alice->id, 'receiver_id' => $owner->id, 'body' => 'Drill question']);
+        $conversation = ListingConversation::create(['listing_id' => $camera->id, 'renter_id' => $bob->id, 'owner_id' => $owner->id]);
+        $conversation->messages()->create(['sender_id' => $bob->id, 'receiver_id' => $owner->id, 'body' => 'Camera question']);
+
+        $component = Livewire::actingAs($owner)->test(MessagesIndex::class)->assertSee('Search people or items');
+        $this->assertCount(2, $component->viewData('threads'));
+        $component->set('search', 'ALICE')->assertSee('Drill question')->assertDontSee('Camera question');
+        $component->set('search', '  camera  ')->assertSee('Camera question')->assertDontSee('Drill question');
+        $component->set('search', 'nonexistent')->assertSee('No conversations found');
+        $this->assertCount(0, $component->viewData('threads'));
+        $component->set('search', '');
+        $this->assertCount(2, $component->viewData('threads'));
+
+        $listingChat = Livewire::actingAs($owner)->test(ListingChat::class, ['conversation' => $conversation])
+            ->set('search', 'Alice')->assertSee('Camera question');
+        $this->assertSame([$request->id], $listingChat->viewData('threads')->pluck('id')->all());
+        $rentalChat = Livewire::actingAs($owner)->test(MessagesShow::class, ['rentalRequest' => $request])
+            ->set('search', 'Bob')->assertSee('Drill question');
+        $this->assertSame(['listing-'.$conversation->id], $rentalChat->viewData('threads')->pluck('id')->all());
+    }
+
     public function test_unread_count_per_thread_is_correct(): void
     {
         $owner = User::factory()->create();
@@ -109,5 +144,54 @@ class MessagesInboxTest extends TestCase
         $thread = $component->viewData('threads')->first();
 
         $this->assertSame(2, $thread['unreadCount']);
+    }
+
+    public function test_messages_and_chat_access_are_separate_for_each_interface(): void
+    {
+        $member = User::factory()->create();
+        $other = User::factory()->create();
+        $ownerRequest = $this->requestFor($member, $other, $this->listingFor($member));
+        $renterRequest = $this->requestFor($other, $member, $this->listingFor($other));
+
+        foreach ([$ownerRequest, $renterRequest] as $request) {
+            Message::create(['rental_request_id' => $request->id, 'sender_id' => $other->id, 'receiver_id' => $member->id, 'body' => 'Message for request '.$request->id]);
+        }
+
+        $this->withSession(['active_interface' => 'owner']);
+        $threads = Livewire::actingAs($member)->test(MessagesIndex::class)->viewData('threads');
+        $this->assertSame([$ownerRequest->id], $threads->pluck('rentalRequest.id')->all());
+        $this->assertSame(1, $member->unreadMessagesCount());
+        Livewire::actingAs($member)->test(MessagesShow::class, ['rentalRequest' => $renterRequest])->assertForbidden();
+
+        $this->withSession(['active_interface' => 'renter']);
+        $threads = Livewire::actingAs($member)->test(MessagesIndex::class)->viewData('threads');
+        $this->assertSame([$renterRequest->id], $threads->pluck('rentalRequest.id')->all());
+        $this->assertSame(1, $member->unreadMessagesCount());
+        Livewire::actingAs($member)->test(MessagesShow::class, ['rentalRequest' => $ownerRequest])->assertForbidden();
+    }
+
+    public function test_notifications_only_show_activity_for_the_selected_interface(): void
+    {
+        $member = User::factory()->create();
+        $other = User::factory()->create();
+        $ownerRequest = $this->requestFor($member, $other, $this->listingFor($member));
+        $renterRequest = $this->requestFor($other, $member, $this->listingFor($other));
+
+        foreach ([
+            'Owner request' => route('owner.rental-requests.index'),
+            'Renter request' => route('renter.rental-requests.index'),
+            'Owner chat' => route('rental-requests.chat', $ownerRequest),
+            'Renter chat' => route('rental-requests.chat', $renterRequest),
+        ] as $title => $url) {
+            $member->notify(new TalaNotification('new_message', $title, 'Activity', $url));
+        }
+
+        $this->actingAs($member)->withSession(['active_interface' => 'owner']);
+        $this->get('/notifications')->assertOk()->assertSee('Owner request')->assertSee('Owner chat')
+            ->assertDontSee('Renter request')->assertDontSee('Renter chat');
+
+        $this->withSession(['active_interface' => 'renter']);
+        $this->get('/notifications')->assertOk()->assertSee('Renter request')->assertSee('Renter chat')
+            ->assertDontSee('Owner request')->assertDontSee('Owner chat');
     }
 }

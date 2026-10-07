@@ -11,20 +11,24 @@ use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
-/**
- * Owner and Renter used to be separate dashboards behind separate roles —
- * now that every member can both list and rent, this single dashboard
- * shows both sets of activity ("As Owner" / "As Renter" sections) rather
- * than forcing a member to pick which side of themselves to look at.
- */
+/** Show only the dashboard data belonging to the selected interface. */
 #[Layout('layouts.app')]
 class Dashboard extends Component
 {
+    public function mount(): void
+    {
+        if (auth()->user()->isAdmin()) {
+            $this->redirect(route('admin.dashboard', absolute: false));
+        }
+    }
+
     public function render(): View
     {
+        $interface = auth()->user()->activeInterface();
+
         return view('livewire.member.dashboard', array_merge(
-            $this->ownerData(),
-            $this->renterData(),
+            ['interface' => $interface],
+            $interface === 'owner' ? $this->ownerData() : $this->renterData(),
         ));
     }
 
@@ -40,31 +44,33 @@ class Dashboard extends Component
             ->take(5)
             ->get();
 
-        // A rental counts toward earnings as soon as it's paid, regardless of
-        // how far its lifecycle has since progressed (Active/Overdue/Returned/
-        // Completed all imply payment already happened) — checking paid_at
-        // rather than status === Paid keeps this correct as new statuses are added.
-        $paidRentals = Rental::query()->where('owner_id', auth()->id())->whereNotNull('paid_at');
+        // Use the same retained income for totals, trends, and listing rankings.
+        // Eager loading prevents one payment/dispute query per transaction.
+        $paidRentals = Rental::query()
+            ->where('owner_id', auth()->id())
+            ->whereNotNull('paid_at')
+            ->with(['payment', 'disputes'])
+            ->get();
 
-        $totalEarnings = (clone $paidRentals)->sum('rental_fee');
+        $totalEarnings = round($paidRentals->sum(fn (Rental $rental) => $rental->ownerEarnings()), 2);
 
         // Grouped in PHP (not a raw DATE_FORMAT/strftime query) so this works
         // identically on MySQL in production and SQLite in tests.
-        $earningsByMonth = (clone $paidRentals)
-            ->where('paid_at', '>=', now()->subMonths(5)->startOfMonth())
-            ->get(['paid_at', 'rental_fee'])
+        // Restate each payment month after subsequent refunds or cancellation.
+        $earningsByMonth = $paidRentals
+            ->filter(fn (Rental $rental) => $rental->paid_at->gte(now()->startOfMonth()->subMonths(5)))
             ->groupBy(fn (Rental $rental) => $rental->paid_at->format('Y-m'))
-            ->map(fn ($group) => $group->sum('rental_fee'));
+            ->map(fn ($group) => round($group->sum(fn (Rental $rental) => $rental->ownerEarnings()), 2));
 
         $monthlyEarnings = collect(range(5, 0))->map(function (int $monthsAgo) use ($earningsByMonth) {
-            $date = now()->subMonths($monthsAgo);
+            $date = now()->startOfMonth()->subMonths($monthsAgo);
             $key = $date->format('Y-m');
             $total = (float) ($earningsByMonth[$key] ?? 0);
 
             return [
                 'label' => $date->format('M'),
                 'value' => $total,
-                'display' => '₱'.number_format($total, 0),
+                'display' => '₱'.number_format($total, 2),
                 'color' => 'bg-blue-600',
             ];
         });
@@ -92,11 +98,24 @@ class Dashboard extends Component
             ->first();
         $mostRentedListing = $mostRentedListing?->rentals_count > 0 ? $mostRentedListing : null;
 
-        $mostProfitableListing = (clone $listings)
-            ->withSum(['rentals as revenue' => fn ($query) => $query->whereNotNull('paid_at')], 'rental_fee')
-            ->orderByDesc('revenue')
-            ->first();
-        $mostProfitableListing = $mostProfitableListing?->revenue > 0 ? $mostProfitableListing : null;
+        $revenueByListing = $paidRentals
+            ->groupBy('listing_id')
+            ->map(fn ($group) => round($group->sum(fn (Rental $rental) => $rental->ownerEarnings()), 2))
+            ->filter(fn ($revenue) => $revenue > 0)
+            ->sortDesc();
+        $mostProfitableListing = $revenueByListing->isNotEmpty()
+            ? (clone $listings)->withTrashed()->find($revenueByListing->keys()->first())
+            : null;
+        $mostProfitableListing?->setAttribute('revenue', $revenueByListing->first());
+
+        $completedRentals = Rental::query()
+            ->where('owner_id', auth()->id())
+            ->where('status', RentalStatus::Completed)
+            ->with(['listing', 'renter', 'payment', 'disputes'])
+            ->orderByDesc('completed_at')
+            ->orderByDesc('id')
+            ->take(5)
+            ->get();
 
         // Fixed category -> validated-palette color order (dataviz skill's
         // default categorical ramp, adjacent-pair CVD-safe) — assigned once,
@@ -136,6 +155,9 @@ class Dashboard extends Component
             'totalRentalsCount' => Rental::where('owner_id', auth()->id())->count(),
             'activeRentalsCount' => Rental::where('owner_id', auth()->id())->where('status', RentalStatus::Active)->count(),
             'completedRentalsCount' => Rental::where('owner_id', auth()->id())->where('status', RentalStatus::Completed)->count(),
+            'completedRentalEarnings' => round($paidRentals->where('status', RentalStatus::Completed)
+                ->sum(fn (Rental $rental) => $rental->ownerEarnings()), 2),
+            'completedRentals' => $completedRentals,
             'averageRating' => auth()->user()->averageRatingAsOwner(),
             'totalListingViews' => (clone $listings)->sum('views_count'),
             'mostRentedListing' => $mostRentedListing,
@@ -156,6 +178,7 @@ class Dashboard extends Component
             ->get();
 
         return [
+            'activeRentalsCount' => auth()->user()->rentalsAsRenter()->where('status', RentalStatus::Active)->count(),
             'pendingCount' => (clone $rentalRequests)->where('status', RentalRequestStatus::Requested)->count(),
             'approvedCount' => (clone $rentalRequests)->where('status', RentalRequestStatus::Approved)->count(),
             'recentRequests' => (clone $rentalRequests)->with('listing.images')->latest()->take(5)->get(),

@@ -8,6 +8,7 @@ use App\Services\RentalLifecycle;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -17,6 +18,14 @@ class Index extends Component
     use WithPagination;
 
     public string $filter = 'open';
+
+    #[Url]
+    public ?int $rentalId = null;
+
+    public function updatingRentalId(): void
+    {
+        $this->resetPage();
+    }
 
     public ?int $resolving = null;
 
@@ -69,6 +78,7 @@ class Index extends Component
     public function render(): View
     {
         $disputes = Dispute::query()
+            ->when($this->rentalId !== null, fn ($query) => $query->where('rental_id', $this->rentalId))
             ->when($this->filter !== 'all', fn ($query) => $query->where('status', $this->filter))
             ->with(['rental.listing', 'rental.owner', 'rental.renter', 'raisedBy', 'damageReport.photos'])
             ->orderByDesc('created_at')

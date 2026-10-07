@@ -4,15 +4,25 @@ namespace Tests\Feature;
 
 use App\Enums\ListingStatus;
 use App\Enums\RentalRequestStatus;
+use App\Livewire\Listings\Show as ListingShow;
 use App\Livewire\Owner\RentalRequests\Index as OwnerRentalRequestsIndex;
 use App\Livewire\RentalRequests\Create;
 use App\Livewire\Renter\RentalRequests\Index as RenterRentalRequestsIndex;
 use App\Models\Category;
+use App\Models\CommissionSetting;
 use App\Models\Listing;
+use App\Models\Rental;
 use App\Models\RentalRequest;
 use App\Models\User;
+use App\Notifications\TalaNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Notifications\Events\NotificationSending;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
+use RuntimeException;
 use Tests\TestCase;
 
 class RentalRequestTest extends TestCase
@@ -23,7 +33,7 @@ class RentalRequestTest extends TestCase
     {
         $category = Category::create(['name' => 'Tools', 'slug' => 'tools']);
 
-        return Listing::create(array_merge([
+        return Listing::unguarded(fn () => Listing::create(array_merge([
             'owner_id' => $owner->id,
             'category_id' => $category->id,
             'name' => 'Pressure Washer',
@@ -37,7 +47,7 @@ class RentalRequestTest extends TestCase
             'is_available' => true,
             'pickup_available' => true,
             'delivery_available' => false,
-        ], $overrides));
+        ], $overrides)));
     }
 
     public function test_renter_can_submit_a_rental_request_with_correct_cost_breakdown(): void
@@ -50,7 +60,6 @@ class RentalRequestTest extends TestCase
             ->test(Create::class, ['listing' => $listing])
             ->set('start_date', now()->addDays(3)->toDateString())
             ->set('end_date', now()->addDays(5)->toDateString()) // 3 days inclusive
-            ->set('accept_terms', true)
             ->call('submit')
             ->assertHasNoErrors();
 
@@ -62,6 +71,84 @@ class RentalRequestTest extends TestCase
         $this->assertEquals(30.00, (float) $request->commission_amount); // 10% default
         $this->assertEquals(830.00, (float) $request->total_amount); // 300 + 30 + 500 deposit
         $this->assertSame(RentalRequestStatus::Requested, $request->status);
+    }
+
+    public function test_listing_embeds_the_request_form_for_an_eligible_renter(): void
+    {
+        $owner = User::factory()->owner()->create();
+        $renter = User::factory()->renter()->create();
+        $listing = $this->publishedListing($owner);
+
+        Livewire::actingAs($renter)
+            ->test(ListingShow::class, ['listing' => $listing])
+            ->assertSeeLivewire(Create::class)
+            ->assertSee('aria-controls="rental-request-modal"', false)
+            ->assertSee('Cancel')
+            ->assertDontSee('Back to listing');
+    }
+
+    public function test_request_modal_submits_with_the_existing_costs_and_redirect(): void
+    {
+        Notification::fake();
+        $owner = User::factory()->owner()->create();
+        $renter = User::factory()->renter()->create();
+        $listing = $this->publishedListing($owner);
+
+        Livewire::actingAs($renter)
+            ->test(Create::class, ['listing' => $listing, 'modal' => true])
+            ->set('start_date', now()->addDays(3)->toDateString())
+            ->set('end_date', now()->addDays(5)->toDateString())
+            ->call('submit')
+            ->assertHasNoErrors()
+            ->assertRedirect(route('renter.rental-requests.index'));
+
+        $this->assertDatabaseHas('rental_requests', [
+            'listing_id' => $listing->id,
+            'renter_id' => $renter->id,
+            'rental_days' => 3,
+            'total_amount' => 830,
+        ]);
+        Notification::assertSentTo([$owner, $renter], TalaNotification::class);
+    }
+
+    public function test_listing_does_not_embed_a_request_form_for_guests_owners_or_unavailable_items(): void
+    {
+        $owner = User::factory()->owner()->create();
+        $renter = User::factory()->renter()->create();
+        $listing = $this->publishedListing($owner);
+
+        Livewire::test(ListingShow::class, ['listing' => $listing])
+            ->assertDontSeeLivewire(Create::class)
+            ->assertSee('Log in to request');
+
+        Livewire::actingAs($owner)
+            ->test(ListingShow::class, ['listing' => $listing])
+            ->assertDontSeeLivewire(Create::class)
+            ->assertSee('This is your listing');
+
+        $listing->update(['is_available' => false]);
+
+        Livewire::actingAs($renter)
+            ->test(ListingShow::class, ['listing' => $listing])
+            ->assertDontSeeLivewire(Create::class)
+            ->assertSee('Currently unavailable');
+    }
+
+    public function test_embedded_request_form_rechecks_the_renter_interface_on_submit(): void
+    {
+        Notification::fake();
+        $owner = User::factory()->owner()->create();
+        $renter = User::factory()->renter()->create();
+        $listing = $this->publishedListing($owner);
+
+        $form = Livewire::actingAs($renter)
+            ->test(Create::class, ['listing' => $listing, 'modal' => true]);
+
+        session()->put('active_interface', 'owner');
+
+        $form->call('submit')->assertForbidden();
+        $this->assertSame(0, RentalRequest::count());
+        Notification::assertNothingSent();
     }
 
     public function test_renter_cannot_rent_their_own_listing(): void
@@ -78,6 +165,182 @@ class RentalRequestTest extends TestCase
             ->assertForbidden();
     }
 
+    public static function unavailableListingStates(): array
+    {
+        return [
+            'unavailable' => [['is_available' => false]],
+            'deleted' => [['deleted_at' => '2026-10-07 00:00:00']],
+            'inactive' => [['status' => ListingStatus::Inactive]],
+            'pending approval' => [['status' => ListingStatus::PendingApproval]],
+            'rejected' => [['status' => ListingStatus::Rejected]],
+            'inactive and unavailable' => [['status' => ListingStatus::Inactive, 'is_available' => false]],
+        ];
+    }
+
+    #[DataProvider('unavailableListingStates')]
+    public function test_open_form_cannot_submit_after_listing_becomes_unavailable(array $changes): void
+    {
+        Notification::fake();
+
+        $owner = User::factory()->owner()->create();
+        $renter = User::factory()->renter()->create();
+        $listing = $this->publishedListing($owner);
+
+        $form = Livewire::actingAs($renter)
+            ->test(Create::class, ['listing' => $listing])
+            ->set('start_date', now()->addDays(3)->toDateString())
+            ->set('end_date', now()->addDays(5)->toDateString());
+
+        $listing->forceFill($changes)->save();
+
+        $form->call('submit')
+            ->assertHasErrors(['listing'])
+            ->assertSee('This item is no longer available for rent. Please choose another item.')
+            ->assertNoRedirect();
+
+        $this->assertSame(0, RentalRequest::count());
+        Notification::assertNothingSent();
+    }
+
+    public function test_submission_rechecks_availability_even_with_a_stale_listing_model(): void
+    {
+        Notification::fake();
+
+        $owner = User::factory()->owner()->create();
+        $renter = User::factory()->renter()->create();
+        $listing = $this->publishedListing($owner);
+
+        $component = Livewire::actingAs($renter)
+            ->test(Create::class, ['listing' => $listing])
+            ->instance();
+
+        Listing::whereKey($listing->id)->update(['is_available' => false]);
+        $this->assertTrue($component->listing->is_available);
+
+        $component->submit();
+
+        $this->assertTrue($component->getErrorBag()->has('listing'));
+        $this->assertSame(0, RentalRequest::count());
+        Notification::assertNothingSent();
+    }
+
+    public function test_submission_and_both_pending_notices_roll_back_if_the_second_notice_fails(): void
+    {
+        $owner = User::factory()->owner()->create();
+        $renter = User::factory()->renter()->create();
+        $listing = $this->publishedListing($owner);
+        $component = Livewire::actingAs($renter)->test(Create::class, ['listing' => $listing])
+            ->set('start_date', now()->addDays(3)->toDateString())
+            ->set('end_date', now()->addDays(5)->toDateString())->instance();
+        $noticeCount = DB::table('notifications')->count();
+
+        Event::listen(NotificationSending::class, function (NotificationSending $event) use ($renter) {
+            if ($event->notification->type === 'rental_request_submitted' && $event->notifiable->is($renter)) {
+                throw new RuntimeException('Pending notification storage failed.');
+            }
+        });
+
+        try {
+            $component->submit();
+            $this->fail('The simulated notification failure must be raised.');
+        } catch (RuntimeException $error) {
+            $this->assertSame('Pending notification storage failed.', $error->getMessage());
+        } finally {
+            Event::forget(NotificationSending::class);
+        }
+
+        $this->assertSame(0, RentalRequest::count());
+        $this->assertSame($noticeCount, DB::table('notifications')->count());
+        $component->submit();
+        $this->assertSame(1, RentalRequest::count());
+        $this->assertSame($noticeCount + 2, DB::table('notifications')->count());
+    }
+
+    public function test_open_form_uses_current_listing_charges_and_one_commission_snapshot_on_submission(): void
+    {
+        $owner = User::factory()->owner()->create();
+        $renter = User::factory()->renter()->create();
+        $listing = $this->publishedListing($owner);
+        $form = Livewire::actingAs($renter)->test(Create::class, ['listing' => $listing])
+            ->set('start_date', now()->addDays(3)->toDateString())
+            ->set('end_date', now()->addDays(5)->toDateString());
+        $listing->update(['price_per_day' => 125.25, 'security_deposit' => 250.50]);
+        CommissionSetting::current()->update(['commission_rate' => 12.5]);
+
+        $form->call('submit')->assertHasNoErrors();
+        $request = RentalRequest::sole();
+        $this->assertSame(3, $request->rental_days);
+        $this->assertSame('375.75', $request->rental_fee);
+        $this->assertSame('12.50', $request->commission_rate);
+        $this->assertSame('46.97', $request->commission_amount);
+        $this->assertSame('250.50', $request->security_deposit);
+        $this->assertSame('673.22', $request->total_amount);
+        $this->assertNull($request->renter_terms_accepted_at);
+        $this->assertNull($request->owner_terms_accepted_at);
+        $this->assertSame(0, Rental::count());
+    }
+
+    public static function changedRequestConstraints(): array
+    {
+        return [
+            'pickup withdrawn' => [['pickup_available' => false, 'delivery_available' => true], 'fulfillment_method'],
+            'maximum duration shortened' => [['max_rental_duration_days' => 1], 'end_date'],
+            'available dates shortened' => [['available_until' => now()->addDays(4)->toDateString()], 'end_date'],
+        ];
+    }
+
+    #[DataProvider('changedRequestConstraints')]
+    public function test_open_form_rechecks_changed_fulfillment_duration_and_available_dates(array $changes, string $field): void
+    {
+        Notification::fake();
+        $owner = User::factory()->owner()->create();
+        $renter = User::factory()->renter()->create();
+        $listing = $this->publishedListing($owner, [
+            'available_from' => now()->toDateString(), 'available_until' => now()->addMonth()->toDateString(),
+        ]);
+        $form = Livewire::actingAs($renter)->test(Create::class, ['listing' => $listing])
+            ->set('start_date', now()->addDays(3)->toDateString())
+            ->set('end_date', now()->addDays(5)->toDateString());
+        $listing->update($changes);
+
+        $form->call('submit')->assertHasErrors([$field])->assertNoRedirect();
+        $this->assertSame(0, RentalRequest::count());
+        Notification::assertNothingSent();
+    }
+
+    #[DataProvider('unavailableListingStates')]
+    public function test_owner_cannot_approve_after_the_listing_becomes_unavailable(array $changes): void
+    {
+        $owner = User::factory()->owner()->create();
+        $renter = User::factory()->renter()->create();
+        $listing = $this->publishedListing($owner);
+        Livewire::actingAs($renter)->test(Create::class, ['listing' => $listing])
+            ->set('start_date', now()->addDays(3)->toDateString())
+            ->set('end_date', now()->addDays(5)->toDateString())->call('submit')->assertHasNoErrors();
+        $request = RentalRequest::sole();
+        $form = Livewire::actingAs($owner)->test(OwnerRentalRequestsIndex::class);
+        $listing->forceFill($changes)->save();
+        Notification::fake();
+
+        $form->call('approve', $request->id)->assertHasErrors(['approve'])->assertNoRedirect();
+        $this->assertSame(RentalRequestStatus::Requested, $request->fresh()->status);
+        $this->assertNull($request->fresh()->agreement_terms);
+        $this->assertSame(0, Rental::count());
+        Notification::assertNothingSent();
+    }
+
+    #[DataProvider('unavailableListingStates')]
+    public function test_unavailable_listing_cannot_open_the_request_form(array $changes): void
+    {
+        $owner = User::factory()->owner()->create();
+        $renter = User::factory()->renter()->create();
+        $listing = $this->publishedListing($owner, $changes);
+
+        $this->actingAs($renter)
+            ->get(route('renter.rental-requests.create', $listing))
+            ->assertNotFound();
+    }
+
     public function test_cannot_request_dates_beyond_max_rental_duration(): void
     {
         $owner = User::factory()->owner()->create();
@@ -88,7 +351,6 @@ class RentalRequestTest extends TestCase
             ->test(Create::class, ['listing' => $listing])
             ->set('start_date', now()->addDay()->toDateString())
             ->set('end_date', now()->addDays(10)->toDateString())
-            ->set('accept_terms', true)
             ->call('submit')
             ->assertHasErrors(['end_date']);
 
@@ -105,7 +367,6 @@ class RentalRequestTest extends TestCase
             ->test(Create::class, ['listing' => $listing])
             ->set('start_date', now()->subDays(2)->toDateString())
             ->set('end_date', now()->toDateString())
-            ->set('accept_terms', true)
             ->call('submit')
             ->assertHasErrors(['start_date']);
 
@@ -123,14 +384,12 @@ class RentalRequestTest extends TestCase
             ->test(Create::class, ['listing' => $listing])
             ->set('start_date', now()->addDays(5)->toDateString())
             ->set('end_date', now()->addDays(8)->toDateString())
-            ->set('accept_terms', true)
             ->call('submit');
 
         $firstRequest = RentalRequest::first();
 
         Livewire::actingAs($owner)
             ->test(OwnerRentalRequestsIndex::class)
-            ->set('accept_terms', true)
             ->call('approve', $firstRequest->id);
 
         $this->assertSame(RentalRequestStatus::Approved, $firstRequest->fresh()->status);
@@ -140,7 +399,6 @@ class RentalRequestTest extends TestCase
             ->test(Create::class, ['listing' => $listing])
             ->set('start_date', now()->addDays(6)->toDateString())
             ->set('end_date', now()->addDays(9)->toDateString())
-            ->set('accept_terms', true)
             ->call('submit')
             ->assertHasErrors(['start_date']);
     }
@@ -156,7 +414,6 @@ class RentalRequestTest extends TestCase
             ->test(Create::class, ['listing' => $listing])
             ->set('start_date', now()->addDays(5)->toDateString())
             ->set('end_date', now()->addDays(8)->toDateString())
-            ->set('accept_terms', true)
             ->call('submit');
         $requestA = RentalRequest::where('renter_id', $renterA->id)->first();
 
@@ -164,7 +421,6 @@ class RentalRequestTest extends TestCase
             ->test(Create::class, ['listing' => $listing])
             ->set('start_date', now()->addDays(7)->toDateString())
             ->set('end_date', now()->addDays(10)->toDateString())
-            ->set('accept_terms', true)
             ->call('submit');
         $requestB = RentalRequest::where('renter_id', $renterB->id)->first();
 
@@ -174,7 +430,6 @@ class RentalRequestTest extends TestCase
 
         Livewire::actingAs($owner)
             ->test(OwnerRentalRequestsIndex::class)
-            ->set('accept_terms', true)
             ->call('approve', $requestA->id);
 
         $this->assertSame(RentalRequestStatus::Approved, $requestA->fresh()->status);
@@ -193,14 +448,12 @@ class RentalRequestTest extends TestCase
             ->test(Create::class, ['listing' => $listing])
             ->set('start_date', now()->addDay()->toDateString())
             ->set('end_date', now()->addDays(2)->toDateString())
-            ->set('accept_terms', true)
             ->call('submit');
 
         $request = RentalRequest::first();
 
         Livewire::actingAs($ownerB)
             ->test(OwnerRentalRequestsIndex::class)
-            ->set('accept_terms', true)
             ->call('approve', $request->id)
             ->assertForbidden();
     }

@@ -14,17 +14,17 @@ class Index extends Component
 
     public function markAsRead(string $notificationId): void
     {
-        auth()->user()->notifications()->where('id', $notificationId)->first()?->markAsRead();
+        auth()->user()->notificationsForActiveInterface()->where('id', $notificationId)->first()?->markAsRead();
     }
 
     public function markAllAsRead(): void
     {
-        auth()->user()->unreadNotifications->markAsRead();
+        auth()->user()->notificationsForActiveInterface()->whereNull('read_at')->get()->markAsRead();
     }
 
     public function render(): View
     {
-        $notifications = auth()->user()->notifications()->paginate(15);
+        $notifications = auth()->user()->notificationsForActiveInterface()->paginate(15);
 
         return view('livewire.notifications.index', ['notifications' => $notifications]);
     }

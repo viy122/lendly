@@ -6,6 +6,7 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>{{ config('app.name', 'Lendly') }}</title>
+        <link rel="icon" type="image/png" href="{{ asset('images/lendly-icon.png') }}">
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700,800&display=swap" rel="stylesheet" />
@@ -18,6 +19,7 @@
 
             <div class="min-w-0 flex-1">
                 <main>
+                    <x-email-verification-reminder />
                     {{ $slot }}
                 </main>
             </div>

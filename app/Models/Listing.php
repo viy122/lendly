@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Enums\ListingAvailabilityStatus;
 use App\Enums\ListingCondition;
 use App\Enums\ListingStatus;
 use App\Enums\RentalRequestStatus;
+use App\Enums\RentalStatus;
 use App\Enums\ReviewType;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -55,6 +58,8 @@ class Listing extends Model
         'rental_rules',
         'max_rental_duration_days',
         'is_available',
+        'available_from',
+        'available_until',
         'status',
         'rejection_reason',
         'views_count',
@@ -66,6 +71,8 @@ class Listing extends Model
             'condition' => ListingCondition::class,
             'status' => ListingStatus::class,
             'is_available' => 'boolean',
+            'available_from' => 'date',
+            'available_until' => 'date',
             'pickup_available' => 'boolean',
             'delivery_available' => 'boolean',
             'purchase_year' => 'integer',
@@ -83,7 +90,7 @@ class Listing extends Model
 
     public function owner(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'owner_id');
+        return $this->belongsTo(User::class, 'owner_id')->withTrashed();
     }
 
     public function category(): BelongsTo
@@ -111,6 +118,78 @@ class Listing extends Model
         return $this->hasMany(Rental::class);
     }
 
+    public function occupyingRentals(): HasMany
+    {
+        return $this->rentals()->where(fn ($query) => $query
+            ->whereIn('status', [RentalStatus::Active, RentalStatus::Overdue])
+            ->orWhere(fn ($query) => $query->where('status', RentalStatus::Paid)
+                ->where(fn ($query) => $query->whereNotNull('pickup_confirmed_by_owner_at')
+                    ->orWhereNotNull('pickup_confirmed_by_renter_at'))));
+    }
+
+    public function reservingRequests(): HasMany
+    {
+        return $this->rentalRequests()
+            ->where('status', RentalRequestStatus::Approved)
+            ->where('end_date', '>=', now()->toDateString())
+            ->whereDoesntHave('rental', fn ($query) => $query->whereIn('status', [
+                RentalStatus::Returned, RentalStatus::Completed, RentalStatus::Cancelled,
+            ]));
+    }
+
+    /** Paid reservations use the agreed booking dates, never the payment date. */
+    public function paidReservations(): HasMany
+    {
+        return $this->rentals()
+            ->whereIn('status', [RentalStatus::Paid, RentalStatus::Active, RentalStatus::Overdue])
+            ->whereNotNull('paid_at')
+            ->whereHas('payment', fn ($query) => $query->where('status', 'paid')->whereNotNull('paid_at'))
+            ->where('end_date', '>=', now()->toDateString())
+            ->orderBy('start_date')
+            ->orderBy('id');
+    }
+
+    /**
+     * Booking availability comes from the current records, so a cancellation
+     * releases only its own reservation. is_available remains the owner's
+     * choice to accept requests; publication is a separate moderation state.
+     */
+    public function availabilityStatus(): ListingAvailabilityStatus
+    {
+        if ($this->trashed() || ! $this->isPublished()) {
+            return ListingAvailabilityStatus::Unavailable;
+        }
+
+        // FR-42: retain Reserved throughout the paid booking's agreed dates.
+        // An unreturned item remains Rented after that reservation expires.
+        $reserved = $this->has_paid_reservation ?? $this->paidReservations()->exists();
+        if ($reserved) {
+            return ListingAvailabilityStatus::Reserved;
+        }
+
+        $occupied = $this->has_ongoing_rental ?? $this->occupyingRentals()->exists();
+        if ($occupied) {
+            return ListingAvailabilityStatus::Rented;
+        }
+
+        if (! $this->is_available || ! $this->hasRequestableDates()) {
+            return ListingAvailabilityStatus::Unavailable;
+        }
+
+        $held = $this->has_held_dates ?? $this->reservingRequests()->exists();
+
+        return $held ? ListingAvailabilityStatus::OnHold : ListingAvailabilityStatus::Available;
+    }
+
+    public function scopeWithAvailability(Builder $query): Builder
+    {
+        return $query->withExists([
+            'occupyingRentals as has_ongoing_rental',
+            'paidReservations as has_paid_reservation',
+            'reservingRequests as has_held_dates',
+        ]);
+    }
+
     public function averageRating(): ?float
     {
         return Review::whereHas('rental', fn ($query) => $query->where('listing_id', $this->id))
@@ -134,9 +213,8 @@ class Listing extends Model
      */
     public function hasApprovedOverlap($startDate, $endDate, ?int $excludingRequestId = null): bool
     {
-        return $this->rentalRequests()
+        return $this->reservingRequests()
             ->overlapping($this->id, $startDate, $endDate)
-            ->where('status', RentalRequestStatus::Approved)
             ->when($excludingRequestId, fn ($query) => $query->whereKeyNot($excludingRequestId))
             ->exists();
     }
@@ -144,6 +222,26 @@ class Listing extends Model
     public function isPublished(): bool
     {
         return $this->status === ListingStatus::Published;
+    }
+
+    public function includesAvailableDates($startDate, $endDate): bool
+    {
+        $start = Carbon::parse($startDate)->startOfDay();
+        $end = Carbon::parse($endDate)->startOfDay();
+
+        return $end->greaterThanOrEqualTo($start)
+            && (! $this->available_from || $start->greaterThanOrEqualTo($this->available_from))
+            && (! $this->available_until || $end->lessThanOrEqualTo($this->available_until));
+    }
+
+    public function hasRequestableDates(): bool
+    {
+        $first = now()->addDay()->startOfDay();
+        if ($this->available_from && $this->available_from->greaterThan($first)) {
+            $first = $this->available_from;
+        }
+
+        return ! $this->available_until || $this->available_until->greaterThanOrEqualTo($first);
     }
 
     public function isPendingApproval(): bool
@@ -159,6 +257,13 @@ class Listing extends Model
     public function scopePublished(Builder $query): Builder
     {
         return $query->where('status', ListingStatus::Published);
+    }
+
+    public function scopeAcceptingRequests(Builder $query): Builder
+    {
+        return $query->where('is_available', true)
+            ->where(fn ($query) => $query->whereNull('available_until')
+                ->orWhereDate('available_until', '>=', now()->addDay()->toDateString()));
     }
 
     public function scopePendingApproval(Builder $query): Builder

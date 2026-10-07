@@ -32,6 +32,10 @@ class RentalRequest extends Model
         'rejection_reason',
         'renter_terms_accepted_at',
         'owner_terms_accepted_at',
+        'agreement_terms',
+        'cancelled_at',
+        'cancellation_reason',
+        'cancellation_fee',
     ];
 
     protected function casts(): array
@@ -48,17 +52,20 @@ class RentalRequest extends Model
             'total_amount' => 'decimal:2',
             'renter_terms_accepted_at' => 'datetime',
             'owner_terms_accepted_at' => 'datetime',
+            'agreement_terms' => 'array',
+            'cancelled_at' => 'datetime',
+            'cancellation_fee' => 'decimal:2',
         ];
     }
 
     public function listing(): BelongsTo
     {
-        return $this->belongsTo(Listing::class);
+        return $this->belongsTo(Listing::class)->withTrashed();
     }
 
     public function renter(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'renter_id');
+        return $this->belongsTo(User::class, 'renter_id')->withTrashed();
     }
 
     public function rental(): HasOne

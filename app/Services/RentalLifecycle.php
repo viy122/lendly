@@ -15,6 +15,9 @@ use App\Models\Dispute;
 use App\Models\Rental;
 use App\Models\User;
 use App\Notifications\TalaNotification;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class RentalLifecycle
 {
@@ -25,92 +28,168 @@ class RentalLifecycle
      * frees the dates back up for other renters, and refunds the held
      * security deposit since the rental never happened.
      */
-    public static function cancel(Rental $rental, string $reason): array
+    public static function cancel(Rental $rental, ?string $reason = null): array
     {
-        $evaluation = CancellationPolicy::evaluate($rental);
+        return self::cancelAuthorized($rental, $reason);
+    }
 
-        $rental->update([
-            'status' => RentalStatus::Cancelled,
-            'cancelled_at' => now(),
-            'cancellation_reason' => $reason,
-            'cancellation_fee' => $evaluation['fee'],
-        ]);
+    public static function cancelByAdmin(Rental $rental, User $admin, string $reason): array
+    {
+        return self::cancelAuthorized($rental, $reason, $admin);
+    }
 
-        $rental->rentalRequest?->update(['status' => RentalRequestStatus::Cancelled]);
+    private static function cancelAuthorized(Rental $rental, ?string $reason, ?User $admin = null): array
+    {
+        return DB::transaction(function () use ($rental, $reason, $admin) {
+            $rental = Rental::lockForUpdate()->findOrFail($rental->id);
+            $admin ? Gate::forUser($admin)->authorize('adminCancel', $rental) : Gate::authorize('cancel', $rental);
 
-        $rental->securityDeposit?->update(['status' => SecurityDepositStatus::Refunded]);
+            $evaluation = CancellationPolicy::evaluate($rental);
+            $reason = $reason !== null && trim($reason) !== '' ? trim($reason) : null;
+            validator(['cancellation_reason' => $reason], ['cancellation_reason' => ['nullable', 'string', 'max:1000']])->validate();
+            $cancellation = [
+                'status' => RentalStatus::Cancelled,
+                'cancelled_at' => now(),
+                'cancellation_reason' => $reason,
+                'cancellation_fee' => $evaluation['fee'],
+            ];
 
-        self::notify(
-            $rental->owner,
-            NotificationType::RentalCancelled,
-            'Rental cancelled',
-            "The renter cancelled the rental for \"{$rental->listing->name}\".".($evaluation['fee'] > 0 ? " A ₱{$evaluation['fee']} cancellation fee applies." : ''),
-            self::urlFor($rental->owner, $rental),
-        );
+            $rental->update($cancellation);
 
-        return $evaluation;
+            $rental->rentalRequest?->update([
+                ...$cancellation,
+                'status' => RentalRequestStatus::Cancelled,
+            ]);
+
+            $rental->securityDeposit?->update(['status' => SecurityDepositStatus::Refunded]);
+
+            if (! $admin) {
+                self::notify(
+                    $rental->owner,
+                    NotificationType::RentalCancelled,
+                    'Rental cancelled',
+                    "The renter cancelled the rental for \"{$rental->listing->name}\".".($evaluation['fee'] > 0 ? " A ₱{$evaluation['fee']} cancellation fee applies." : '')." Item availability: {$rental->listing->availabilityStatus()->label()}.",
+                    self::urlFor($rental->owner, $rental),
+                );
+            }
+
+            return $evaluation;
+        });
     }
 
     public static function confirmPickup(Rental $rental, User $confirmingUser): void
     {
-        $field = $confirmingUser->id === $rental->owner_id
-            ? 'pickup_confirmed_by_owner_at'
-            : 'pickup_confirmed_by_renter_at';
+        DB::transaction(function () use ($rental, $confirmingUser) {
+            $rental = Rental::lockForUpdate()->findOrFail($rental->id);
+            Gate::forUser($confirmingUser)->authorize('confirmPickup', $rental);
 
-        $rental->update([$field => now()]);
+            $field = $confirmingUser->id === $rental->owner_id
+                ? 'pickup_confirmed_by_owner_at'
+                : 'pickup_confirmed_by_renter_at';
 
-        $otherParty = $confirmingUser->id === $rental->owner_id ? $rental->renter : $rental->owner;
-        self::notify($otherParty, NotificationType::PickupConfirmed, 'Pickup confirmed', "{$confirmingUser->name} confirmed pickup for \"{$rental->listing->name}\".", self::urlFor($otherParty, $rental));
+            $rental->update([$field => now()]);
 
-        if ($rental->fresh()->bothConfirmedPickup()) {
-            $rental->update(['status' => RentalStatus::Active]);
+            $otherParty = $confirmingUser->id === $rental->owner_id ? $rental->renter : $rental->owner;
+            $method = $rental->fulfillment_method->label();
+            self::notify($otherParty, NotificationType::PickupConfirmed, $method.' confirmed', "{$confirmingUser->name} confirmed ".strtolower($method)." hand-over for \"{$rental->listing->name}\".", self::urlFor($otherParty, $rental));
 
-            self::notify($rental->renter, NotificationType::PickupConfirmed, 'Rental is now active', "Your rental of \"{$rental->listing->name}\" has started.", self::urlFor($rental->renter, $rental));
-            self::notify($rental->owner, NotificationType::PickupConfirmed, 'Rental is now active', "The rental of \"{$rental->listing->name}\" has started.", self::urlFor($rental->owner, $rental));
-        }
+            if ($rental->fresh()->bothConfirmedPickup()) {
+                $rental->update(['status' => RentalStatus::Active]);
+
+                self::notify($rental->renter, NotificationType::PickupConfirmed, 'Rental is now active', "Your rental of \"{$rental->listing->name}\" has started.", self::urlFor($rental->renter, $rental));
+                self::notify($rental->owner, NotificationType::PickupConfirmed, 'Rental is now active', "The rental of \"{$rental->listing->name}\" has started.", self::urlFor($rental->owner, $rental));
+            }
+        });
     }
 
     public static function confirmReturn(Rental $rental, User $confirmingUser): void
     {
-        $field = $confirmingUser->id === $rental->owner_id
-            ? 'return_confirmed_by_owner_at'
-            : 'return_confirmed_by_renter_at';
+        DB::transaction(function () use ($rental, $confirmingUser) {
+            $rental = Rental::lockForUpdate()->findOrFail($rental->id);
+            Gate::forUser($confirmingUser)->authorize('confirmReturn', $rental);
+            $field = $confirmingUser->id === $rental->owner_id
+                ? 'return_confirmed_by_owner_at'
+                : 'return_confirmed_by_renter_at';
 
-        $rental->update([$field => now()]);
+            $rental->fill([$field => now()]);
+            if ($rental->bothConfirmedReturn()) {
+                $rental->status = RentalStatus::Returned;
+            }
+            $rental->save();
 
-        $otherParty = $confirmingUser->id === $rental->owner_id ? $rental->renter : $rental->owner;
-        self::notify($otherParty, NotificationType::ReturnConfirmed, 'Return confirmed', "{$confirmingUser->name} confirmed the return of \"{$rental->listing->name}\".", self::urlFor($otherParty, $rental));
-
-        if ($rental->fresh()->bothConfirmedReturn()) {
-            $rental->update(['status' => RentalStatus::Returned]);
-        }
+            $otherParty = $confirmingUser->id === $rental->owner_id ? $rental->renter : $rental->owner;
+            self::notify($otherParty, NotificationType::ReturnConfirmed, 'Return confirmed', "{$confirmingUser->name} confirmed the return of \"{$rental->listing->name}\".", self::urlFor($otherParty, $rental));
+        });
     }
 
     public static function completeInspection(Rental $rental): void
     {
-        $rental->update([
-            'status' => RentalStatus::Completed,
-            'completed_at' => now(),
-        ]);
+        self::completeInspectionAuthorized($rental);
+    }
 
-        $hasDamageClaim = $rental->damageReport()->exists();
+    public static function completeInspectionByAdmin(Rental $rental, User $admin): void
+    {
+        self::completeInspectionAuthorized($rental, $admin);
+    }
 
-        $rental->securityDeposit?->update([
-            'status' => $hasDamageClaim ? SecurityDepositStatus::DamageClaim : SecurityDepositStatus::ReturnEligible,
-        ]);
+    private static function completeInspectionAuthorized(Rental $rental, ?User $admin = null): void
+    {
+        DB::transaction(function () use ($rental, $admin) {
+            $rental = Rental::lockForUpdate()->findOrFail($rental->id);
+            $admin ? Gate::forUser($admin)->authorize('adminCompleteInspection', $rental) : Gate::authorize('completeInspection', $rental);
+            abort_unless($rental->bothConfirmedReturn(), 403, 'Both parties must confirm the return.');
 
-        self::notify($rental->renter, NotificationType::ReviewRequest, 'Rental completed', "Your rental of \"{$rental->listing->name}\" is complete. Leave a review!", self::urlFor($rental->renter, $rental));
+            $completedAt = now();
+            $rental->update([
+                'status' => RentalStatus::Completed,
+                'completed_at' => $completedAt,
+                'archived_at' => $completedAt,
+            ]);
 
-        if ($hasDamageClaim) {
-            self::notify($rental->renter, NotificationType::DamageClaimFiled, 'Damage claim filed', "The owner filed a damage claim for \"{$rental->listing->name}\". Please respond.", self::urlFor($rental->renter, $rental));
-        }
+            $hasDamageClaim = $rental->damageReport()->exists();
+
+            $rental->securityDeposit?->update([
+                'status' => $hasDamageClaim ? SecurityDepositStatus::DamageClaim : SecurityDepositStatus::ReturnEligible,
+            ]);
+
+            if ($rental->owner_id !== $rental->renter_id) {
+                foreach ([$rental->owner, $rental->renter] as $party) {
+                    $reviewedRole = $party->id === $rental->owner_id ? 'renter' : 'owner';
+                    self::notify($party, NotificationType::ReviewRequest, 'Rental completed — optional review', "The rental of \"{$rental->listing->name}\" is complete. You may rate and review the {$reviewedRole}. Your review will appear on their public profile.", self::urlFor($party, $rental).'#reviews');
+                }
+            }
+
+            if (! $admin) {
+                self::notify($rental->owner, NotificationType::ReturnConfirmed, 'Rental completed and archived', "The completed rental of \"{$rental->listing->name}\" has been saved in your rental history.", self::urlFor($rental->owner, $rental));
+
+                if ($hasDamageClaim) {
+                    self::notify($rental->renter, NotificationType::DamageClaimFiled, 'Damage claim filed', "The owner filed a damage claim for \"{$rental->listing->name}\". Please respond.", self::urlFor($rental->renter, $rental));
+                }
+            }
+        });
     }
 
     public static function releaseDeposit(Rental $rental): void
     {
-        $rental->securityDeposit?->update(['status' => SecurityDepositStatus::Released]);
+        self::releaseDepositAuthorized($rental);
+    }
 
-        self::notify($rental->renter, NotificationType::DepositUpdate, 'Deposit released', "Your security deposit for \"{$rental->listing->name}\" has been fully released.", self::urlFor($rental->renter, $rental));
+    public static function releaseDepositByAdmin(Rental $rental, User $admin): void
+    {
+        self::releaseDepositAuthorized($rental, $admin);
+    }
+
+    private static function releaseDepositAuthorized(Rental $rental, ?User $admin = null): void
+    {
+        DB::transaction(function () use ($rental, $admin) {
+            $rental = Rental::lockForUpdate()->findOrFail($rental->id);
+            $admin ? Gate::forUser($admin)->authorize('adminReleaseDeposit', $rental) : Gate::authorize('releaseDeposit', $rental);
+            $rental->securityDeposit->update(['status' => SecurityDepositStatus::Released]);
+
+            if (! $admin) {
+                self::notify($rental->renter, NotificationType::DepositUpdate, 'Deposit released', "Your security deposit for \"{$rental->listing->name}\" has been fully released.", self::urlFor($rental->renter, $rental));
+            }
+        });
     }
 
     public static function acceptDamageClaim(DamageReport $damageReport): void
@@ -207,33 +286,56 @@ class RentalLifecycle
      * both grow the longer the item isn't returned). Returns how many
      * rentals were newly flagged as overdue in this run.
      */
-    public static function markOverdueRentals(): int
+    public static function markOverdueRentals(?Builder $query = null): int
     {
         $newlyOverdue = 0;
 
-        Rental::query()
+        ($query ?? Rental::query())
             ->whereIn('status', [RentalStatus::Active, RentalStatus::Overdue])
             ->where('end_date', '<', now()->startOfDay())
             ->each(function (Rental $rental) use (&$newlyOverdue) {
-                $wasAlreadyOverdue = $rental->isOverdue();
-                $daysOverdue = (int) $rental->end_date->diffInDays(now()->startOfDay());
-
-                $rental->update([
-                    'status' => RentalStatus::Overdue,
-                    'days_overdue' => $daysOverdue,
-                    'late_fee' => round($rental->agreedDailyRate() * $daysOverdue, 2),
-                ]);
-
-                if (! $wasAlreadyOverdue) {
+                if (self::synchronizeRentalStatus($rental)) {
                     $newlyOverdue++;
-
-                    $message = "\"{$rental->listing->name}\" is now {$daysOverdue} day(s) overdue. Late fee: ₱{$rental->late_fee}.";
-                    self::notify($rental->renter, NotificationType::RentalOverdue, 'Rental overdue', $message, self::urlFor($rental->renter, $rental));
-                    self::notify($rental->owner, NotificationType::RentalOverdue, 'Rental overdue', $message, self::urlFor($rental->owner, $rental));
                 }
             });
 
         return $newlyOverdue;
+    }
+
+    /**
+     * Recheck persisted status under a lock so scheduler and browser refreshes
+     * cannot resurrect returned rentals or send duplicate overdue notices.
+     */
+    public static function synchronizeRentalStatus(Rental $rental): bool
+    {
+        return DB::transaction(function () use ($rental) {
+            $rental = Rental::lockForUpdate()->findOrFail($rental->id);
+
+            if (! in_array($rental->status, [RentalStatus::Active, RentalStatus::Overdue], true)
+                || $rental->end_date->greaterThanOrEqualTo(now()->startOfDay())) {
+                return false;
+            }
+
+            $newlyOverdue = ! $rental->isOverdue();
+            $daysOverdue = (int) $rental->end_date->diffInDays(now()->startOfDay());
+            $rental->fill([
+                'status' => RentalStatus::Overdue,
+                'days_overdue' => $daysOverdue,
+                'late_fee' => round($rental->agreedDailyRate() * $daysOverdue, 2),
+            ]);
+
+            if ($rental->isDirty()) {
+                $rental->save();
+            }
+
+            if ($newlyOverdue) {
+                $message = "\"{$rental->listing->name}\" is now {$daysOverdue} day(s) overdue. Late fee: ₱{$rental->late_fee}.";
+                self::notify($rental->renter, NotificationType::RentalOverdue, 'Rental overdue', $message, self::urlFor($rental->renter, $rental));
+                self::notify($rental->owner, NotificationType::RentalOverdue, 'Rental overdue', $message, self::urlFor($rental->owner, $rental));
+            }
+
+            return $newlyOverdue;
+        });
     }
 
     /**

@@ -1,9 +1,10 @@
 <div
-    class="relative h-screen min-h-[38rem] overflow-hidden bg-slate-100"
+    class="grid bg-slate-100 lg:grid-cols-[minmax(0,1fr)_22rem]"
     x-data="listingsMap(@js($markers), @js($centerLat), @js($centerLng))"
     @locate-user.window="useMyLocation()"
     @location-found.window="locating = false"
 >
+    <div class="relative h-[65vh] min-h-[38rem] overflow-hidden lg:h-screen">
     <div wire:ignore class="absolute inset-0">
         <div x-ref="map" class="h-full w-full"></div>
     </div>
@@ -42,14 +43,14 @@
     </div>
 
     <div
-        class="pointer-events-none absolute top-20 z-[530] hidden flex-col gap-2 transition-all md:flex"
+        class="pointer-events-none absolute top-32 z-[530] flex flex-col gap-2 transition-all md:top-20"
         :class="layersOpen ? 'right-[21rem] sm:right-[25rem]' : 'right-4'"
     >
         <div class="pointer-events-auto overflow-hidden rounded bg-slate-700 text-white shadow-lg">
             <button type="button" @click="map?.zoomIn()" class="grid h-10 w-10 place-items-center text-2xl leading-none transition hover:bg-slate-800" title="Zoom in" aria-label="Zoom in">+</button>
             <button type="button" @click="map?.zoomOut()" class="grid h-10 w-10 place-items-center border-t border-white/15 text-2xl leading-none transition hover:bg-slate-800" title="Zoom out" aria-label="Zoom out">-</button>
         </div>
-        <button type="button" @click="useMyLocation()" class="pointer-events-auto grid h-10 w-10 place-items-center rounded bg-slate-700 text-white shadow-lg transition hover:bg-slate-800" title="Use my location" aria-label="Use my location">
+        <button type="button" @click="useMyLocation()" :disabled="locating" class="pointer-events-auto grid h-10 w-10 place-items-center rounded bg-slate-700 text-white shadow-lg transition hover:bg-slate-800 disabled:opacity-60" title="Use my location" aria-label="Use my location">
             <x-icon name="map-pin" class="h-5 w-5" />
         </button>
         <button type="button" @click="layersOpen = ! layersOpen" class="pointer-events-auto grid h-10 w-10 place-items-center rounded bg-emerald-500 text-white shadow-lg transition hover:bg-emerald-600" title="Map layers" aria-label="Map layers">
@@ -73,17 +74,17 @@
             </button>
         </div>
 
-        <div class="space-y-2 px-4 pb-4">
+        <div class="space-y-3 px-4 pb-4">
             <template x-for="layer in layers" :key="layer.id">
                 <button
                     type="button"
                     @click="setBaseLayer(layer.id)"
-                    class="group relative flex h-14 w-full items-center overflow-hidden rounded-md border text-left shadow-sm transition"
-                    :class="activeLayer === layer.id ? 'border-indigo-500 ring-2 ring-indigo-300' : 'border-slate-200 hover:border-slate-300'"
+                    :aria-pressed="activeLayer === layer.id"
+                    class="group relative flex h-14 w-full items-start overflow-hidden rounded-md border bg-slate-100 text-left shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                    :class="activeLayer === layer.id ? 'border-indigo-500 ring-2 ring-indigo-400' : 'border-slate-200 hover:border-slate-400'"
                 >
-                    <span class="absolute inset-0 bg-cover bg-center opacity-75" :style="`background-image: url('${layer.preview}')`"></span>
-                    <span class="absolute inset-0 bg-white/35"></span>
-                    <span class="relative px-3 text-sm font-bold text-slate-900" x-text="layer.name"></span>
+                    <img :src="layer.preview" alt="" aria-hidden="true" decoding="async" class="absolute inset-0 h-full w-full object-cover object-center">
+                    <span class="relative m-1 rounded-sm bg-white/85 px-2 py-0.5 text-sm font-bold text-slate-900" x-text="layer.name"></span>
                 </button>
             </template>
         </div>
@@ -102,11 +103,12 @@
     </aside>
 
     <div class="absolute bottom-4 left-4 z-[500] rounded bg-white/90 px-3 py-2 text-xs font-semibold text-slate-700 shadow-lg">
-        {{ $centerLat ? 'Nearest available' : 'Available listings' }}
+        {{ $this->hasLocation() ? 'Nearest available' : 'Available listings' }}
         <span class="font-normal text-slate-500">({{ count($markers) }})</span>
+        <p class="mt-1 font-normal">Hover or focus a pin for a preview. Select a pin to open item details.</p>
     </div>
 
-    @if ($centerLat)
+    @if ($this->hasLocation())
         <div class="absolute bottom-4 right-4 z-[500] flex gap-2">
             <select wire:model.live="radiusKm" aria-label="Distance from your location" class="h-10 rounded-md border-slate-300 bg-white text-sm shadow-lg focus:border-blue-500 focus:ring-blue-100">
                 <option value="">Any distance</option>
@@ -116,9 +118,54 @@
                 <option value="50">Within 50 km</option>
             </select>
 
-            <button type="button" wire:click="$set('centerLat', null); $set('centerLng', null)" class="grid h-10 w-10 place-items-center rounded-md bg-white text-rose-600 shadow-lg transition hover:bg-rose-50" title="Clear location" aria-label="Clear location">
+            <button type="button" wire:click="clearLocation" class="grid h-10 w-10 place-items-center rounded-md bg-white text-rose-600 shadow-lg transition hover:bg-rose-50" title="Clear location" aria-label="Clear location">
                 <x-icon name="x-mark" class="h-5 w-5" />
             </button>
         </div>
     @endif
+    </div>
+
+    <section class="min-w-0 border-t border-slate-200 bg-white lg:flex lg:h-screen lg:flex-col lg:border-l lg:border-t-0" aria-labelledby="map-results-title">
+        <div class="border-b border-slate-100 p-4">
+            <h1 id="map-results-title" class="text-lg font-bold text-slate-900">{{ $this->hasLocation() ? 'Nearest listings' : 'Listing results' }}</h1>
+            <p x-show="locationError" x-text="locationError" x-cloak role="alert" class="mt-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900"></p>
+            <p class="mt-1 text-sm text-slate-500" role="status" aria-live="polite">
+                {{ count($markers) }} {{ count($markers) === 1 ? 'listing' : 'listings' }}{{ $this->hasLocation() ? ', sorted nearest to farthest.' : '.' }}
+            </p>
+            @unless ($this->hasLocation())
+                <p class="mt-2 text-xs leading-5 text-slate-500">Set your location to see distances and sort by proximity.</p>
+                <button type="button" @click="useMyLocation()" :disabled="locating" class="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:opacity-60">
+                    <x-icon name="map-pin" class="h-4 w-4" aria-hidden="true" />
+                    <span x-text="locating ? 'Finding location…' : 'Use my location'">Use my location</span>
+                </button>
+            @endunless
+        </div>
+        @if (count($markers))
+            <ol class="divide-y divide-slate-100 lg:min-h-0 lg:flex-1 lg:overflow-y-auto" aria-label="{{ $this->hasLocation() ? 'Listings sorted nearest to farthest' : 'Listing results' }}">
+                @foreach ($markers as $marker)
+                    <li wire:key="map-result-{{ $marker['id'] }}">
+                        <a href="{{ $marker['url'] }}" wire:navigate class="flex min-h-24 gap-3 p-4 transition hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500">
+                            @if ($marker['image'])
+                                <img src="{{ $marker['image'] }}" alt="" loading="lazy" class="h-16 w-16 shrink-0 rounded-lg object-cover">
+                            @else
+                                <span class="grid h-16 w-16 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-400"><x-icon name="archive" class="h-6 w-6" aria-hidden="true" /></span>
+                            @endif
+                            <span class="min-w-0">
+                                <span class="block break-words text-sm font-semibold text-slate-900">{{ $marker['name'] }}</span>
+                                <span class="mt-1 block text-sm text-slate-600">₱{{ $marker['price'] }}/day</span>
+                                @if ($marker['distance'] !== null)
+                                    <span class="mt-1 block text-xs font-semibold text-blue-700">{{ $marker['distance'] }}</span>
+                                @endif
+                            </span>
+                        </a>
+                    </li>
+                @endforeach
+            </ol>
+        @else
+            <div class="p-5 text-sm text-slate-500">
+                <p class="font-semibold text-slate-800">No matching listings</p>
+                <p class="mt-2">{{ $this->hasLocation() && $radiusKm !== null ? 'Try a larger radius or adjust your search filters.' : 'Try another search or category.' }}</p>
+            </div>
+        @endif
+    </section>
 </div>

@@ -29,6 +29,9 @@ class Browse extends Component
     public string $brand = '';
 
     #[Url]
+    public string $location = '';
+
+    #[Url]
     public ?float $minPrice = null;
 
     #[Url]
@@ -39,14 +42,14 @@ class Browse extends Component
 
     public function updating($property): void
     {
-        if (in_array($property, ['keyword', 'category', 'condition', 'brand', 'minPrice', 'maxPrice', 'sort'])) {
+        if (in_array($property, ['keyword', 'category', 'condition', 'brand', 'location', 'minPrice', 'maxPrice', 'sort'])) {
             $this->resetPage();
         }
     }
 
     public function resetFilters(): void
     {
-        $this->reset(['keyword', 'category', 'condition', 'brand', 'minPrice', 'maxPrice']);
+        $this->reset(['keyword', 'category', 'condition', 'brand', 'location', 'minPrice', 'maxPrice']);
         $this->sort = 'recent';
         $this->resetPage();
     }
@@ -55,7 +58,8 @@ class Browse extends Component
     {
         $listings = Listing::query()
             ->published()
-            ->where('is_available', true)
+            ->withAvailability()
+            ->acceptingRequests()
             ->with(['category', 'images'])
             ->when($this->keyword, fn ($query) => $query->where(fn ($q) => $q
                 ->where('name', 'like', "%{$this->keyword}%")
@@ -68,8 +72,9 @@ class Browse extends Component
             ))
             ->when($this->condition, fn ($query) => $query->where('condition', $this->condition))
             ->when($this->brand, fn ($query) => $query->where('brand', $this->brand))
-            ->when($this->minPrice, fn ($query) => $query->where('price_per_day', '>=', $this->minPrice))
-            ->when($this->maxPrice, fn ($query) => $query->where('price_per_day', '<=', $this->maxPrice));
+            ->when(trim($this->location) !== '', fn ($query) => $query->where('location', 'like', '%'.trim($this->location).'%'))
+            ->when($this->minPrice !== null, fn ($query) => $query->where('price_per_day', '>=', $this->minPrice))
+            ->when($this->maxPrice !== null, fn ($query) => $query->where('price_per_day', '<=', $this->maxPrice));
 
         $listings = match ($this->sort) {
             'cheapest' => $listings->orderBy('price_per_day'),

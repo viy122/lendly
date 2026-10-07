@@ -1,5 +1,5 @@
 <div>
-    <x-page-header eyebrow="Renting" title="My rental requests" subtitle="Track the status of items you've requested to rent." />
+    <x-page-header eyebrow="Renting" title="My rental requests" subtitle="View current and past rental requests." />
 
     <div class="w-full px-4 py-8 sm:px-6 lg:px-8">
         @if (session('status'))
@@ -23,7 +23,11 @@
                                 @endif
                                 <div>
                                     <div class="flex items-center gap-2">
-                                        <a href="{{ route('listings.show', $request->listing) }}" wire:navigate class="font-semibold text-slate-800 hover:text-blue-700">{{ $request->listing->name }}</a>
+                                        @if ($request->listing->trashed())
+                                            <span class="font-semibold text-slate-800">{{ $request->listing->name }} (listing removed)</span>
+                                        @else
+                                            <a href="{{ route('listings.show', $request->listing) }}" wire:navigate class="font-semibold text-slate-800 hover:text-blue-700">{{ $request->listing->name }}</a>
+                                        @endif
                                         <x-badge :color="$request->status->badgeColor()">{{ $request->status->label() }}</x-badge>
                                     </div>
                                     <p class="mt-1 text-sm text-slate-500">
@@ -36,19 +40,40 @@
                                     @if ($request->status->value === 'rejected' && $request->rejection_reason)
                                         <p class="mt-1 text-xs text-rose-600">Reason: {{ $request->rejection_reason }}</p>
                                     @endif
+                                    @if ($request->status->value === 'cancelled')
+                                        <x-cancellation-details :record="$request" />
+                                    @endif
                                 </div>
                             </div>
-
-                            <div class="flex items-center gap-3">
-                                <a href="{{ route('rental-requests.chat', $request) }}" wire:navigate class="text-xs font-medium text-blue-600 hover:text-blue-800">
-                                    Message owner
-                                </a>
-                                @if ($request->isCancellableByRenter())
-                                    <button type="button" wire:click="cancel({{ $request->id }})" wire:confirm="Cancel this rental request?" class="text-xs font-medium text-rose-600 hover:text-rose-800">
-                                        Cancel
-                                    </button>
-                                @endif
-                            </div>
+                        </div>
+                        @if ($cancelling === $request->id && ! $request->rental && $request->isCancellableByRenter())
+                            <form wire:submit="cancel({{ $request->id }})" class="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4">
+                                <p class="mb-3 text-sm text-rose-700">Cancelling a request before the booking is finalized is free.</p>
+                                <x-input-label :for="'cancellation-reason-'.$request->id" value="Reason for cancellation (optional)" />
+                                <textarea wire:model="cancellation_reason" id="cancellation-reason-{{ $request->id }}" rows="2" maxlength="500" class="mt-1 block w-full rounded-lg border-rose-300 text-sm shadow-sm focus:border-rose-500 focus:ring-rose-500"></textarea>
+                                <x-input-error :messages="$errors->get('cancellation_reason')" class="mt-2" />
+                                <div class="mt-3 flex justify-end gap-3">
+                                    <button type="button" wire:click="$set('cancelling', null)" class="min-h-11 px-3 text-sm font-medium text-slate-600">Keep request</button>
+                                    <button type="submit" wire:loading.attr="disabled" wire:target="cancel" wire:confirm="Cancel this rental request?" class="min-h-11 rounded-lg bg-rose-600 px-4 text-sm font-semibold text-white disabled:opacity-60">Confirm cancellation</button>
+                                </div>
+                            </form>
+                        @endif
+                        <div class="-mx-5 -mb-5 mt-5 grid grid-cols-1 gap-2.5 rounded-b-xl border-t border-slate-100 bg-slate-50/60 px-5 py-4 sm:flex sm:flex-wrap sm:items-center sm:justify-end">
+                            <a href="{{ route('rental-requests.chat', $request) }}" wire:navigate class="inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:mr-auto">
+                                <x-icon name="chat" class="h-4 w-4 shrink-0" aria-hidden="true" />
+                                <span>Message owner</span>
+                            </a>
+                            @if ($request->rental)
+                                <a href="{{ route('renter.rentals.show', $request->rental) }}" wire:navigate class="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">View booking</a>
+                            @elseif ($request->isApproved())
+                                <a href="{{ route('renter.rental-requests.agreement', $request) }}" wire:navigate class="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">Review rental agreement</a>
+                            @endif
+                            @if (! $request->rental && $request->isCancellableByRenter())
+                                <button type="button" wire:click="startCancelling({{ $request->id }})" class="inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-600 shadow-sm transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2">
+                                    <x-icon name="x-mark" class="h-4 w-4 shrink-0" aria-hidden="true" />
+                                    <span>Cancel</span>
+                                </button>
+                            @endif
                         </div>
                     </div>
                 @endforeach

@@ -9,6 +9,7 @@ class Message extends Model
 {
     protected $fillable = [
         'rental_request_id',
+        'listing_conversation_id',
         'sender_id',
         'receiver_id',
         'body',
@@ -29,11 +30,16 @@ class Message extends Model
 
     public function sender(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'sender_id');
+        return $this->belongsTo(User::class, 'sender_id')->withTrashed();
+    }
+
+    public function listingConversation(): BelongsTo
+    {
+        return $this->belongsTo(ListingConversation::class);
     }
 
     public function receiver(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'receiver_id');
+        return $this->belongsTo(User::class, 'receiver_id')->withTrashed();
     }
 }

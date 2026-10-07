@@ -1,0 +1,10 @@
+PHPUnit 11.5.56 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.2.12
+Configuration: C:\Users\Admin\lendly\phpunit.xml
+
+............                                                      12 / 12 (100%)
+
+Time: 00:21.799, Memory: 56.00 MB
+
+OK (12 tests, 32 assertions)

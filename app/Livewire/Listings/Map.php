@@ -30,11 +30,21 @@ class Map extends Component
      */
     public array $markers = [];
 
+    public function hasLocation(): bool
+    {
+        return $this->centerLat !== null && $this->centerLng !== null;
+    }
+
+    public function clearLocation(): void
+    {
+        $this->reset('centerLat', 'centerLng', 'radiusKm');
+    }
+
     protected function computeMarkers(): array
     {
         $listings = Listing::query()
             ->published()
-            ->where('is_available', true)
+            ->acceptingRequests()
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->with('images')
@@ -48,10 +58,11 @@ class Map extends Component
                 ->orWhere('subcategory_id', $this->category)
             ))
             ->latest()
+            ->orderByDesc('id')
             ->get();
 
         $markers = $listings->map(function (Listing $listing) {
-            $distanceKm = ($this->centerLat && $this->centerLng)
+            $distanceKm = $this->hasLocation()
                 ? Geo::distanceKm($this->centerLat, $this->centerLng, (float) $listing->latitude, (float) $listing->longitude)
                 : null;
 
@@ -68,12 +79,15 @@ class Map extends Component
             ];
         });
 
-        if ($this->radiusKm && $this->centerLat && $this->centerLng) {
+        if ($this->radiusKm !== null && $this->hasLocation()) {
             $markers = $markers->filter(fn (array $marker) => $marker['distanceKm'] <= $this->radiusKm);
         }
 
-        if ($this->centerLat && $this->centerLng) {
-            $markers = $markers->sortBy('distanceKm');
+        if ($this->hasLocation()) {
+            $markers = $markers->sortBy([
+                ['distanceKm', 'asc'],
+                ['id', 'asc'],
+            ]);
         }
 
         return $markers->values()->all();
