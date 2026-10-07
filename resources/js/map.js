@@ -13,6 +13,44 @@ L.Icon.Default.mergeOptions({
 
 const DEFAULT_CENTER = [14.5995, 120.9842]; // Metro Manila, used when no location is known yet
 
+const MAP_LAYERS = [
+    {
+        id: 'standard',
+        name: 'Standard',
+        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        attribution: '&copy; OpenStreetMap contributors',
+        preview: 'https://a.tile.openstreetmap.org/13/6850/3983.png',
+    },
+    {
+        id: 'cyclosm',
+        name: 'CyclOSM',
+        url: 'https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png',
+        attribution: '&copy; OpenStreetMap contributors, CyclOSM',
+        preview: 'https://a.tile-cyclosm.openstreetmap.fr/cyclosm/13/6850/3983.png',
+    },
+    {
+        id: 'transport',
+        name: 'Transport Map',
+        url: 'https://tile.memomaps.de/tilegen/{z}/{x}/{y}.png',
+        attribution: '&copy; OpenStreetMap contributors, MemoMaps',
+        preview: 'https://tile.memomaps.de/tilegen/13/6850/3983.png',
+    },
+    {
+        id: 'humanitarian',
+        name: 'Humanitarian',
+        url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+        attribution: '&copy; OpenStreetMap contributors, Humanitarian OpenStreetMap Team',
+        preview: 'https://a.tile.openstreetmap.fr/hot/13/6850/3983.png',
+    },
+    {
+        id: 'topo',
+        name: 'Topo',
+        url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+        attribution: '&copy; OpenStreetMap contributors, SRTM, OpenTopoMap',
+        preview: 'https://a.tile.opentopomap.org/13/6850/3983.png',
+    },
+];
+
 document.addEventListener('alpine:init', () => {
     Alpine.data('locationPicker', (initialLat, initialLng) => ({
         map: null,
@@ -72,19 +110,26 @@ document.addEventListener('alpine:init', () => {
 
     Alpine.data('listingsMap', (markers, centerLat, centerLng) => ({
         map: null,
+        baseLayer: null,
         markerLayer: null,
         locationMarker: null,
         locating: false,
+        layers: MAP_LAYERS,
+        activeLayer: 'transport',
+        layersOpen: true,
+        showListingPins: true,
+        showMyLocation: true,
+        latestMarkers: markers,
+        latestLocation: centerLat && centerLng ? [centerLat, centerLng] : null,
 
         init() {
             const center = centerLat && centerLng ? [centerLat, centerLng] : DEFAULT_CENTER;
 
-            this.map = L.map(this.$refs.map).setView(center, centerLat ? 14 : 11);
+            this.map = L.map(this.$refs.map, {
+                zoomControl: false,
+            }).setView(center, centerLat ? 14 : 11);
 
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-                attribution: '&copy; <a href="https://www.esri.com">Esri</a> &mdash; Source: Esri, HERE, Garmin, USGS, Intermap, INCREMENT P, NRCan, Esri Japan, METI, Esri China (Hong Kong), Esri Korea, Esri (Thailand), NGCC, © OpenStreetMap contributors, and the GIS User Community',
-                maxZoom: 19,
-            }).addTo(this.map);
+            this.setBaseLayer(this.activeLayer);
 
             this.markerLayer = L.layerGroup().addTo(this.map);
             this.renderMarkers(markers);
@@ -98,15 +143,39 @@ document.addEventListener('alpine:init', () => {
             this.$watch('$wire.markers', (value) => this.renderMarkers(value));
         },
 
+        setBaseLayer(layerId) {
+            const layer = this.layers.find((item) => item.id === layerId) ?? this.layers[0];
+
+            if (!this.map || !layer) return;
+
+            if (this.baseLayer) {
+                this.map.removeLayer(this.baseLayer);
+            }
+
+            this.baseLayer = L.tileLayer(layer.url, {
+                attribution: layer.attribution,
+                maxZoom: 19,
+            }).addTo(this.map);
+
+            if (this.markerLayer) {
+                this.markerLayer.bringToFront();
+            }
+
+            this.activeLayer = layer.id;
+        },
+
         renderMarkers(items) {
+            this.latestMarkers = items;
             this.markerLayer.clearLayers();
+
+            if (!this.showListingPins) return;
 
             items.forEach((item) => {
                 const marker = L.marker([item.lat, item.lng]).addTo(this.markerLayer);
                 marker.bindPopup(
                     `<div style="min-width:160px">
                         <strong>${item.name}</strong><br>
-                        ₱${item.price}/day &middot; ${item.distance ?? ''}<br>
+                        PHP ${item.price}/day${item.distance ? ` &middot; ${item.distance}` : ''}<br>
                         <a href="${item.url}" style="color:#2563eb">View listing</a>
                     </div>`
                 );
@@ -114,12 +183,32 @@ document.addEventListener('alpine:init', () => {
         },
 
         setLocationMarker(lat, lng) {
+            this.latestLocation = [lat, lng];
+
+            if (!this.showMyLocation) return;
+
             if (this.locationMarker) {
                 this.locationMarker.setLatLng([lat, lng]);
             } else {
                 this.locationMarker = L.circleMarker([lat, lng], { radius: 6, color: '#2563eb', fillOpacity: 1 })
                     .addTo(this.map)
                     .bindTooltip('Your selected location');
+            }
+        },
+
+        toggleListingPins() {
+            this.renderMarkers(this.latestMarkers);
+        },
+
+        toggleMyLocation() {
+            if (this.showMyLocation && this.latestLocation) {
+                this.setLocationMarker(this.latestLocation[0], this.latestLocation[1]);
+                return;
+            }
+
+            if (this.locationMarker) {
+                this.map.removeLayer(this.locationMarker);
+                this.locationMarker = null;
             }
         },
 
