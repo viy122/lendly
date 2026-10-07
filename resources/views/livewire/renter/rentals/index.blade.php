@@ -29,16 +29,19 @@
                                 </div>
                             </div>
 
-                            <a href="{{ route('renter.rentals.show', $rental) }}" wire:navigate class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-700">
-                                @if ($rental->isPaymentPending())
-                                    Pay now
-                                @elseif ($rental->awaitingPickupConfirmation())
-                                    Confirm pickup
-                                @elseif ($rental->awaitingReturnConfirmation())
-                                    Confirm return
-                                @else
-                                    View details
-                                @endif
+                            <a href="{{ route('renter.rentals.show', $rental) }}" wire:navigate class="group inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#075cf5] px-5 py-2.5 text-sm font-bold text-white shadow-[0_8px_20px_rgba(7,92,245,0.22)] transition duration-200 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_12px_26px_rgba(7,92,245,0.30)] focus:outline-none focus:ring-4 focus:ring-blue-100">
+                                <span>
+                                    @if ($rental->isPaymentPending())
+                                        Pay now
+                                    @elseif ($rental->awaitingPickupConfirmation())
+                                        Confirm pickup
+                                    @elseif ($rental->awaitingReturnConfirmation())
+                                        Confirm return
+                                    @else
+                                        View details
+                                    @endif
+                                </span>
+                                <span class="transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden="true">→</span>
                             </a>
                         </div>
                     </div>

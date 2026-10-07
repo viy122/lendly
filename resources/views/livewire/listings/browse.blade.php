@@ -44,13 +44,6 @@
                            class="w-full rounded-lg border-slate-300 py-3 pl-11 pr-4 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                 </div>
 
-                <select wire:model.live="category" class="rounded-lg border-slate-300 py-3 pl-4 pr-8 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                    <option value="">All categories</option>
-                    @foreach ($categories as $cat)
-                        <option value="{{ $cat->id }}">{{ $cat->name }}</option>
-                    @endforeach
-                </select>
-
                 <button type="button" @click="filtersOpen = ! filtersOpen"
                         class="flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
                     <x-icon name="filter" class="h-4 w-4" />
@@ -61,22 +54,6 @@
                         class="rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-3 text-sm font-semibold text-white shadow-sm hover:from-blue-700 hover:to-indigo-700">
                     Search
                 </button>
-            </div>
-
-            <div class="mt-4 -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-                <button type="button" wire:click="$set('category', '')"
-                        class="flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-semibold transition {{ $category === '' ? 'border-transparent bg-blue-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300' }}">
-                    <x-icon name="sparkles" class="h-3.5 w-3.5" />
-                    All
-                </button>
-                @foreach ($categories as $cat)
-                    @php($style = $cat->style())
-                    <button type="button" wire:click="$set('category', '{{ $cat->id }}')"
-                            class="flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-semibold transition {{ (string) $category === (string) $cat->id ? ($accentSolid[$style['accent']] ?? $accentSolid['slate']) : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300' }}">
-                        <x-icon :name="$style['icon']" class="h-3.5 w-3.5" />
-                        {{ $cat->name }}
-                    </button>
-                @endforeach
             </div>
 
             <div x-show="filtersOpen" x-transition class="mt-4 grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2 lg:grid-cols-4" style="display: none;">
@@ -112,7 +89,48 @@
             </div>
         </div>
 
-        <div class="mt-6">
+        <div class="mt-6 lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start lg:gap-6">
+            <aside class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-32">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-[0.14em] text-blue-600">Explore</p>
+                        <h2 class="mt-1 text-base font-bold text-[#071a3d]">Categories</h2>
+                    </div>
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600">
+                        <x-icon name="filter" class="h-4 w-4" />
+                    </span>
+                </div>
+
+                <div class="-mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0">
+                    <button type="button" wire:click="$set('category', '')"
+                            class="group flex shrink-0 items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-left text-xs font-semibold transition duration-200 lg:w-full {{ $category === '' ? 'border-transparent bg-blue-600 text-white shadow-[0_7px_18px_rgba(37,99,235,0.24)]' : 'border-slate-200 bg-white text-slate-600 hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 lg:hover:translate-x-1 lg:hover:translate-y-0' }}">
+                        <span class="grid h-7 w-7 shrink-0 place-items-center rounded-lg {{ $category === '' ? 'bg-white/15' : 'bg-slate-50 text-blue-500 group-hover:bg-white' }}">
+                            <x-icon name="sparkles" class="h-3.5 w-3.5" />
+                        </span>
+                        <span>All items</span>
+                    </button>
+
+                    @foreach ($categories as $cat)
+                        @php($style = $cat->style())
+                        <button type="button" wire:click="$set('category', '{{ $cat->id }}')"
+                                class="group flex shrink-0 items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-left text-xs font-semibold transition duration-200 lg:w-full {{ (string) $category === (string) $cat->id ? ($accentSolid[$style['accent']] ?? $accentSolid['slate']) : 'border-slate-200 bg-white text-slate-600 hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 lg:hover:translate-x-1 lg:hover:translate-y-0' }}">
+                            <span class="grid h-7 w-7 shrink-0 place-items-center rounded-lg {{ (string) $category === (string) $cat->id ? 'bg-white/15 text-white' : 'bg-slate-50 ' . ($accentText[$style['accent']] ?? $accentText['slate']) . ' group-hover:bg-white' }}">
+                                <x-icon :name="$style['icon']" class="h-3.5 w-3.5" />
+                            </span>
+                            <span>{{ $cat->name }}</span>
+                        </button>
+                    @endforeach
+                </div>
+
+                @if ($category !== '')
+                    <button type="button" wire:click="$set('category', '')" class="mt-4 hidden w-full items-center justify-center gap-1.5 border-t border-slate-100 pt-3 text-xs font-semibold text-slate-400 transition hover:text-blue-600 lg:flex">
+                        Clear category
+                        <span aria-hidden="true">×</span>
+                    </button>
+                @endif
+            </aside>
+
+            <section class="mt-5 min-w-0 lg:mt-0">
             @if ($listings->isEmpty())
                 <x-empty-state title="No listings match your filters" message="Try widening your search or clearing some filters.">
                     <span class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-300">
@@ -120,7 +138,7 @@
                     </span>
                 </x-empty-state>
             @else
-                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                     @foreach ($listings as $listing)
                         @php($style = $listing->category->style())
                         <a href="{{ route('listings.show', $listing) }}" wire:navigate wire:key="listing-{{ $listing->id }}" class="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
@@ -158,6 +176,7 @@
                     {{ $listings->links() }}
                 </div>
             @endif
+            </section>
         </div>
     </div>
 </div>

@@ -55,12 +55,14 @@ new class extends Component
     <aside
         :class="[open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0', collapsed ? 'lg:w-20' : 'lg:w-72']"
         class="fixed inset-y-0 left-0 z-40 flex w-72 shrink-0 flex-col border-r border-indigo-900 bg-gradient-to-b from-indigo-950 to-indigo-900 transition-all duration-200 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:translate-x-0">
-        <div class="flex h-24 items-center justify-between border-b border-indigo-900 px-4" :class="collapsed && 'lg:justify-center lg:px-0'">
-            <a href="{{ auth()->check() ? route(auth()->user()->dashboardRouteName()) : route('listings.index') }}" wire:navigate class="flex items-center gap-2">
-                <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-indigo-600 text-[10px] font-bold text-white">L</span>
-                <span class="text-sm font-semibold tracking-tight text-white" x-show="!collapsed" x-cloak x-transition.opacity.duration.100ms>Lendly</span>
+        <div class="relative flex h-24 items-center justify-between border-b border-indigo-900 px-4" :class="collapsed && 'lg:justify-center lg:px-0'">
+            <a href="{{ auth()->check() ? route(auth()->user()->dashboardRouteName()) : route('listings.index') }}" wire:navigate class="group flex items-center gap-2.5" aria-label="Lendly dashboard">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/80 bg-white p-0.5 shadow-[0_5px_16px_rgba(37,99,235,0.35)] transition duration-200 group-hover:-translate-y-0.5 group-hover:shadow-[0_8px_20px_rgba(59,130,246,0.45)]">
+                    <img src="{{ asset('images/lendlylogo_transparent.png') }}" alt="Lendly logo" class="h-full w-full scale-[1.35] object-contain" />
+                </span>
+                <span class="text-sm font-semibold tracking-tight text-white" x-show="!collapsed" x-cloak x-transition.opacity.duration.100ms>Rent · Share · Earn</span>
             </a>
-            <button @click="open = false" class="rounded-md p-1 text-indigo-300 hover:bg-indigo-900 hover:text-white lg:hidden">
+            <button @click="open = false" class="rounded-md p-1 text-indigo-300 hover:bg-indigo-900 hover:text-white lg:hidden" aria-label="Close sidebar">
                 <x-icon name="x-mark" class="h-4 w-4" />
             </button>
         </div>
@@ -163,10 +165,10 @@ new class extends Component
 
         <div class="border-t border-indigo-900 p-3">
             @auth
-            <div x-show="!collapsed" x-cloak>
+            <div>
                 <x-dropdown align="top" width="64">
                     <x-slot name="trigger">
-                        <button class="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-indigo-900">
+                        <button type="button" aria-label="{{ __('Account menu') }}" :aria-expanded="open" class="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-indigo-900" :class="collapsed && 'justify-center px-0'">
                             <span class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
                                 @if (auth()->user()->avatar_path)
                                 <img src="{{ auth()->user()->avatarUrl() }}" class="h-full w-full object-cover">
@@ -174,11 +176,11 @@ new class extends Component
                                 {{ Str::of(auth()->user()->name)->substr(0, 1)->upper() }}
                                 @endif
                             </span>
-                            <span class="min-w-0 flex-1">
+                            <span class="min-w-0 flex-1" x-show="!collapsed" x-cloak>
                                 <span class="block truncate text-sm font-medium text-white" x-data="{{ json_encode(['name' => auth()->user()->name]) }}" x-text="name" x-on:profile-updated.window="name = $event.detail.name"></span>
                                 <span class="block truncate text-xs text-indigo-300">{{ auth()->user()->email }}</span>
                             </span>
-                            <x-icon name="chevron-down" class="h-4 w-4 shrink-0 text-indigo-400" />
+                            <x-icon name="chevron-down" class="h-4 w-4 shrink-0 text-indigo-400" x-show="!collapsed" x-cloak />
                         </button>
                     </x-slot>
 
@@ -187,24 +189,13 @@ new class extends Component
                             {{ __('Profile') }}
                         </x-dropdown-link>
 
-                        <button wire:click="logout" class="w-full text-start">
-                            <x-dropdown-link>
-                                {{ __('Log Out') }}
-                            </x-dropdown-link>
+                        <button type="button" wire:click="logout" class="block w-full px-4 py-2 text-start text-sm leading-5 text-slate-700 transition duration-150 ease-in-out hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:outline-none">
+                            {{ __('Log Out') }}
                         </button>
                     </x-slot>
                 </x-dropdown>
             </div>
 
-            <a href="{{ route('profile') }}" wire:navigate x-show="collapsed" x-cloak class="hidden items-center justify-center rounded-full p-1 hover:bg-indigo-900" title="{{ auth()->user()->name }}">
-                <span class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
-                    @if (auth()->user()->avatar_path)
-                    <img src="{{ auth()->user()->avatarUrl() }}" class="h-full w-full object-cover">
-                    @else
-                    {{ Str::of(auth()->user()->name)->substr(0, 1)->upper() }}
-                    @endif
-                </span>
-            </a>
             @else
             <div class="space-y-2" x-show="!collapsed" x-cloak>
                 <a href="{{ route('login') }}" wire:navigate class="block rounded-lg border border-indigo-700 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-indigo-900">

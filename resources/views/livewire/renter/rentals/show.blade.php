@@ -1,14 +1,89 @@
-<div class="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
-    <a href="{{ route('renter.rentals.index') }}" wire:navigate class="flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-700">
-        <x-icon name="chevron-down" class="h-3.5 w-3.5 rotate-90" /> Back to my rentals
-    </a>
+<div class="rental-detail-page min-h-screen bg-[radial-gradient(circle_at_92%_8%,rgba(191,219,254,0.32),transparent_28%),#f8fafc]">
+    <x-page-header
+        eyebrow="My rentals"
+        title="Rental details"
+        :subtitle="'Rental #' . $rental->id . ' · ' . $rental->listing->name"
+        maxWidth="max-w-6xl"
+    />
 
+    <div class="mx-auto max-w-6xl px-4 py-7 sm:px-6 lg:px-8 lg:py-10">
+        <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <a href="{{ route('renter.rentals.index') }}" wire:navigate class="group inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:text-blue-700 hover:shadow-md">
+                <x-icon name="chevron-down" class="h-3.5 w-3.5 rotate-90 transition-transform group-hover:-translate-x-0.5" />
+                Back to my rentals
+            </a>
+            <span class="rounded-full bg-blue-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-blue-700 ring-1 ring-blue-100">Rental #{{ $rental->id }}</span>
+        </div>
+
+        <section class="relative overflow-hidden rounded-[2rem] border border-blue-100 bg-white shadow-[0_22px_65px_rgba(15,45,95,0.11)]">
+            <div class="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(59,130,246,0.20),rgba(125,211,252,0.09)_45%,transparent_72%)] blur-2xl"></div>
+            <div class="relative grid gap-0 md:grid-cols-[15rem_minmax(0,1fr)]">
+                <div class="relative min-h-56 overflow-hidden bg-slate-100 md:min-h-full">
+                    @if ($rental->listing->images->first())
+                        <img src="{{ $rental->listing->images->first()->url() }}" alt="{{ $rental->listing->name }}" class="absolute inset-0 h-full w-full object-cover transition duration-500 hover:scale-105" />
+                    @else
+                        <div class="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-slate-100 text-slate-400">
+                            <x-icon name="archive" class="h-9 w-9 text-blue-300" />
+                            <span class="mt-2 text-xs font-medium">No item photo</span>
+                        </div>
+                    @endif
+                    <div class="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-blue-950/45 to-transparent md:hidden"></div>
+                </div>
+
+                <div class="p-5 sm:p-7 lg:p-8">
+                    <div class="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                            <p class="text-[11px] font-bold uppercase tracking-[0.16em] text-blue-600">Your rented item</p>
+                            <div class="mt-2 flex flex-wrap items-center gap-3">
+                                <h1 class="text-2xl font-extrabold tracking-[-0.035em] text-[#071a3d] sm:text-3xl">{{ $rental->listing->name }}</h1>
+                                <x-badge :color="$rental->displayStatusColor()">{{ $rental->displayStatusLabel() }}</x-badge>
+                            </div>
+                            <p class="mt-2 flex items-center gap-1.5 text-sm text-slate-500">
+                                <x-icon name="user-circle" class="h-4 w-4 text-slate-400" />
+                                Owned by <span class="font-semibold text-slate-700">{{ $rental->listing->owner->name }}</span>
+                            </p>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2">
+                            <a href="{{ route('listings.show', $rental->listing) }}" wire:navigate class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
+                                View listing
+                                <span aria-hidden="true">↗</span>
+                            </a>
+                            <a href="{{ route('rental-requests.chat', $rental->rental_request_id) }}" wire:navigate class="inline-flex items-center gap-2 rounded-xl bg-[#075cf5] px-3.5 py-2.5 text-xs font-bold text-white shadow-[0_8px_20px_rgba(7,92,245,0.24)] transition hover:-translate-y-0.5 hover:bg-blue-700">
+                                <x-icon name="chat" class="h-4 w-4" />
+                                Message owner
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <div class="rounded-2xl border border-slate-100 bg-slate-50/80 p-3.5">
+                            <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Rental dates</p>
+                            <p class="mt-1.5 text-sm font-bold text-slate-800">{{ $rental->start_date->format('M d') }} – {{ $rental->end_date->format('M d, Y') }}</p>
+                        </div>
+                        <div class="rounded-2xl border border-slate-100 bg-slate-50/80 p-3.5">
+                            <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Duration</p>
+                            <p class="mt-1.5 text-sm font-bold text-slate-800">{{ $rental->rental_days }} day{{ (int) $rental->rental_days === 1 ? '' : 's' }}</p>
+                        </div>
+                        <div class="rounded-2xl border border-blue-100 bg-blue-50/80 p-3.5">
+                            <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-blue-500">Total amount</p>
+                            <p class="mt-1.5 text-base font-extrabold text-blue-700">₱{{ number_format($rental->total_amount, 2) }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="mx-auto max-w-4xl">
     @if ($rental->isPaymentPending())
-        <h1 class="mt-3 text-xl font-semibold text-slate-900">Confirm payment</h1>
-        <p class="mt-1 text-sm text-slate-500">{{ $rental->listing->name }} &middot; {{ $rental->start_date->format('M d, Y') }} &ndash; {{ $rental->end_date->format('M d, Y') }}</p>
-
-        <div class="mt-6 rounded-xl border border-slate-200 bg-white p-6">
-            <h2 class="text-sm font-semibold text-slate-700">Payment summary</h2>
+        <div class="mt-7 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+            <div class="flex items-start gap-3">
+                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-100">₱</span>
+                <div>
+                    <h2 class="text-base font-bold text-[#071a3d]">Payment summary</h2>
+                    <p class="mt-1 text-sm text-slate-500">Review the charges before confirming this simulated payment.</p>
+                </div>
+            </div>
             <dl class="mt-4 space-y-2 text-sm">
                 <div class="flex justify-between">
                     <dt class="text-slate-500">Rental fee</dt>
@@ -32,7 +107,7 @@
                 This is a simulated payment for demonstration purposes only. No real money is processed.
             </p>
 
-            <button type="button" wire:click="confirmPayment" wire:loading.attr="disabled" class="mt-5 w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
+            <button type="button" wire:click="confirmPayment" wire:loading.attr="disabled" class="mt-5 w-full rounded-xl bg-[#075cf5] px-4 py-3 text-sm font-bold text-white shadow-[0_10px_24px_rgba(7,92,245,0.24)] transition hover:-translate-y-0.5 hover:bg-blue-700 disabled:opacity-50">
                 Confirm Simulated Payment
             </button>
 
@@ -43,17 +118,6 @@
 
         @include('livewire.renter.rentals._cancel-form')
     @else
-        <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-3">
-                <h1 class="text-xl font-semibold text-slate-900">{{ $rental->listing->name }}</h1>
-                <x-badge :color="$rental->displayStatusColor()">{{ $rental->displayStatusLabel() }}</x-badge>
-            </div>
-            <a href="{{ route('rental-requests.chat', $rental->rental_request_id) }}" wire:navigate class="text-xs font-medium text-blue-600 hover:text-blue-800">
-                Message owner
-            </a>
-        </div>
-        <p class="mt-1 text-sm text-slate-500">{{ $rental->start_date->format('M d, Y') }} &ndash; {{ $rental->end_date->format('M d, Y') }}</p>
-
         @if ($rental->isOverdue())
             <div class="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
                 <p class="font-semibold">This rental is overdue by {{ $rental->days_overdue }} day{{ $rental->days_overdue === 1 ? '' : 's' }}.</p>
@@ -373,4 +437,6 @@
         </div>
         @endif
     @endif
+        </div>
+    </div>
 </div>

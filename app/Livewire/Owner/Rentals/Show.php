@@ -70,7 +70,7 @@ class Show extends Component
         $this->authorize('view', $rental);
 
         $this->rental = $rental->load([
-            'listing', 'owner', 'renter', 'payment', 'securityDeposit',
+            'listing.images', 'owner', 'renter', 'payment', 'securityDeposit',
             'beforeConditionRecord.photos', 'afterConditionRecord.photos', 'damageReport.photos',
             'reviewFromOwnerToRenter', 'disputes',
         ]);

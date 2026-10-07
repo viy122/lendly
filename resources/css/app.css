@@ -5,3 +5,73 @@
 [x-cloak] {
     display: none !important;
 }
+
+html {
+    scroll-behavior: smooth;
+}
+
+@keyframes float-slow {
+    0%, 100% { transform: translate3d(0, 0, 0) rotate(-1deg); }
+    50% { transform: translate3d(0, -10px, 0) rotate(1deg); }
+}
+
+@keyframes float-reverse {
+    0%, 100% { transform: translate3d(0, 0, 0) rotate(1deg); }
+    50% { transform: translate3d(0, 9px, 0) rotate(-1deg); }
+}
+
+.animate-float-slow {
+    animation: float-slow 5s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+    animation: float-reverse 5.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .animate-float-slow,
+    .animate-float-reverse { animation: none; }
+}
+
+.rental-detail-page [class~="rounded-xl"][class~="border-slate-200"][class~="bg-white"] {
+    border-radius: 1.25rem;
+    border-color: rgb(226 232 240 / 0.85);
+    box-shadow: 0 12px 36px rgb(15 45 95 / 0.07);
+    transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.rental-detail-page [class~="rounded-xl"][class~="border-slate-200"][class~="bg-white"]:hover {
+    border-color: rgb(191 219 254 / 0.95);
+    box-shadow: 0 16px 42px rgb(37 99 235 / 0.10);
+}
+
+.rental-detail-page select,
+.rental-detail-page textarea,
+.rental-detail-page input:not([type="checkbox"]):not([type="file"]) {
+    transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.listing-form-card {
+    transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.listing-form-card:hover {
+    border-color: rgb(191 219 254 / 0.95);
+    box-shadow: 0 16px 44px rgb(37 99 235 / 0.09);
+}
+
+.listing-form-page select,
+.listing-form-page textarea,
+.listing-form-page input:not([type="checkbox"]):not([type="file"]) {
+    border-radius: 0.75rem;
+    background-color: rgb(248 250 252 / 0.78);
+    transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.listing-form-page select:focus,
+.listing-form-page textarea:focus,
+.listing-form-page input:not([type="checkbox"]):not([type="file"]):focus {
+    background-color: white;
+    box-shadow: 0 0 0 4px rgb(219 234 254 / 0.9);
+}

@@ -1,23 +1,29 @@
-<div>
+<div class="listing-form-page min-h-screen bg-[radial-gradient(circle_at_94%_8%,rgba(191,219,254,0.32),transparent_28%),#f8fafc]">
     <x-page-header
         eyebrow="Owning"
         :title="$listing?->exists ? 'Edit listing' : 'Create a listing'"
         :subtitle="$listing?->exists ? 'Changes will be resubmitted for admin approval.' : 'New listings are reviewed by an admin before they go live.'"
-        maxWidth="max-w-4xl"
+        maxWidth="max-w-6xl"
     />
 
-    <div class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-6xl px-4 py-7 sm:px-6 lg:px-8 lg:py-10">
         @if ($listing?->status?->value === 'rejected' && $listing->rejection_reason)
-            <div class="mb-6 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-                <p class="font-semibold">This listing was rejected</p>
-                <p class="mt-1">{{ $listing->rejection_reason }}</p>
+            <div class="mb-6 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 shadow-sm">
+                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-rose-100 text-rose-600">!</span>
+                <div>
+                    <p class="font-bold">This listing was rejected</p>
+                    <p class="mt-1 leading-6">{{ $listing->rejection_reason }}</p>
+                </div>
             </div>
         @endif
 
-        <form wire:submit="save" class="space-y-8">
+        <form wire:submit="save" class="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]">
             <!-- Category -->
-            <section class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 class="flex items-center gap-1.5 text-sm font-semibold text-slate-700"><x-icon name="folder" class="h-4 w-4 text-blue-500" /> Category</h2>
+            <section class="listing-form-card rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_12px_38px_rgba(15,45,95,0.07)] sm:p-6 xl:col-start-1 xl:row-start-1">
+                <div class="flex items-center gap-3">
+                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-100"><x-icon name="folder" class="h-5 w-5" /></span>
+                    <div><h2 class="text-base font-bold text-[#071a3d]">Category</h2><p class="mt-0.5 text-xs text-slate-400">Help renters find your item quickly.</p></div>
+                </div>
                 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                         <x-input-label for="category_id" value="Category" />
@@ -43,8 +49,11 @@
             </section>
 
             <!-- Basic info -->
-            <section class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 class="flex items-center gap-1.5 text-sm font-semibold text-slate-700"><x-icon name="tag" class="h-4 w-4 text-blue-500" /> Item details</h2>
+            <section class="listing-form-card rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_12px_38px_rgba(15,45,95,0.07)] sm:p-6 xl:col-start-1 xl:row-start-2">
+                <div class="flex items-center gap-3">
+                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-sky-50 text-sky-600 ring-1 ring-sky-100"><x-icon name="tag" class="h-5 w-5" /></span>
+                    <div><h2 class="text-base font-bold text-[#071a3d]">Item details</h2><p class="mt-0.5 text-xs text-slate-400">Describe what makes your item useful.</p></div>
+                </div>
                 <div class="mt-4 space-y-4">
                     <div>
                         <x-input-label for="name" value="Item name" />
@@ -91,8 +100,11 @@
             </section>
 
             <!-- Pricing -->
-            <section class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 class="flex items-center gap-1.5 text-sm font-semibold text-slate-700"><x-icon name="archive" class="h-4 w-4 text-blue-500" /> Pricing & deposit</h2>
+            <section class="listing-form-card rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_12px_38px_rgba(15,45,95,0.07)] sm:p-6 xl:col-start-2 xl:row-span-2 xl:row-start-1">
+                <div class="flex items-center gap-3">
+                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100"><span class="text-base font-extrabold">₱</span></span>
+                    <div><h2 class="text-base font-bold text-[#071a3d]">Pricing & deposit</h2><p class="mt-0.5 text-xs text-slate-400">Set fair rates and protect your item.</p></div>
+                </div>
                 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                         <x-input-label for="price_per_day" value="Price per day (₱)" />
@@ -118,8 +130,8 @@
 
                 @php $insight = $this->marketInsight(); @endphp
                 @if ($category_id)
-                    <div class="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Market insight</p>
+                    <div class="mt-5 rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/90 to-sky-50/70 p-4">
+                        <p class="text-xs font-bold uppercase tracking-[0.14em] text-blue-600">Market insight</p>
                         @if ($insight['count'] > 0)
                             <div class="mt-2 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                                 <div>
@@ -156,8 +168,11 @@
             </section>
 
             <!-- Location & logistics -->
-            <section class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 class="flex items-center gap-1.5 text-sm font-semibold text-slate-700"><x-icon name="map-pin" class="h-4 w-4 text-blue-500" /> Location & logistics</h2>
+            <section class="listing-form-card rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_12px_38px_rgba(15,45,95,0.07)] sm:p-6 xl:col-start-1 xl:row-start-3">
+                <div class="flex items-center gap-3">
+                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100"><x-icon name="map-pin" class="h-5 w-5" /></span>
+                    <div><h2 class="text-base font-bold text-[#071a3d]">Location & logistics</h2><p class="mt-0.5 text-xs text-slate-400">Choose where and how renters receive it.</p></div>
+                </div>
                 <div class="mt-4 space-y-4">
                     <div>
                         <x-input-label for="location" value="Location" />
@@ -170,19 +185,19 @@
                             <x-input-label value="Pin the exact location (optional, powers the map search)" />
                             <button type="button" @click="useMyLocation" class="text-xs font-medium text-blue-600 hover:text-blue-800">Use my location</button>
                         </div>
-                        <div x-ref="map" class="mt-2 h-56 w-full rounded-lg border border-slate-200"></div>
+                        <div x-ref="map" class="mt-2 h-64 w-full overflow-hidden rounded-2xl border border-slate-200 shadow-sm"></div>
                         <p class="mt-1 text-xs text-slate-400">Click on the map to drop a pin, or drag it to adjust.</p>
                     </div>
                     <x-input-error :messages="$errors->get('latitude')" class="mt-2" />
 
                     <div>
                         <x-input-label value="Fulfillment options" />
-                        <div class="mt-2 flex gap-6">
-                            <label class="flex items-center gap-2 text-sm text-slate-700">
+                        <div class="mt-2 grid gap-3 sm:grid-cols-2">
+                            <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50">
                                 <input type="checkbox" wire:model="pickup_available" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
                                 Pickup available
                             </label>
-                            <label class="flex items-center gap-2 text-sm text-slate-700">
+                            <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50">
                                 <input type="checkbox" wire:model="delivery_available" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
                                 Delivery available
                             </label>
@@ -209,8 +224,11 @@
             </section>
 
             <!-- Photos -->
-            <section class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 class="flex items-center gap-1.5 text-sm font-semibold text-slate-700"><x-icon name="camera" class="h-4 w-4 text-blue-500" /> Photos</h2>
+            <section class="listing-form-card rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_12px_38px_rgba(15,45,95,0.07)] sm:p-6 xl:col-start-2 xl:row-start-3">
+                <div class="flex items-center gap-3">
+                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-violet-50 text-violet-600 ring-1 ring-violet-100"><x-icon name="camera" class="h-5 w-5" /></span>
+                    <div><h2 class="text-base font-bold text-[#071a3d]">Photos</h2><p class="mt-0.5 text-xs text-slate-400">Show clear angles and important details.</p></div>
+                </div>
 
                 @if (($this->existingPhotoCount() + count($photos)) < 2)
                     <div class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
@@ -231,8 +249,8 @@
                     </div>
                 @endif
 
-                <div class="mt-4">
-                    <input type="file" wire:model="photos" multiple accept="image/*" class="block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100">
+                <div class="mt-4 rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50/50 p-4 transition hover:border-blue-300 hover:bg-blue-50">
+                    <input type="file" wire:model="photos" multiple accept="image/*" class="block w-full text-sm text-slate-600 file:mr-4 file:rounded-xl file:border-0 file:bg-blue-600 file:px-4 file:py-2.5 file:text-sm file:font-bold file:text-white hover:file:bg-blue-700">
                     <div wire:loading wire:target="photos" class="mt-2 text-xs text-slate-400">Uploading...</div>
                     <x-input-error :messages="$errors->get('photos.*')" class="mt-2" />
                 </div>
@@ -251,11 +269,16 @@
                 @endif
             </section>
 
-            <div class="flex items-center justify-end gap-3">
-                <a href="{{ route('owner.listings.index') }}" wire:navigate class="text-sm font-medium text-slate-500 hover:text-slate-700">Cancel</a>
-                <x-primary-button>
-                    {{ $listing?->exists ? 'Save & resubmit' : 'Submit for approval' }}
-                </x-primary-button>
+            <div class="sticky bottom-4 z-10 flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white/90 p-3.5 shadow-[0_18px_50px_rgba(15,45,95,0.14)] backdrop-blur-xl sm:px-5 xl:col-span-2">
+                <p class="hidden text-xs text-slate-400 sm:block">Your listing will be reviewed before it becomes public.</p>
+                <div class="ml-auto flex items-center gap-2.5">
+                    <a href="{{ route('owner.listings.index') }}" wire:navigate class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800">Cancel</a>
+                    <button type="submit" wire:loading.attr="disabled" class="inline-flex items-center gap-2 rounded-xl bg-[#075cf5] px-5 py-2.5 text-sm font-bold text-white shadow-[0_9px_24px_rgba(7,92,245,0.26)] transition hover:-translate-y-0.5 hover:bg-blue-700 disabled:cursor-wait disabled:opacity-60">
+                        <span wire:loading.remove wire:target="save">{{ $listing?->exists ? 'Save & resubmit' : 'Submit for approval' }}</span>
+                        <span wire:loading wire:target="save">Saving…</span>
+                        <span wire:loading.remove wire:target="save" aria-hidden="true">→</span>
+                    </button>
+                </div>
             </div>
         </form>
     </div>
