@@ -6,6 +6,7 @@ use App\Enums\ConditionRecordType;
 use App\Enums\DisputeReason;
 use App\Enums\ListingCondition;
 use App\Enums\NotificationType;
+use App\Enums\RentalStatus;
 use App\Enums\ReviewType;
 use App\Models\ConditionRecord;
 use App\Models\ConditionRecordPhoto;
@@ -17,6 +18,7 @@ use App\Models\Review;
 use App\Notifications\TalaNotification;
 use App\Services\RentalLifecycle;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -87,11 +89,12 @@ class Show extends Component
 
     public function confirmReturn(): void
     {
+        $this->rental->refresh();
         $this->authorize('confirmReturn', $this->rental);
 
         RentalLifecycle::confirmReturn($this->rental, auth()->user());
 
-        $this->rental->refresh();
+        $this->rental->refresh()->load(['afterConditionRecord.photos', 'damageReport.photos', 'securityDeposit']);
     }
 
     public function recordBeforeCondition(): void
@@ -129,44 +132,61 @@ class Show extends Component
             'damage_type' => [Rule::requiredIf($this->after_has_damage), 'nullable', 'string', 'max:255'],
             'damage_description' => [Rule::requiredIf($this->after_has_damage), 'nullable', 'string', 'max:1000'],
             'damage_estimated_cost' => [Rule::requiredIf($this->after_has_damage), 'nullable', 'numeric', 'min:0'],
+            'damage_photos.*' => ['nullable', 'image', 'max:4096'],
         ]);
 
-        $record = ConditionRecord::create([
-            'rental_id' => $this->rental->id,
-            'recorded_by' => auth()->id(),
-            'type' => ConditionRecordType::After,
-            'condition' => $this->after_condition,
-            'notes' => $this->after_notes,
-            'has_damage' => $this->after_has_damage,
-        ]);
-
-        $this->storePhotos($this->after_photos, ConditionRecordPhoto::class, 'condition_record_id', $record->id);
-
-        if ($this->after_has_damage) {
-            $depositAmount = (float) $this->rental->security_deposit;
-            $proposedDeduction = min((float) $this->damage_estimated_cost, $depositAmount);
-
-            $damageReport = DamageReport::create([
+        DB::transaction(function () {
+            $this->rental = Rental::whereKey($this->rental->id)->lockForUpdate()->firstOrFail();
+            $this->authorize('recordAfterCondition', $this->rental);
+            $record = ConditionRecord::create([
                 'rental_id' => $this->rental->id,
-                'condition_record_id' => $record->id,
-                'damage_type' => $this->damage_type,
-                'description' => $this->damage_description,
-                'estimated_repair_cost' => $this->damage_estimated_cost,
-                'proposed_deduction' => $proposedDeduction,
+                'recorded_by' => auth()->id(),
+                'type' => ConditionRecordType::After,
+                'condition' => $this->after_condition,
+                'notes' => $this->after_notes,
+                'has_damage' => $this->after_has_damage,
             ]);
 
-            $this->storePhotos($this->damage_photos, DamageReportPhoto::class, 'damage_report_id', $damageReport->id);
-        }
+            // shortcut: failed SQL saves can leave uploaded files; add orphan cleanup when storage management is needed.
+            $this->storePhotos($this->after_photos, ConditionRecordPhoto::class, 'condition_record_id', $record->id);
 
-        $this->rental->refresh()->load('afterConditionRecord.photos', 'damageReport.photos');
+            if ($this->after_has_damage) {
+                $depositAmount = (float) $this->rental->security_deposit;
+                $proposedDeduction = min((float) $this->damage_estimated_cost, $depositAmount);
+
+                $damageReport = DamageReport::create([
+                    'rental_id' => $this->rental->id,
+                    'condition_record_id' => $record->id,
+                    'damage_type' => $this->damage_type,
+                    'description' => $this->damage_description,
+                    'estimated_repair_cost' => $this->damage_estimated_cost,
+                    'proposed_deduction' => $proposedDeduction,
+                ]);
+
+                $this->storePhotos($this->damage_photos, DamageReportPhoto::class, 'damage_report_id', $damageReport->id);
+            }
+
+            if ($this->rental->return_confirmed_by_owner_at) {
+                $this->rental->update([
+                    'status' => RentalStatus::Returned,
+                    'days_overdue' => $this->rental->currentOverdueDays(),
+                    'late_fee' => $this->rental->currentLateFee(),
+                ]);
+                RentalLifecycle::completeInspection($this->rental);
+            }
+        }, 3);
+
+        $this->rental->refresh()->load('afterConditionRecord.photos', 'damageReport.photos', 'securityDeposit');
         $this->reset('after_notes', 'after_has_damage', 'after_photos', 'damage_type', 'damage_description', 'damage_estimated_cost', 'damage_photos');
     }
 
     public function completeInspection(): void
     {
-        $this->authorize('completeInspection', $this->rental);
-
-        RentalLifecycle::completeInspection($this->rental);
+        DB::transaction(function () {
+            $this->rental = Rental::whereKey($this->rental->id)->lockForUpdate()->firstOrFail();
+            $this->authorize('completeInspection', $this->rental);
+            RentalLifecycle::completeInspection($this->rental);
+        }, 3);
 
         $this->rental->refresh()->load('securityDeposit');
     }
@@ -247,5 +267,12 @@ class Show extends Component
     public function render(): View
     {
         return view('livewire.owner.rentals.show');
+    }
+
+    public function refreshRental(): void
+    {
+        $this->rental->refresh();
+        $this->authorize('view', $this->rental);
+        $this->rental->load(['payment', 'securityDeposit', 'damageReport.photos', 'afterConditionRecord.photos', 'disputes']);
     }
 }

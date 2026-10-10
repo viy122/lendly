@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Messages;
 
+use App\Models\ListingConversation;
 use App\Models\RentalRequest;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
@@ -12,7 +13,7 @@ class Index extends Component
 {
     public function render(): View
     {
-        $threads = RentalRequest::query()
+        $requestThreads = RentalRequest::query()
             ->where(function ($query) {
                 $query->where('renter_id', auth()->id())
                     ->orWhereHas('listing', fn ($q) => $q->where('owner_id', auth()->id()));
@@ -31,6 +32,9 @@ class Index extends Component
             ->map(function (RentalRequest $rentalRequest) {
                 return [
                     'rentalRequest' => $rentalRequest,
+                    'listing' => $rentalRequest->listing,
+                    'url' => route('rental-requests.chat', $rentalRequest),
+                    'key' => 'request-'.$rentalRequest->id,
                     'otherParty' => $rentalRequest->otherPartyFor(auth()->user()),
                     'lastMessage' => $rentalRequest->messages->first(),
                     'unreadCount' => $rentalRequest->messages()
@@ -38,8 +42,28 @@ class Index extends Component
                         ->whereNull('read_at')
                         ->count(),
                 ];
-            })
-            ->sortByDesc(fn ($thread) => $thread['lastMessage']?->created_at)
+            });
+
+        $inquiryThreads = ListingConversation::query()
+            ->where(fn ($query) => $query->where('renter_id', auth()->id())->orWhere('owner_id', auth()->id()))
+            ->whereHas('messages')
+            ->with(['listing', 'owner', 'renter', 'messages' => fn ($query) => $query->reorder('id', 'desc')->limit(1)])
+            ->get()
+            ->map(function (ListingConversation $conversation) {
+                return [
+                    'listingConversation' => $conversation,
+                    'listing' => $conversation->listing,
+                    'url' => route('messages.listing', $conversation),
+                    'key' => 'inquiry-'.$conversation->id,
+                    'otherParty' => $conversation->otherPartyFor(auth()->user()),
+                    'lastMessage' => $conversation->messages->first(),
+                    'unreadCount' => $conversation->messages()->where('receiver_id', auth()->id())
+                        ->whereNull('read_at')->count(),
+                ];
+            });
+
+        $threads = $requestThreads->concat($inquiryThreads)
+            ->sortByDesc(fn ($thread) => $thread['lastMessage']?->id)
             ->values();
 
         return view('livewire.messages.index', ['threads' => $threads]);

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\ListingStatus;
+use App\Enums\RentalStatus;
 use App\Enums\SecurityDepositStatus;
 use App\Livewire\Owner\Rentals\Show as OwnerRentalShow;
 use App\Livewire\Renter\Rentals\Show as RenterRentalShow;
@@ -24,8 +25,8 @@ class ConditionAndDamageTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * Builds a rental already sitting at "Returned" (both sides confirmed
-     * pickup and return), ready for the after-condition / inspection step.
+     * Builds a rental whose owner confirmed return, ready to record its
+     * returned condition and automatically close it.
      */
     private function returnedRental(User $owner, User $renter): Rental
     {
@@ -93,7 +94,6 @@ class ConditionAndDamageTest extends TestCase
 
         RentalLifecycle::confirmPickup($rental, $renter);
         RentalLifecycle::confirmPickup($rental->fresh(), $owner);
-        RentalLifecycle::confirmReturn($rental->fresh(), $renter);
         RentalLifecycle::confirmReturn($rental->fresh(), $owner);
 
         return $rental->fresh();
@@ -133,7 +133,7 @@ class ConditionAndDamageTest extends TestCase
         $this->assertTrue($policy->recordBeforeCondition($owner, $rental));
     }
 
-    public function test_completing_inspection_without_damage_makes_deposit_return_eligible(): void
+    public function test_recording_returned_condition_without_damage_completes_and_makes_deposit_return_eligible(): void
     {
         $owner = User::factory()->owner()->create();
         $renter = User::factory()->renter()->create();
@@ -148,10 +148,8 @@ class ConditionAndDamageTest extends TestCase
 
         $this->assertNull($rental->fresh()->damageReport);
 
-        Livewire::actingAs($owner)
-            ->test(OwnerRentalShow::class, ['rental' => $rental->fresh()])
-            ->call('completeInspection');
-
+        $this->assertSame(RentalStatus::Completed, $rental->fresh()->status);
+        $this->assertNotNull($rental->fresh()->completed_at);
         $this->assertSame(SecurityDepositStatus::ReturnEligible, $rental->fresh()->securityDeposit->status);
     }
 
@@ -178,7 +176,7 @@ class ConditionAndDamageTest extends TestCase
         $this->assertEquals(1000.00, (float) $damageReport->proposed_deduction);
     }
 
-    public function test_completing_inspection_with_damage_puts_deposit_in_damage_claim_status(): void
+    public function test_recording_returned_condition_with_damage_completes_and_puts_deposit_in_damage_claim_status(): void
     {
         $owner = User::factory()->owner()->create();
         $renter = User::factory()->renter()->create();
@@ -193,10 +191,7 @@ class ConditionAndDamageTest extends TestCase
             ->set('damage_estimated_cost', 300)
             ->call('recordAfterCondition');
 
-        Livewire::actingAs($owner)
-            ->test(OwnerRentalShow::class, ['rental' => $rental->fresh()])
-            ->call('completeInspection');
-
+        $this->assertSame(RentalStatus::Completed, $rental->fresh()->status);
         $this->assertSame(SecurityDepositStatus::DamageClaim, $rental->fresh()->securityDeposit->status);
     }
 
@@ -214,10 +209,6 @@ class ConditionAndDamageTest extends TestCase
             ->set('damage_description', 'Multiple scratches.')
             ->set('damage_estimated_cost', 250)
             ->call('recordAfterCondition');
-
-        Livewire::actingAs($owner)
-            ->test(OwnerRentalShow::class, ['rental' => $rental->fresh()])
-            ->call('completeInspection');
 
         Livewire::actingAs($renter)
             ->test(RenterRentalShow::class, ['rental' => $rental->fresh()])
@@ -244,10 +235,6 @@ class ConditionAndDamageTest extends TestCase
             ->set('damage_description', 'Multiple scratches.')
             ->set('damage_estimated_cost', 250)
             ->call('recordAfterCondition');
-
-        Livewire::actingAs($owner)
-            ->test(OwnerRentalShow::class, ['rental' => $rental->fresh()])
-            ->call('completeInspection');
 
         Livewire::actingAs($renter)
             ->test(RenterRentalShow::class, ['rental' => $rental->fresh()])
@@ -279,10 +266,8 @@ class ConditionAndDamageTest extends TestCase
             ->set('after_condition', 'good')
             ->call('recordAfterCondition');
 
-        Livewire::actingAs($owner)
-            ->test(OwnerRentalShow::class, ['rental' => $rental->fresh()])
-            ->call('completeInspection');
-
+        $this->assertSame(RentalStatus::Completed, $rental->fresh()->status);
+        $this->assertSame(SecurityDepositStatus::ReturnEligible, $rental->fresh()->securityDeposit->status);
         Livewire::actingAs($owner)
             ->test(OwnerRentalShow::class, ['rental' => $rental->fresh()])
             ->call('releaseDeposit')

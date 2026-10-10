@@ -47,7 +47,7 @@ class Index extends Component
     {
         $listings = Listing::query()
             ->where('owner_id', auth()->id())
-            ->with(['category', 'images'])
+            ->with(['category', 'images', 'rentals' => fn ($query) => $query->whereIn('status', ['paid', 'active', 'overdue'])])
             ->orderByDesc('created_at')
             ->paginate(10);
 

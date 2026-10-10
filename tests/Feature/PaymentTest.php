@@ -179,7 +179,7 @@ class PaymentTest extends TestCase
         Livewire::actingAs($renter)
             ->test(RenterRentalShow::class, ['rental' => $rental->fresh()])
             ->call('confirmPayment')
-            ->assertForbidden();
+            ->assertHasNoErrors();
 
         $this->assertSame(1, Payment::where('rental_id', $rental->id)->count());
     }

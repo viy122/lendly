@@ -34,7 +34,7 @@ class Index extends Component
     private function baseQuery()
     {
         return Rental::query()
-            ->when($this->status, fn ($query) => $query->where('status', $this->status))
+            ->when($this->status, fn ($query) => $query->withCurrentStatus($this->status))
             ->when($this->search, fn ($query) => $query->where(fn ($q) => $q
                 ->whereHas('listing', fn ($lq) => $lq->where('name', 'like', "%{$this->search}%"))
                 ->orWhereHas('owner', fn ($oq) => $oq->where('name', 'like', "%{$this->search}%"))

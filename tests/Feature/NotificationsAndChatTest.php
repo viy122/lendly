@@ -140,6 +140,8 @@ class NotificationsAndChatTest extends TestCase
             'commission_amount' => 30,
             'security_deposit' => 500,
             'total_amount' => 830,
+            'status' => 'paid',
+            'paid_at' => now(),
         ]);
 
         RentalLifecycle::confirmPickup($rental, $renter);

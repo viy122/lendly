@@ -33,7 +33,7 @@ class ProfileTest extends TestCase
 
         $component = Volt::test('profile.update-profile-information-form')
             ->set('name', 'Test User')
-            ->set('email', 'test@example.com')
+            ->set('email', 'testuser@gmail.com')
             ->call('updateProfileInformation');
 
         $component
@@ -43,7 +43,7 @@ class ProfileTest extends TestCase
         $user->refresh();
 
         $this->assertSame('Test User', $user->name);
-        $this->assertSame('test@example.com', $user->email);
+        $this->assertSame('testuser@gmail.com', $user->email);
         $this->assertNull($user->email_verified_at);
     }
 
@@ -65,6 +65,71 @@ class ProfileTest extends TestCase
         $this->assertNotNull($user->refresh()->email_verified_at);
     }
 
+    public function test_existing_non_gmail_email_can_be_kept_when_updating_the_profile(): void
+    {
+        $user = User::factory()->create(['email' => 'legacy@example.com']);
+
+        Volt::actingAs($user)->test('profile.update-profile-information-form')
+            ->set('name', 'Updated Name')
+            ->call('updateProfileInformation')
+            ->assertHasNoErrors();
+
+        $this->assertSame('Updated Name', $user->fresh()->name);
+        $this->assertSame('legacy@example.com', $user->fresh()->email);
+        $this->assertTrue($user->fresh()->hasVerifiedEmail());
+    }
+
+    public function test_profile_rejects_a_change_to_a_non_gmail_email(): void
+    {
+        $user = User::factory()->create(['email' => 'legacy@example.com']);
+
+        Volt::actingAs($user)->test('profile.update-profile-information-form')
+            ->set('email', 'changed@example.com')
+            ->call('updateProfileInformation')
+            ->assertHasErrors('email');
+
+        $this->assertSame('legacy@example.com', $user->fresh()->email);
+    }
+
+    public function test_profile_rejects_another_users_legacy_gmail_alias(): void
+    {
+        User::factory()->create(['email' => 'Test.User+legacy@GMAIL.COM']);
+        $user = User::factory()->create();
+
+        Volt::actingAs($user)->test('profile.update-profile-information-form')
+            ->set('email', 'testuser@gmail.com')
+            ->call('updateProfileInformation')
+            ->assertHasErrors('email');
+
+        $this->assertTrue($user->fresh()->hasVerifiedEmail());
+    }
+
+    public function test_profile_normalizes_new_gmail_addresses(): void
+    {
+        $user = User::factory()->create();
+
+        Volt::actingAs($user)->test('profile.update-profile-information-form')
+            ->set('email', ' Test.User+rent@GMAIL.COM ')
+            ->call('updateProfileInformation')
+            ->assertHasNoErrors();
+
+        $this->assertSame('testuser@gmail.com', $user->fresh()->email);
+        $this->assertFalse($user->fresh()->hasVerifiedEmail());
+    }
+
+    public function test_profile_keeps_verification_for_an_alias_of_the_same_gmail_address(): void
+    {
+        $user = User::factory()->create(['email' => 'testuser@gmail.com']);
+
+        Volt::actingAs($user)->test('profile.update-profile-information-form')
+            ->set('email', 'Test.User+rent@GMAIL.COM')
+            ->call('updateProfileInformation')
+            ->assertHasNoErrors();
+
+        $this->assertSame('testuser@gmail.com', $user->fresh()->email);
+        $this->assertTrue($user->fresh()->hasVerifiedEmail());
+    }
+
     public function test_user_can_delete_their_account(): void
     {
         $user = User::factory()->create();
@@ -80,7 +145,8 @@ class ProfileTest extends TestCase
             ->assertRedirect('/');
 
         $this->assertGuest();
-        $this->assertNull($user->fresh());
+        $this->assertNull(User::find($user->id));
+        $this->assertSoftDeleted($user);
     }
 
     public function test_correct_password_must_be_provided_to_delete_account(): void

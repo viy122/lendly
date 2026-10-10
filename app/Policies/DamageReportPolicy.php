@@ -16,6 +16,8 @@ class DamageReportPolicy
 
     public function respond(User $user, DamageReport $damageReport): bool
     {
-        return $user->id === $damageReport->rental->renter_id && $damageReport->isPending();
+        return $user->id === $damageReport->rental->renter_id
+            && $damageReport->rental->isCompleted()
+            && $damageReport->isPending();
     }
 }

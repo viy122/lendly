@@ -205,7 +205,7 @@ class RentalRequestTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_renter_can_cancel_a_pending_request_but_not_after_it_starts(): void
+    public function test_renter_can_cancel_requests_without_a_booking_even_after_the_scheduled_start(): void
     {
         $owner = User::factory()->owner()->create();
         $renter = User::factory()->renter()->create();
@@ -249,7 +249,9 @@ class RentalRequestTest extends TestCase
         Livewire::actingAs($renter)
             ->test(RenterRentalRequestsIndex::class)
             ->call('cancel', $startedRequest->id)
-            ->assertForbidden();
+            ->assertHasNoErrors();
+
+        $this->assertSame(RentalRequestStatus::Cancelled, $startedRequest->fresh()->status);
     }
 
     public function test_renter_cannot_cancel_another_renters_request(): void

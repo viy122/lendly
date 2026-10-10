@@ -15,6 +15,7 @@ use App\Notifications\TalaNotification;
 use App\Services\CancellationPolicy;
 use App\Services\RentalLifecycle;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -57,31 +58,41 @@ class Show extends Component
 
     public function confirmPayment(): void
     {
-        $this->authorize('pay', $this->rental);
+        abort_unless(auth()->id() === $this->rental->renter_id, 403);
+        DB::transaction(function () {
+            $rental = Rental::whereKey($this->rental->id)->lockForUpdate()->firstOrFail();
+            abort_unless(auth()->id() === $rental->renter_id, 403);
+            if ($rental->payment()->exists() && ! $rental->isCancelled() && ! $rental->isPaymentPending()) {
+                return;
+            }
+            $this->authorize('pay', $rental);
 
-        $payment = Payment::create([
-            'rental_id' => $this->rental->id,
-            'transaction_reference' => Payment::generateReference(),
-            'amount' => $this->rental->total_amount,
-            'paid_at' => now(),
-        ]);
+            Payment::create([
+                'rental_id' => $rental->id,
+                'transaction_reference' => Payment::generateReference(),
+                'amount' => $rental->total_amount,
+                'paid_at' => now(),
+            ]);
 
-        SecurityDeposit::create([
-            'rental_id' => $this->rental->id,
-            'amount' => $this->rental->security_deposit,
-        ]);
+            SecurityDeposit::create([
+                'rental_id' => $rental->id,
+                'amount' => $rental->security_deposit,
+            ]);
 
-        $this->rental->update([
-            'status' => RentalStatus::Paid,
-            'paid_at' => now(),
-        ]);
+            $rental->update([
+                'status' => RentalStatus::Paid,
+                'paid_at' => now(),
+            ]);
 
-        $this->rental->owner->notify(new TalaNotification(
-            NotificationType::PaymentConfirmed->value,
-            'Payment received',
-            "Payment for \"{$this->rental->listing->name}\" has been confirmed.",
-            route('owner.rentals.show', $this->rental),
-        ));
+            foreach ([$rental->owner, $rental->renter] as $participant) {
+                $participant->notify(new TalaNotification(
+                    NotificationType::PaymentConfirmed->value,
+                    'Payment received',
+                    "Payment for \"{$rental->listing->name}\" has been confirmed. Your receipt is available.",
+                    route($participant->id === $rental->owner_id ? 'owner.rentals.show' : 'renter.rentals.show', $rental),
+                ));
+            }
+        }, 3);
 
         $this->rental->refresh()->load(['payment', 'securityDeposit']);
     }
@@ -150,6 +161,7 @@ class Show extends Component
 
     public function submitOwnerReview(): void
     {
+        abort_unless(auth()->id() === $this->rental->renter_id, 403);
         abort_unless($this->rental->isCompleted(), 403);
         abort_if($this->rental->reviewFromRenterToOwner, 403, 'You already reviewed the owner.');
 
@@ -170,6 +182,7 @@ class Show extends Component
 
     public function submitListingReview(): void
     {
+        abort_unless(auth()->id() === $this->rental->renter_id, 403);
         abort_unless($this->rental->isCompleted(), 403);
         abort_if($this->rental->reviewFromRenterToListing, 403, 'You already reviewed this item.');
 
@@ -218,5 +231,12 @@ class Show extends Component
     public function render(): View
     {
         return view('livewire.renter.rentals.show');
+    }
+
+    public function refreshRental(): void
+    {
+        $this->rental->refresh();
+        $this->authorize('view', $this->rental);
+        $this->rental->load(['payment', 'securityDeposit', 'damageReport.photos', 'afterConditionRecord.photos', 'disputes']);
     }
 }

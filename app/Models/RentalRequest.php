@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Enums\FulfillmentMethod;
+use App\Enums\NotificationType;
 use App\Enums\RentalRequestStatus;
+use App\Notifications\TalaNotification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -53,12 +55,12 @@ class RentalRequest extends Model
 
     public function listing(): BelongsTo
     {
-        return $this->belongsTo(Listing::class);
+        return $this->belongsTo(Listing::class)->withTrashed();
     }
 
     public function renter(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'renter_id');
+        return $this->belongsTo(User::class, 'renter_id')->withTrashed();
     }
 
     public function rental(): HasOne
@@ -86,19 +88,35 @@ class RentalRequest extends Model
         return $this->status === RentalRequestStatus::Approved;
     }
 
-    /**
-     * A renter may cancel their own request while it's still pending or
-     * approved but hasn't started yet. Once the rental period has begun
-     * there is nothing left in this phase to "cancel" (Phase 6 handles the
-     * in-progress lifecycle).
-     */
+    /** A request without a booking has no handover to block cancellation. */
     public function isCancellableByRenter(): bool
     {
-        if (! in_array($this->status, [RentalRequestStatus::Requested, RentalRequestStatus::Approved], true)) {
-            return false;
+        if ($this->rental) {
+            return $this->isApproved() && $this->rental->isCancellableByRenter();
         }
 
-        return $this->start_date->isFuture();
+        return in_array($this->status, [RentalRequestStatus::Requested, RentalRequestStatus::Approved], true);
+    }
+
+    public function notifyStatus(?Rental $rental = null): void
+    {
+        [$type, $title, $message] = match ($this->status) {
+            RentalRequestStatus::Requested => [NotificationType::RentalRequestSubmitted, 'Rental request pending', 'The rental request is pending owner approval.'],
+            RentalRequestStatus::Approved => [NotificationType::RequestApproved, 'Booking confirmed', 'Both parties accepted the terms. The booking is confirmed and awaiting payment.'],
+            RentalRequestStatus::Rejected => [NotificationType::RequestRejected, 'Request declined', $this->rejection_reason ?: 'The owner declined the request.'],
+            RentalRequestStatus::Cancelled => [NotificationType::RentalCancelled, 'Rental request cancelled', 'The renter cancelled the request.'],
+        };
+
+        foreach ([$this->listing->owner, $this->renter] as $participant) {
+            if ($participant->trashed()) {
+                continue;
+            }
+            $owner = $participant->id === $this->listing->owner_id;
+            $url = $rental
+                ? route($owner ? 'owner.rentals.show' : 'renter.rentals.show', $rental)
+                : route($owner ? 'owner.rental-requests.index' : 'renter.rental-requests.index');
+            $participant->notify(new TalaNotification($type->value, $title, "\"{$this->listing->name}\": {$message}", $url));
+        }
     }
 
     public function scopeOverlapping(Builder $query, int $listingId, $startDate, $endDate): Builder

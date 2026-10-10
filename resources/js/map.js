@@ -19,16 +19,17 @@ document.addEventListener('alpine:init', () => {
         marker: null,
 
         init() {
-            const center = initialLat && initialLng ? [initialLat, initialLng] : DEFAULT_CENTER;
+            const hasLocation = initialLat != null && initialLng != null;
+            const center = hasLocation ? [initialLat, initialLng] : DEFAULT_CENTER;
 
-            this.map = L.map(this.$refs.map).setView(center, initialLat ? 14 : 11);
+            this.map = L.map(this.$refs.map).setView(center, hasLocation ? 14 : 11);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap contributors',
                 maxZoom: 19,
             }).addTo(this.map);
 
-            if (initialLat && initialLng) {
+            if (hasLocation) {
                 this.marker = L.marker(center, { draggable: true }).addTo(this.map);
                 this.marker.on('dragend', () => this.reportPosition(this.marker.getLatLng()));
             }
@@ -77,9 +78,10 @@ document.addEventListener('alpine:init', () => {
         locating: false,
 
         init() {
-            const center = centerLat && centerLng ? [centerLat, centerLng] : DEFAULT_CENTER;
+            const hasLocation = centerLat != null && centerLng != null;
+            const center = hasLocation ? [centerLat, centerLng] : DEFAULT_CENTER;
 
-            this.map = L.map(this.$refs.map).setView(center, centerLat ? 14 : 11);
+            this.map = L.map(this.$refs.map).setView(center, hasLocation ? 14 : 11);
 
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
                 attribution: '&copy; <a href="https://www.esri.com">Esri</a> &mdash; Source: Esri, HERE, Garmin, USGS, Intermap, INCREMENT P, NRCan, Esri Japan, METI, Esri China (Hong Kong), Esri Korea, Esri (Thailand), NGCC, © OpenStreetMap contributors, and the GIS User Community',
@@ -89,7 +91,7 @@ document.addEventListener('alpine:init', () => {
             this.markerLayer = L.layerGroup().addTo(this.map);
             this.renderMarkers(markers);
 
-            if (centerLat && centerLng) {
+            if (hasLocation) {
                 this.setLocationMarker(centerLat, centerLng);
             }
 
@@ -102,14 +104,33 @@ document.addEventListener('alpine:init', () => {
             this.markerLayer.clearLayers();
 
             items.forEach((item) => {
-                const marker = L.marker([item.lat, item.lng]).addTo(this.markerLayer);
-                marker.bindPopup(
-                    `<div style="min-width:160px">
-                        <strong>${item.name}</strong><br>
-                        ₱${item.price}/day &middot; ${item.distance ?? ''}<br>
-                        <a href="${item.url}" style="color:#2563eb">View listing</a>
-                    </div>`
-                );
+                const marker = L.marker([item.lat, item.lng], { title: item.name, alt: item.name }).addTo(this.markerLayer);
+                const preview = document.createElement('div');
+                preview.style.width = '180px';
+                preview.style.whiteSpace = 'normal';
+
+                if (item.image) {
+                    const image = document.createElement('img');
+                    image.src = item.image;
+                    image.alt = item.name;
+                    image.style.cssText = 'display:block;width:180px;height:100px;object-fit:cover;border-radius:6px;margin-bottom:8px';
+                    preview.append(image);
+                }
+
+                const name = document.createElement('strong');
+                name.textContent = item.name;
+                const price = document.createElement('p');
+                price.textContent = `₱${item.price}/day${item.distance ? ` · ${item.distance}` : ''}`;
+                preview.append(name, price);
+
+                marker.bindTooltip(preview, { direction: 'top', opacity: 1 });
+                marker.on('click', () => window.location.assign(item.url));
+                marker.on('keydown', ({ originalEvent }) => {
+                    if (originalEvent.key === 'Enter' || originalEvent.key === ' ') {
+                        originalEvent.preventDefault();
+                        window.location.assign(item.url);
+                    }
+                });
             });
         },
 

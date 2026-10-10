@@ -46,6 +46,7 @@
                                 <td class="px-4 py-3 text-slate-500">₱{{ number_format($listing->price_per_day, 2) }}</td>
                                 <td class="px-4 py-3">
                                     <x-badge :color="$listing->status->badgeColor()">{{ $listing->status->label() }}</x-badge>
+                                    <x-badge :color="$listing->availabilityColor()">{{ $listing->availabilityLabel() }}</x-badge>
                                 </td>
                                 <td class="px-4 py-3">
                                     <div class="flex items-center justify-end gap-3 text-xs font-medium">
@@ -57,7 +58,7 @@
                                             <button type="button" wire:click="reactivate({{ $listing->id }})" class="text-blue-600 hover:text-blue-800">Reactivate</button>
                                         @endif
 
-                                        <button type="button" wire:click="delete({{ $listing->id }})" wire:confirm="Delete this listing permanently? This cannot be undone." class="text-rose-600 hover:text-rose-800">Delete</button>
+                                        <button type="button" wire:click="delete({{ $listing->id }})" wire:confirm="Remove this listing from the marketplace? Existing rental records will be kept." class="text-rose-600 hover:text-rose-800">Remove</button>
                                     </div>
                                 </td>
                             </tr>

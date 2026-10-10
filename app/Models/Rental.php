@@ -6,6 +6,7 @@ use App\Enums\ConditionRecordType;
 use App\Enums\FulfillmentMethod;
 use App\Enums\RentalStatus;
 use App\Enums\ReviewType;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -76,17 +77,17 @@ class Rental extends Model
 
     public function listing(): BelongsTo
     {
-        return $this->belongsTo(Listing::class);
+        return $this->belongsTo(Listing::class)->withTrashed();
     }
 
     public function owner(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'owner_id');
+        return $this->belongsTo(User::class, 'owner_id')->withTrashed();
     }
 
     public function renter(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'renter_id');
+        return $this->belongsTo(User::class, 'renter_id')->withTrashed();
     }
 
     public function payment(): HasOne
@@ -161,7 +162,22 @@ class Rental extends Model
 
     public function isOverdue(): bool
     {
-        return $this->status === RentalStatus::Overdue;
+        return $this->status === RentalStatus::Overdue
+            || ($this->isActive() && $this->end_date->lt(today()));
+    }
+
+    public function currentOverdueDays(): int
+    {
+        return $this->isOverdue()
+            ? max(0, (int) $this->end_date->diffInDays(today(), false))
+            : (int) $this->days_overdue;
+    }
+
+    public function currentLateFee(): float
+    {
+        return $this->isOverdue()
+            ? round($this->agreedDailyRate() * $this->currentOverdueDays(), 2)
+            : (float) $this->late_fee;
     }
 
     public function isReturned(): bool
@@ -198,23 +214,34 @@ class Rental extends Model
 
     public function displayStatusLabel(): string
     {
-        return $this->isDueSoon() ? 'Due Soon' : $this->status->label();
+        return $this->isOverdue() ? 'Overdue' : ($this->isDueSoon() ? 'Due Soon' : $this->status->label());
     }
 
     public function displayStatusColor(): string
     {
-        return $this->isDueSoon() ? 'amber' : $this->status->badgeColor();
+        return $this->isOverdue() ? 'red' : ($this->isDueSoon() ? 'amber' : $this->status->badgeColor());
+    }
+
+    public function scopeWithCurrentStatus(Builder $query, RentalStatus|string $status): Builder
+    {
+        $status = $status instanceof RentalStatus ? $status->value : $status;
+
+        return match ($status) {
+            RentalStatus::Overdue->value => $query->where(fn ($q) => $q->where('status', RentalStatus::Overdue)
+                ->orWhere(fn ($active) => $active->where('status', RentalStatus::Active)->whereDate('end_date', '<', today()))),
+            RentalStatus::Active->value => $query->where('status', RentalStatus::Active)->whereDate('end_date', '>=', today()),
+            default => $query->where('status', $status),
+        };
     }
 
     /**
-     * Cancellable only before hand-over — i.e. before pickup has been
-     * confirmed by both parties (the point RentalLifecycle::confirmPickup
-     * flips the status to Active). PaymentPending and Paid are the only two
-     * statuses that precede that.
+     * Either confirmation means physical handover may already have happened.
      */
     public function isCancellableByRenter(): bool
     {
-        return in_array($this->status, [RentalStatus::PaymentPending, RentalStatus::Paid], true);
+        return in_array($this->status, [RentalStatus::PaymentPending, RentalStatus::Paid], true)
+            && $this->pickup_confirmed_by_owner_at === null
+            && $this->pickup_confirmed_by_renter_at === null;
     }
 
     public function awaitingPickupConfirmation(): bool

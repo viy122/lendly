@@ -28,6 +28,9 @@ class Show extends Component
 
     public function render(): View
     {
+        $this->listing->refresh()->load(['rentals' => fn ($query) => $query->whereIn('status', ['paid', 'active', 'overdue'])]);
+        abort_if($this->listing->trashed(), 404);
+        $this->authorize('view', $this->listing);
         $reviews = Review::whereHas('rental', fn ($query) => $query->where('listing_id', $this->listing->id))
             ->where('type', ReviewType::RenterToListing)
             ->with('rental.renter')
@@ -52,6 +55,7 @@ class Show extends Component
             'averageRating' => $this->listing->averageRating(),
             'ownerAverageRating' => $this->listing->owner->averageRatingAsOwner(),
             'bookedRanges' => $bookedRanges,
+            'reservedRentals' => $this->listing->rentals->filter(fn ($rental) => $rental->isPaid() && $rental->end_date->gte(today())),
         ]);
     }
 }

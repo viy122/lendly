@@ -1,0 +1,357 @@
+<?php
+
+namespace Tests\Audit;
+
+use App\Enums\NotificationType;
+use App\Enums\RentalStatus;
+use App\Livewire\Listings\Map;
+use App\Livewire\Owner\RentalRequests\Index as Approvals;
+use App\Livewire\RentalRequests\Create as Requests;
+use App\Livewire\Renter\Rentals\Show as RenterRental;
+use App\Models\Category;
+use App\Models\Listing;
+use App\Models\Payment;
+use App\Models\Rental;
+use App\Models\RentalRequest;
+use App\Models\SecurityDeposit;
+use App\Models\User;
+use App\Notifications\TalaNotification;
+use App\Services\RentalLifecycle;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
+use Livewire\Livewire;
+use Livewire\Volt\Volt;
+use Tests\TestCase;
+
+/**
+ * Acceptance probes for the attached requirements, outside the normal suite.
+ * Failures are audit findings, not changes to application behavior.
+ * All data is disposable SQLite data; no real email is sent.
+ */
+class RequirementsAuditTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function listing(User $owner, array $attributes = []): Listing
+    {
+        $category = Category::firstOrCreate(['slug' => 'audit-tools'], ['name' => 'Audit tools']);
+
+        return Listing::create(array_merge([
+            'owner_id' => $owner->id, 'category_id' => $category->id,
+            'name' => 'Audit camera', 'description' => 'Disposable audit fixture.',
+            'condition' => 'good', 'price_per_day' => 100, 'security_deposit' => 500,
+            'location' => 'Manila', 'latitude' => 14.5995, 'longitude' => 120.9842,
+            'max_rental_duration_days' => 10, 'status' => 'published',
+        ], $attributes));
+    }
+
+    private function request(User $renter, Listing $listing): RentalRequest
+    {
+        return RentalRequest::create([
+            'listing_id' => $listing->id, 'renter_id' => $renter->id,
+            'start_date' => now()->addDays(3), 'end_date' => now()->addDays(5),
+            'rental_days' => 3, 'fulfillment_method' => 'pickup',
+            'rental_fee' => 300, 'commission_rate' => 10, 'commission_amount' => 30,
+            'security_deposit' => 500, 'total_amount' => 830,
+            'status' => 'requested', 'renter_terms_accepted_at' => now(),
+        ]);
+    }
+
+    private function booking(User $owner, User $renter, string $status = 'payment_pending'): Rental
+    {
+        $listing = $this->listing($owner);
+        $request = $this->request($renter, $listing);
+        $request->update(['status' => 'approved', 'owner_terms_accepted_at' => now()]);
+
+        return Rental::create(array_merge($request->only([
+            'listing_id', 'renter_id', 'start_date', 'end_date', 'rental_days',
+            'fulfillment_method', 'rental_fee', 'commission_rate', 'commission_amount',
+            'security_deposit', 'total_amount',
+        ]), ['rental_request_id' => $request->id, 'owner_id' => $owner->id, 'status' => $status]));
+    }
+
+    public function test_fr23_owner_cannot_submit_a_review_attributed_to_the_renter(): void
+    {
+        $owner = User::factory()->create();
+        $renter = User::factory()->create();
+        $rental = $this->booking($owner, $renter, 'completed');
+
+        Livewire::actingAs($owner)->test(RenterRental::class, ['rental' => $rental])
+            ->set('owner_rating', 5)->set('owner_comment', 'Owner reviewing themselves.')
+            ->call('submitOwnerReview')->assertForbidden();
+    }
+
+    public function test_fr11_unavailable_listing_cannot_receive_a_request_from_an_open_form(): void
+    {
+        $owner = User::factory()->create();
+        $renter = User::factory()->create();
+        $listing = $this->listing($owner);
+        $form = Livewire::actingAs($renter)->test(Requests::class, ['listing' => $listing])
+            ->set('start_date', now()->addDays(3)->toDateString())
+            ->set('end_date', now()->addDays(5)->toDateString())->set('accept_terms', true);
+
+        $listing->update(['is_available' => false]);
+        $form->call('submit');
+
+        $this->assertSame(0, RentalRequest::count(), 'An unavailable listing accepted a new request.');
+    }
+
+    public function test_nfr01_interrupted_approval_does_not_leave_an_approved_request_without_a_booking(): void
+    {
+        $owner = User::factory()->create();
+        $renter = User::factory()->create();
+        $request = $this->request($renter, $this->listing($owner));
+        Rental::creating(fn () => throw new \RuntimeException('Audit: booking storage unavailable'));
+
+        try {
+            Livewire::actingAs($owner)->test(Approvals::class)->set('accept_terms', true)->call('approve', $request->id);
+            $this->fail('The injected failure did not run.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Audit: booking storage unavailable', $exception->getMessage());
+        } finally {
+            app('events')->forget('eloquent.creating: '.Rental::class);
+        }
+
+        $this->assertSame('requested', $request->fresh()->status->value);
+        $this->assertSame(0, Rental::count());
+    }
+
+    public function test_nfr03_interrupted_payment_does_not_leave_a_paid_record_with_an_unpaid_booking(): void
+    {
+        $owner = User::factory()->create();
+        $renter = User::factory()->create();
+        $rental = $this->booking($owner, $renter);
+        SecurityDeposit::creating(fn () => throw new \RuntimeException('Audit: deposit storage unavailable'));
+
+        try {
+            Livewire::actingAs($renter)->test(RenterRental::class, ['rental' => $rental])->call('confirmPayment');
+            $this->fail('The injected failure did not run.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Audit: deposit storage unavailable', $exception->getMessage());
+        } finally {
+            app('events')->forget('eloquent.creating: '.SecurityDeposit::class);
+        }
+
+        $this->assertSame(0, Payment::where('rental_id', $rental->id)->count());
+        $this->assertSame(RentalStatus::PaymentPending, $rental->fresh()->status);
+    }
+
+    public function test_nfr19_zero_latitude_still_filters_by_distance(): void
+    {
+        $owner = User::factory()->create();
+        $this->listing($owner, ['name' => 'Nearby', 'latitude' => 0, 'longitude' => 120]);
+        $this->listing($owner, ['name' => 'Far away', 'latitude' => 1, 'longitude' => 120]);
+
+        $markers = Livewire::test(Map::class)->set('centerLat', 0)->set('centerLng', 120)
+            ->set('radiusKm', 5)->get('markers');
+
+        $this->assertCount(1, $markers);
+        $this->assertSame('Nearby', $markers[0]['name']);
+    }
+
+    public function test_nfr03_two_payment_actions_loaded_before_either_finishes_record_only_one_payment(): void
+    {
+        $owner = User::factory()->create();
+        $renter = User::factory()->create();
+        $rental = $this->booking($owner, $renter);
+        $this->actingAs($renter);
+        $first = app(RenterRental::class);
+        $second = app(RenterRental::class);
+        $first->mount($rental->fresh());
+        $second->mount($rental->fresh());
+        $first->confirmPayment();
+        $second->confirmPayment();
+
+        $this->assertSame(1, Payment::where('rental_id', $rental->id)->count());
+        $this->assertSame(1, SecurityDeposit::where('rental_id', $rental->id)->count());
+    }
+
+    public function test_nfr01_interleaved_approvals_cannot_book_the_same_dates_twice(): void
+    {
+        $owner = User::factory()->create();
+        $listing = $this->listing($owner);
+        $first = $this->request(User::factory()->create(), $listing);
+        $second = $this->request(User::factory()->create(), $listing);
+        $this->actingAs($owner);
+        $interleaved = false;
+
+        RentalRequest::updating(function (RentalRequest $request) use ($first, $second, &$interleaved) {
+            if ($request->id === $first->id && $request->status->value === 'approved' && ! $interleaved) {
+                $interleaved = true;
+                $otherAction = app(Approvals::class);
+                $otherAction->accept_terms = true;
+                $otherAction->approve($second->id);
+            }
+        });
+
+        try {
+            $action = app(Approvals::class);
+            $action->accept_terms = true;
+            $action->approve($first->id);
+        } finally {
+            app('events')->forget('eloquent.updating: '.RentalRequest::class);
+        }
+
+        $this->assertTrue($interleaved, 'The controlled interleaving did not run.');
+        $this->assertSame(1, Rental::where('listing_id', $listing->id)->count());
+    }
+
+    public function test_fr40_booking_confirmation_notifies_both_parties(): void
+    {
+        Notification::fake();
+        $owner = User::factory()->create();
+        $renter = User::factory()->create();
+        $request = $this->request($renter, $this->listing($owner));
+
+        Livewire::actingAs($owner)->test(Approvals::class)->set('accept_terms', true)->call('approve', $request->id);
+
+        Notification::assertSentTo($renter, TalaNotification::class);
+        Notification::assertSentTo($owner, TalaNotification::class);
+    }
+
+    public function test_fr17_owner_receipt_includes_the_payment_reference(): void
+    {
+        $owner = User::factory()->create();
+        $renter = User::factory()->create();
+        $rental = $this->booking($owner, $renter);
+        Livewire::actingAs($renter)->test(RenterRental::class, ['rental' => $rental])->call('confirmPayment');
+
+        $this->actingAs($owner)->get(route('owner.rentals.show', $rental))
+            ->assertOk()->assertSee($rental->fresh()->payment->transaction_reference);
+    }
+
+    public function test_fr42_paid_booking_displays_reserved_status(): void
+    {
+        $owner = User::factory()->create();
+        $renter = User::factory()->create();
+        $rental = $this->booking($owner, $renter);
+        $dates = ['start_date' => now()->toDateString(), 'end_date' => now()->addDays(2)->toDateString()];
+        $rental->update($dates);
+        $rental->rentalRequest->update($dates);
+        Livewire::actingAs($renter)->test(RenterRental::class, ['rental' => $rental])->call('confirmPayment');
+
+        $this->get(route('listings.show', $rental->listing))->assertOk()->assertSee('Reserved');
+    }
+
+    public function test_fr34_cancellation_is_blocked_after_owner_marks_the_item_handed_over(): void
+    {
+        $owner = User::factory()->create();
+        $renter = User::factory()->create();
+        $rental = $this->booking($owner, $renter, 'paid');
+        RentalLifecycle::confirmPickup($rental, $owner);
+
+        Livewire::actingAs($renter)->test(RenterRental::class, ['rental' => $rental->fresh()])
+            ->set('cancellation_reason', 'Already received the physical item.')
+            ->call('cancelRental')->assertForbidden();
+    }
+
+    public function test_fr45_closed_rental_prompts_both_parties_on_their_rental_pages(): void
+    {
+        Notification::fake();
+        $owner = User::factory()->create();
+        $renter = User::factory()->create();
+        $rental = $this->booking($owner, $renter, 'returned');
+        SecurityDeposit::create(['rental_id' => $rental->id, 'amount' => $rental->security_deposit]);
+        RentalLifecycle::completeInspection($rental);
+
+        $isPrompt = fn (TalaNotification $notification) => $notification->type === NotificationType::ReviewRequest->value;
+        Notification::assertSentTo($renter, TalaNotification::class, $isPrompt);
+        $this->actingAs($owner)->get(route('owner.rentals.show', $rental))->assertOk()->assertSee('Rate the renter');
+        $this->actingAs($renter)->get(route('renter.rentals.show', $rental))->assertOk()->assertSee('Leave a review');
+    }
+
+    public function test_fr24_deleting_one_account_preserves_the_other_partys_transaction_history(): void
+    {
+        $owner = User::factory()->create();
+        $renter = User::factory()->create();
+        $rental = $this->booking($owner, $renter, 'completed');
+        $rentalId = $rental->id;
+        $this->actingAs($renter);
+
+        Volt::test('profile.delete-user-form')->set('password', 'password')->call('deleteUser')->assertHasNoErrors();
+
+        $this->assertDatabaseHas('rentals', ['id' => $rentalId, 'owner_id' => $owner->id]);
+    }
+
+    public function test_fr19_past_due_active_rental_displays_overdue_without_waiting_for_the_daily_job(): void
+    {
+        $owner = User::factory()->create();
+        $renter = User::factory()->create();
+        $rental = $this->booking($owner, $renter, 'active');
+        $rental->update(['end_date' => now()->subDay()->toDateString()]);
+
+        $this->assertSame('Overdue', $rental->fresh()->displayStatusLabel());
+    }
+
+    public function test_fr24_removing_a_listing_does_not_break_the_renters_history_page(): void
+    {
+        $owner = User::factory()->create();
+        $renter = User::factory()->create();
+        $rental = $this->booking($owner, $renter, 'completed');
+        Livewire::actingAs($owner)->test(\App\Livewire\Owner\Listings\Index::class)
+            ->call('delete', $rental->listing_id);
+
+        try {
+            $response = $this->actingAs($renter)->get(route('renter.rentals.index'));
+        } catch (\Throwable $exception) {
+            $this->fail('Rental history failed after listing removal: '.$exception->getMessage());
+        }
+        $response->assertOk();
+    }
+
+    public function test_fr51_manila_location_sorts_markers_nearest_first(): void
+    {
+        $owner = User::factory()->create();
+        $this->listing($owner, ['name' => 'Tagaytay', 'latitude' => 14.0997, 'longitude' => 120.9425]);
+        $this->listing($owner, ['name' => 'Manila']);
+
+        $markers = Livewire::test(Map::class)->set('centerLat', 14.5995)->set('centerLng', 120.9842)->get('markers');
+        $this->assertSame(['Manila', 'Tagaytay'], array_column($markers, 'name'));
+        $this->assertEqualsWithDelta(0, $markers[0]['distanceKm'], .001);
+        $this->assertGreaterThan(50, $markers[1]['distanceKm']);
+    }
+
+    public function test_nfr20_no_location_ignores_radius_and_allows_browsing(): void
+    {
+        $owner = User::factory()->create();
+        $this->listing($owner);
+        $this->listing($owner, ['name' => 'Tagaytay', 'latitude' => 14.0997]);
+        $markers = Livewire::test(Map::class)->set('radiusKm', 5)->get('markers');
+
+        $this->assertCount(2, $markers);
+        $this->assertSame([null, null], array_column($markers, 'distanceKm'));
+    }
+
+    public function test_fr52_map_and_browse_use_the_same_keyword_matches(): void
+    {
+        $owner = User::factory()->create();
+        $this->listing($owner, ['name' => 'Found camera']);
+        $this->listing($owner, ['name' => 'Ladder', 'description' => 'No match.']);
+        $markers = Livewire::test(Map::class)->set('keyword', 'camera')->get('markers');
+
+        $this->assertCount(1, $markers);
+        $this->assertSame('Found camera', $markers[0]['name']);
+        Livewire::test(\App\Livewire\Listings\Browse::class)->set('keyword', 'camera')
+            ->assertSee('Found camera')->assertDontSee('Ladder');
+    }
+
+    public function test_fr06_owner_can_upload_multiple_listing_photos(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $owner = User::factory()->create();
+        $category = Category::create(['name' => 'Photo tools', 'slug' => 'photo-tools']);
+        Livewire::actingAs($owner)->test(\App\Livewire\Owner\Listings\Form::class)
+            ->set('category_id', $category->id)->set('name', 'Photo audit listing')
+            ->set('description', 'Two uploaded images.')->set('price_per_day', 100)
+            ->set('location', 'Manila')->set('photos', [
+                \Illuminate\Http\UploadedFile::fake()->image('first.png'),
+                \Illuminate\Http\UploadedFile::fake()->image('second.png'),
+            ])->call('save')->assertHasNoErrors();
+
+        $listing = Listing::where('name', 'Photo audit listing')->firstOrFail();
+        $this->assertCount(2, $listing->images);
+        foreach ($listing->images as $image) {
+            \Illuminate\Support\Facades\Storage::disk('public')->assertExists($image->path);
+        }
+    }
+}

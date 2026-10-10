@@ -89,8 +89,8 @@ class Form extends Component
             $this->price_per_week = $listing->price_per_week ? (float) $listing->price_per_week : null;
             $this->security_deposit = (float) $listing->security_deposit;
             $this->location = $listing->location;
-            $this->latitude = $listing->latitude ? (float) $listing->latitude : null;
-            $this->longitude = $listing->longitude ? (float) $listing->longitude : null;
+            $this->latitude = $listing->latitude !== null ? (float) $listing->latitude : null;
+            $this->longitude = $listing->longitude !== null ? (float) $listing->longitude : null;
             $this->pickup_available = $listing->pickup_available;
             $this->delivery_available = $listing->delivery_available;
             $this->rental_rules = (string) $listing->rental_rules;

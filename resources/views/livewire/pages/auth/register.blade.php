@@ -1,12 +1,18 @@
 <?php
 
 use App\Models\User;
+use App\Rules\GmailAddress;
+use App\Support\AuthEmail;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rules;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 new #[Layout('layouts.guest')] class extends Component
 {
@@ -26,20 +32,40 @@ new #[Layout('layouts.guest')] class extends Component
      */
     public function register(): void
     {
+        $throttleKey = 'registration:'.request()->ip();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            throw ValidationException::withMessages([
+                'email' => 'Too many signup attempts. Please try again in '.RateLimiter::availableIn($throttleKey).' seconds.',
+            ]);
+        }
+
+        RateLimiter::hit($throttleKey, 60);
+        $this->email = trim($this->email);
+
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'email' => ['bail', 'required', 'string', 'email', 'max:255', new GmailAddress],
             'phone' => ['nullable', 'string', 'max:30'],
             'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
         ]);
 
+        $validated['email'] = AuthEmail::normalize($validated['email']);
         $validated['password'] = Hash::make($validated['password']);
 
-        event(new Registered($user = User::create($validated)));
+        $user = User::create($validated);
 
         Auth::login($user);
+        Session::regenerate();
 
-        $this->redirect(route($user->dashboardRouteName(), absolute: false), navigate: true);
+        try {
+            event(new Registered($user));
+        } catch (TransportExceptionInterface $exception) {
+            report($exception);
+            Session::flash('status', 'verification-mail-failed');
+        }
+
+        $this->redirect(route('verification.notice', absolute: false), navigate: true);
     }
 }; ?>
 
@@ -59,8 +85,9 @@ new #[Layout('layouts.guest')] class extends Component
 
         <!-- Email Address -->
         <div>
-            <x-input-label for="email" :value="__('Email')" />
+            <x-input-label for="email" :value="__('Gmail address')" />
             <x-text-input wire:model="email" id="email" class="block mt-1 w-full" type="email" name="email" required autocomplete="username" />
+            <p class="mt-1 text-xs text-slate-500">Use your own @gmail.com address. You will need to verify it before renting or listing items.</p>
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
 
@@ -75,10 +102,10 @@ new #[Layout('layouts.guest')] class extends Component
         <div>
             <x-input-label for="password" :value="__('Password')" />
 
-            <x-text-input wire:model="password" id="password" class="block mt-1 w-full"
+            <x-password-input wire:model="password" id="password" class="block mt-1 w-full"
                             type="password"
                             name="password"
-                            required autocomplete="new-password" />
+                            required autocomplete="new-password" strength />
 
             <x-input-error :messages="$errors->get('password')" class="mt-2" />
         </div>
@@ -87,7 +114,7 @@ new #[Layout('layouts.guest')] class extends Component
         <div>
             <x-input-label for="password_confirmation" :value="__('Confirm password')" />
 
-            <x-text-input wire:model="password_confirmation" id="password_confirmation" class="block mt-1 w-full"
+            <x-password-input wire:model="password_confirmation" id="password_confirmation" class="block mt-1 w-full"
                             type="password"
                             name="password_confirmation" required autocomplete="new-password" />
 

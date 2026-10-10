@@ -121,6 +121,17 @@
                     </div>
                 </div>
 
+                @if ($reservedRentals->isNotEmpty())
+                    <div class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                        <h3 class="font-semibold">Reserved dates</h3>
+                        <ul class="mt-2 space-y-1">
+                            @foreach ($reservedRentals as $reservation)
+                                <li>{{ $reservation->start_date->format('M d, Y') }} &ndash; {{ $reservation->end_date->format('M d, Y') }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
                 @if ($reviews->isNotEmpty())
                     <div class="mt-8">
                         <h2 class="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
@@ -159,6 +170,7 @@
                     </p>
 
                     <dl class="mt-3 space-y-1 text-sm text-slate-500">
+                        <div class="flex justify-between"><dt>Status today</dt><dd><x-badge :color="$listing->availabilityColor()">{{ $listing->availabilityLabel() }}</x-badge></dd></div>
                         @if ($listing->price_per_hour)
                             <div class="flex justify-between"><dt>Per hour</dt><dd>₱{{ number_format($listing->price_per_hour, 2) }}</dd></div>
                         @endif
@@ -192,7 +204,7 @@
                         </span>
                         <div>
                             <p class="text-xs font-medium text-slate-400">Listed by</p>
-                            <p class="font-medium text-slate-800">{{ $listing->owner->name }}</p>
+                            <a href="{{ route('users.show', $listing->owner) }}" wire:navigate class="font-medium text-slate-800 hover:text-blue-600">{{ $listing->owner->name }}</a>
                             @if ($ownerAverageRating !== null)
                                 <p class="flex items-center gap-1 text-sm text-slate-500">
                                     <x-icon name="star" class="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
@@ -201,6 +213,11 @@
                             @endif
                         </div>
                     </div>
+                    @auth
+                        @if (auth()->user()->isRenter() && auth()->id() !== $listing->owner_id)
+                            <a href="{{ route('listings.contact', $listing) }}" wire:navigate class="mt-4 block text-center text-sm font-medium text-blue-600">Message owner</a>
+                        @endif
+                    @endauth
                 </div>
             </div>
         </div>

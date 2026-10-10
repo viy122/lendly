@@ -2,6 +2,7 @@
 
 use App\Livewire\Actions\Logout;
 use App\Models\User;
+use App\Support\AccountLockout;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Volt\Component;
 
@@ -15,21 +16,21 @@ new class extends Component
     }
 
     /**
-     * Demo-only quick account switcher (local env, see the gate in the
-     * view) — logs straight into the seeded admin/member accounts so both
-     * account types can be demoed without repeatedly typing credentials.
+     * Local administrators can switch between seeded demo accounts.
      */
     public function switchDemoUser(string $role): void
     {
-        if (! app()->environment('local')) {
-            return;
-        }
+        abort_unless(app()->environment('local') && Auth::user()?->isAdmin(), 403);
+        abort_unless(in_array($role, ['admin', 'owner'], true), 403);
 
         $user = User::where('email', "{$role}@tala.test")->first();
 
         if (! $user) {
             return;
         }
+
+        abort_if($user->isSuspended() || ! $user->hasVerifiedEmail(), 403);
+        AccountLockout::ensureNotLocked($user->email, 'account');
 
         Auth::login($user);
         session()->regenerate();
@@ -76,7 +77,7 @@ new class extends Component
             <x-icon name="chevron-down" class="h-3.5 w-3.5 transition-transform" x-bind:class="{ '-rotate-90': !collapsed, 'rotate-90': collapsed }" />
         </button>
 
-        @if (app()->environment('local'))
+        @if (app()->environment('local') && auth()->user()?->isAdmin())
             <div class="border-b border-indigo-900 px-3 py-3" x-show="!collapsed" x-cloak x-transition>
                 <p class="px-1 pb-1.5 text-xs font-semibold uppercase tracking-wider text-indigo-400">Demo: switch user</p>
                 <div class="grid grid-cols-2 gap-1 rounded-lg bg-indigo-900 p-1">

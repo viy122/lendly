@@ -2,9 +2,12 @@
 
 use App\Livewire\Actions\Logout;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 new #[Layout('layouts.guest')] class extends Component
 {
@@ -19,7 +22,26 @@ new #[Layout('layouts.guest')] class extends Component
             return;
         }
 
-        Auth::user()->sendEmailVerificationNotification();
+        $this->resetErrorBag('verification');
+        Session::forget('status');
+        $throttleKey = 'verification:'.Auth::id();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 1)) {
+            throw ValidationException::withMessages([
+                'verification' => 'Please wait '.RateLimiter::availableIn($throttleKey).' seconds before requesting another verification email.',
+            ]);
+        }
+
+        RateLimiter::hit($throttleKey, 60);
+
+        try {
+            Auth::user()->sendEmailVerificationNotification();
+        } catch (TransportExceptionInterface $exception) {
+            report($exception);
+            $this->addError('verification', 'We could not send your verification email. Please try again shortly.');
+
+            return;
+        }
 
         Session::flash('status', 'verification-link-sent');
     }
@@ -37,8 +59,16 @@ new #[Layout('layouts.guest')] class extends Component
 
 <div>
     <div class="mb-4 text-sm text-slate-600">
-        {{ __('Thanks for signing up! Before getting started, could you verify your email address by clicking on the link we just emailed to you? If you didn\'t receive the email, we will gladly send you another.') }}
+        {{ __('Verify your Gmail address using the link in your email before getting started. If the message has not arrived, check your spam folder or request another verification email below.') }}
     </div>
+
+    @if (session('status') === 'verification-mail-failed')
+        <p class="mb-4 text-sm text-red-600" role="alert">
+            {{ __('Your account was created, but we could not send the verification email. Please try resending it shortly.') }}
+        </p>
+    @endif
+
+    <x-input-error :messages="$errors->get('verification')" class="mb-4" />
 
     @if (session('status') == 'verification-link-sent')
         <div class="mb-4 font-medium text-sm text-green-600">
@@ -47,7 +77,7 @@ new #[Layout('layouts.guest')] class extends Component
     @endif
 
     <div class="mt-4 flex items-center justify-between">
-        <x-primary-button wire:click="sendVerification">
+        <x-primary-button wire:click="sendVerification" wire:loading.attr="disabled">
             {{ __('Resend Verification Email') }}
         </x-primary-button>
 

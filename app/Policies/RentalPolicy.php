@@ -53,7 +53,8 @@ class RentalPolicy
         }
 
         if ($user->id === $rental->renter_id) {
-            return $rental->return_confirmed_by_renter_at === null;
+            return $rental->return_confirmed_by_renter_at === null
+                && $rental->return_confirmed_by_owner_at === null;
         }
 
         return false;
@@ -63,6 +64,7 @@ class RentalPolicy
     {
         return $user->id === $rental->owner_id
             && $rental->isReturned()
+            && $rental->return_confirmed_by_owner_at !== null
             && $rental->afterConditionRecord()->exists();
     }
 
@@ -76,7 +78,7 @@ class RentalPolicy
     public function recordAfterCondition(User $user, Rental $rental): bool
     {
         return $user->id === $rental->owner_id
-            && $rental->isReturned()
+            && ($rental->awaitingReturnConfirmation() || $rental->isReturned())
             && ! $rental->afterConditionRecord()->exists();
     }
 

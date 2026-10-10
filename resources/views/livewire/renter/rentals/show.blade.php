@@ -1,4 +1,4 @@
-<div class="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
+<div wire:poll.30s="refreshRental" class="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
     <a href="{{ route('renter.rentals.index') }}" wire:navigate class="flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-700">
         <x-icon name="chevron-down" class="h-3.5 w-3.5 rotate-90" /> Back to my rentals
     </a>
@@ -54,10 +54,14 @@
         </div>
         <p class="mt-1 text-sm text-slate-500">{{ $rental->start_date->format('M d, Y') }} &ndash; {{ $rental->end_date->format('M d, Y') }}</p>
 
+        @if (! $rental->owner->trashed() && ! $rental->owner->isSuspended() && $rental->owner->hasVerifiedEmail())
+            <p class="mt-1 text-sm text-slate-500">Owner: <a href="{{ route('users.show', $rental->owner) }}" wire:navigate class="text-blue-600 hover:text-blue-800">{{ $rental->owner->name }}</a></p>
+        @endif
+
         @if ($rental->isOverdue())
             <div class="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-                <p class="font-semibold">This rental is overdue by {{ $rental->days_overdue }} day{{ $rental->days_overdue === 1 ? '' : 's' }}.</p>
-                <p class="mt-1">Late fee so far: ₱{{ number_format($rental->late_fee, 2) }}</p>
+                <p class="font-semibold">This rental is overdue by {{ $rental->currentOverdueDays() }} day{{ $rental->currentOverdueDays() === 1 ? '' : 's' }}.</p>
+                <p class="mt-1">Late fee so far: ₱{{ number_format($rental->currentLateFee(), 2) }}</p>
             </div>
         @endif
 
@@ -102,13 +106,13 @@
         @if ($rental->awaitingReturnConfirmation())
             <div class="mt-6 rounded-xl border border-slate-200 bg-white p-6">
                 <h2 class="text-sm font-semibold text-slate-700">Return confirmation</h2>
-                <p class="mt-1 text-sm text-slate-500">Both you and the owner need to confirm the item was returned.</p>
+                <p class="mt-1 text-sm text-slate-500">The owner confirms receipt and records the returned condition to close the rental. You can also acknowledge your return below.</p>
                 <ul class="mt-3 space-y-1 text-sm">
                     <li class="{{ $rental->return_confirmed_by_owner_at ? 'text-blue-700' : 'text-slate-400' }}">
                         {{ $rental->return_confirmed_by_owner_at ? '✓ Owner confirmed' : 'Waiting on owner confirmation' }}
                     </li>
                     <li class="{{ $rental->return_confirmed_by_renter_at ? 'text-blue-700' : 'text-slate-400' }}">
-                        {{ $rental->return_confirmed_by_renter_at ? '✓ You confirmed' : 'Waiting on your confirmation' }}
+                        {{ $rental->return_confirmed_by_renter_at ? '✓ You confirmed' : 'Your acknowledgment is optional' }}
                     </li>
                 </ul>
 
@@ -122,7 +126,7 @@
 
         @if ($rental->isReturned() && ! $rental->afterConditionRecord)
             <div class="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                Item returned. Waiting for the owner to complete their inspection.
+                Item returned. Waiting for the owner to record the returned condition; the rental will then close automatically.
             </div>
         @endif
 
@@ -189,7 +193,7 @@
                             </div>
                         @endif
 
-                        @if ($rental->damageReport->isPending())
+                        @if ($rental->damageReport->isPending() && $rental->isCompleted())
                             <div class="mt-4 space-y-3">
                                 <button type="button" wire:click="acceptDamageClaim" wire:confirm="Accept this claim? ₱{{ number_format($rental->damageReport->proposed_deduction, 2) }} will be deducted from your deposit." class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
                                     Accept claim
@@ -357,10 +361,10 @@
                     <dt class="text-slate-500">Security deposit</dt>
                     <dd class="font-medium text-slate-800">₱{{ number_format($rental->security_deposit, 2) }}</dd>
                 </div>
-                @if ($rental->late_fee > 0)
+                @if ($rental->currentLateFee() > 0)
                     <div class="flex justify-between text-rose-600">
                         <dt>Late fee</dt>
-                        <dd class="font-medium">₱{{ number_format($rental->late_fee, 2) }}</dd>
+                        <dd class="font-medium">₱{{ number_format($rental->currentLateFee(), 2) }}</dd>
                     </div>
                 @endif
                 <div class="flex justify-between border-t border-slate-100 pt-2 text-base">

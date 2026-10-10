@@ -1,0 +1,1014 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="Tests\Audit\RequirementsAuditTest" file="C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php" tests="19" assertions="39" errors="0" failures="14" skipped="0" time="76.634650">
+    <testcase name="test_fr23_owner_cannot_submit_a_review_attributed_to_the_renter" file="C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php" line="73" class="Tests\Audit\RequirementsAuditTest" classname="Tests.Audit.RequirementsAuditTest" assertions="1" time="6.595058">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Audit\RequirementsAuditTest::test_fr23_owner_cannot_submit_a_review_attributed_to_the_renter&#13;
+Expected response status code [403] but received 200.
+Failed asserting that 200 is identical to 403.
+&#13;
+C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:175
+C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:141
+C:\laragon\www\lendly\vendor\livewire\livewire\src\Features\SupportTesting\Testable.php:410
+C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php:81</failure>
+    </testcase>
+    <testcase name="test_fr11_unavailable_listing_cannot_receive_a_request_from_an_open_form" file="C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php" line="84" class="Tests\Audit\RequirementsAuditTest" classname="Tests.Audit.RequirementsAuditTest" assertions="1" time="2.384910">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Audit\RequirementsAuditTest::test_fr11_unavailable_listing_cannot_receive_a_request_from_an_open_form&#13;
+An unavailable listing accepted a new request.
+Failed asserting that 1 is identical to 0.
+&#13;
+C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php:96</failure>
+    </testcase>
+    <testcase name="test_nfr01_interrupted_approval_does_not_leave_an_approved_request_without_a_booking" file="C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php" line="99" class="Tests\Audit\RequirementsAuditTest" classname="Tests.Audit.RequirementsAuditTest" assertions="2" time="1.551636">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Audit\RequirementsAuditTest::test_nfr01_interrupted_approval_does_not_leave_an_approved_request_without_a_booking&#13;
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'requested'
++'approved'
+&#13;
+C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php:115</failure>
+    </testcase>
+    <testcase name="test_nfr03_interrupted_payment_does_not_leave_a_paid_record_with_an_unpaid_booking" file="C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php" line="119" class="Tests\Audit\RequirementsAuditTest" classname="Tests.Audit.RequirementsAuditTest" assertions="2" time="0.133664">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Audit\RequirementsAuditTest::test_nfr03_interrupted_payment_does_not_leave_a_paid_record_with_an_unpaid_booking&#13;
+Failed asserting that 1 is identical to 0.
+&#13;
+C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php:135</failure>
+    </testcase>
+    <testcase name="test_nfr19_zero_latitude_still_filters_by_distance" file="C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php" line="139" class="Tests\Audit\RequirementsAuditTest" classname="Tests.Audit.RequirementsAuditTest" assertions="1" time="0.154693">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Audit\RequirementsAuditTest::test_nfr19_zero_latitude_still_filters_by_distance&#13;
+Failed asserting that actual size 2 matches expected size 1.
+&#13;
+C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php:148</failure>
+    </testcase>
+    <testcase name="test_nfr03_two_payment_actions_loaded_before_either_finishes_record_only_one_payment" file="C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php" line="152" class="Tests\Audit\RequirementsAuditTest" classname="Tests.Audit.RequirementsAuditTest" assertions="1" time="0.114028">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Audit\RequirementsAuditTest::test_nfr03_two_payment_actions_loaded_before_either_finishes_record_only_one_payment&#13;
+Failed asserting that 2 is identical to 1.
+&#13;
+C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php:165</failure>
+    </testcase>
+    <testcase name="test_nfr01_interleaved_approvals_cannot_book_the_same_dates_twice" file="C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php" line="169" class="Tests\Audit\RequirementsAuditTest" classname="Tests.Audit.RequirementsAuditTest" assertions="2" time="0.098460">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Audit\RequirementsAuditTest::test_nfr01_interleaved_approvals_cannot_book_the_same_dates_twice&#13;
+Failed asserting that 2 is identical to 1.
+&#13;
+C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php:196</failure>
+    </testcase>
+    <testcase name="test_fr40_booking_confirmation_notifies_both_parties" file="C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php" line="199" class="Tests\Audit\RequirementsAuditTest" classname="Tests.Audit.RequirementsAuditTest" assertions="2" time="0.149725">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Audit\RequirementsAuditTest::test_fr40_booking_confirmation_notifies_both_parties&#13;
+The expected [App\Notifications\TalaNotification] notification was not sent.
+Failed asserting that false is true.
+&#13;
+C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Support\Testing\Fakes\NotificationFake.php:89
+C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:363
+C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php:209</failure>
+    </testcase>
+    <testcase name="test_fr17_owner_receipt_includes_the_payment_reference" file="C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php" line="212" class="Tests\Audit\RequirementsAuditTest" classname="Tests.Audit.RequirementsAuditTest" assertions="2" time="9.981925">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Audit\RequirementsAuditTest::test_fr17_owner_receipt_includes_the_payment_reference&#13;
+Failed asserting that '&lt;!DOCTYPE html&gt;\n
+&lt;html lang="en"&gt;\n
+    &lt;head&gt;\n
+        &lt;meta charset="utf-8"&gt;\n
+        &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;\n
+        &lt;meta name="csrf-token" content="QQMKfVotJIs6iTvugpXT12zfDadBGpfkzhHo5r4W"&gt;\n
+\n
+        &lt;title&gt;Tala&lt;/title&gt;\n
+\n
+        &lt;!-- Fonts --&gt;\n
+        &lt;link rel="preconnect" href="https://fonts.bunny.net"&gt;\n
+        &lt;link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&amp;display=swap" rel="stylesheet" /&gt;\n
+\n
+        &lt;!-- Scripts --&gt;\n
+        &lt;link rel="preload" as="style" href="http://localhost:8000/build/assets/app-Ci-EAem2.css" /&gt;&lt;link rel="preload" as="style" href="http://localhost:8000/build/assets/app-CG6DamIu.css" /&gt;&lt;link rel="modulepreload" as="script" href="http://localhost:8000/build/assets/app-CViR4GL1.js" /&gt;&lt;link rel="stylesheet" href="http://localhost:8000/build/assets/app-Ci-EAem2.css" data-navigate-track="reload" /&gt;&lt;link rel="stylesheet" href="http://localhost:8000/build/assets/app-CG6DamIu.css" data-navigate-track="reload" /&gt;&lt;script type="module" src="http://localhost:8000/build/assets/app-CViR4GL1.js" data-navigate-track="reload"&gt;&lt;/script&gt;    &lt;!-- Livewire Styles --&gt;&lt;style &gt;[wire\:loading][wire\:loading], [wire\:loading\.delay][wire\:loading\.delay], [wire\:loading\.inline-block][wire\:loading\.inline-block], [wire\:loading\.inline][wire\:loading\.inline], [wire\:loading\.block][wire\:loading\.block], [wire\:loading\.flex][wire\:loading\.flex], [wire\:loading\.table][wire\:loading\.table], [wire\:loading\.grid][wire\:loading\.grid], [wire\:loading\.inline-flex][wire\:loading\.inline-flex] {display: none;}[wire\:loading\.delay\.none][wire\:loading\.delay\.none], [wire\:loading\.delay\.shortest][wire\:loading\.delay\.shortest], [wire\:loading\.delay\.shorter][wire\:loading\.delay\.shorter], [wire\:loading\.delay\.short][wire\:loading\.delay\.short], [wire\:loading\.delay\.default][wire\:loading\.delay\.default], [wire\:loading\.delay\.long][wire\:loading\.delay\.long], [wire\:loading\.delay\.longer][wire\:loading\.delay\.longer], [wire\:loading\.delay\.longest][wire\:loading\.delay\.longest] {display: none;}[wire\:offline][wire\:offline] {display: none;}[wire\:dirty]:not(textarea):not(input):not(select) {display: none;}:root {--livewire-progress-bar-color: #2299dd;}[x-cloak] {display: none !important;}[wire\:cloak] {display: none !important;}dialog#livewire-error::backdrop {background-color: rgba(0, 0, 0, .6);}&lt;/style&gt;\n
+&lt;/head&gt;\n
+    &lt;body class="bg-slate-50 font-sans antialiased"&gt;\n
+        &lt;div x-data class="min-h-screen lg:flex"&gt;\n
+            &lt;div wire:snapshot="{&amp;quot;data&amp;quot;:[],&amp;quot;memo&amp;quot;:{&amp;quot;id&amp;quot;:&amp;quot;jK1lRLyYefM2MYNp4Qm7&amp;quot;,&amp;quot;name&amp;quot;:&amp;quot;layout.sidebar&amp;quot;,&amp;quot;path&amp;quot;:&amp;quot;owner\/rentals\/1&amp;quot;,&amp;quot;method&amp;quot;:&amp;quot;GET&amp;quot;,&amp;quot;release&amp;quot;:&amp;quot;a-a-a&amp;quot;,&amp;quot;children&amp;quot;:[],&amp;quot;scripts&amp;quot;:[],&amp;quot;assets&amp;quot;:[],&amp;quot;errors&amp;quot;:[],&amp;quot;locale&amp;quot;:&amp;quot;en&amp;quot;},&amp;quot;checksum&amp;quot;:&amp;quot;f099db74c053fcc1a16151e37e3ecfeae89118ea1ad73aee3c53632f07a9d61a&amp;quot;}" wire:effects="[]" wire:id="jK1lRLyYefM2MYNp4Qm7"\n
+    x-data="{\n
+        open: false,\n
+        collapsed: localStorage.getItem('sidebar-collapsed') === 'true',\n
+        toggleCollapsed() {\n
+            this.collapsed = ! this.collapsed;\n
+            localStorage.setItem('sidebar-collapsed', this.collapsed);\n
+        },\n
+    }"\n
+    @toggle-sidebar.window="open = ! open"\n
+    @close-sidebar.window="open = false"\n
+&gt;\n
+    &lt;!-- Mobile overlay --&gt;\n
+    &lt;div x-show="open" x-transition.opacity @click="open = false" class="fixed inset-0 z-30 bg-slate-900/50 lg:hidden" style="display: none;"&gt;&lt;/div&gt;\n
+\n
+    &lt;aside\n
+        :class="[open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0', collapsed ? 'lg:w-20' : 'lg:w-72']"\n
+        class="fixed inset-y-0 left-0 z-40 flex w-72 shrink-0 flex-col border-r border-indigo-900 bg-gradient-to-b from-indigo-950 to-indigo-900 transition-all duration-200 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:translate-x-0"\n
+    &gt;\n
+        &lt;div class="flex h-12 items-center justify-between border-b border-indigo-900 px-4" :class="collapsed &amp;&amp; 'lg:justify-center lg:px-0'"&gt;\n
+            &lt;a href="http://localhost:8000/dashboard" wire:navigate class="flex items-center gap-2"&gt;\n
+                &lt;span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-indigo-600 text-[10px] font-bold text-white"&gt;L&lt;/span&gt;\n
+                &lt;span class="text-sm font-semibold tracking-tight text-white" x-show="!collapsed" x-cloak x-transition.opacity.duration.100ms&gt;Lendly&lt;/span&gt;\n
+            &lt;/a&gt;\n
+            &lt;button @click="open = false" class="rounded-md p-1 text-indigo-300 hover:bg-indigo-900 hover:text-white lg:hidden"&gt;\n
+                &lt;svg class="h-5 w-5 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6 6 18" /&gt;\n
+&lt;/svg&gt;\n
+            &lt;/button&gt;\n
+        &lt;/div&gt;\n
+\n
+        &lt;button\n
+            type="button"\n
+            @click="toggleCollapsed()"\n
+            class="absolute -right-3 top-3 z-10 hidden h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm hover:text-blue-600 lg:flex"\n
+            :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"\n
+        &gt;\n
+            &lt;svg class="h-5 w-5 h-3.5 w-3.5 transition-transform" x-bind:class="{ '-rotate-90': !collapsed, 'rotate-90': collapsed }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" /&gt;\n
+&lt;/svg&gt;\n
+        &lt;/button&gt;\n
+\n
+        &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+        &lt;nav class="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-3 py-4"&gt;\n
+            &lt;a class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-indigo-200 hover:bg-indigo-900 hover:text-white" href="http://localhost:8000/listings" wire:navigate="" x-bind:class="collapsed &amp;&amp; 'lg:justify-center lg:px-0'" x-bind:title="collapsed ? 'Browse' : null"&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;        &lt;svg class="h-5 w-5 h-5 w-5 shrink-0 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;circle cx="10.5" cy="10.5" r="6.5" /&gt;&lt;path stroke-linecap="round" d="m20 20-4.8-4.8" /&gt;\n
+&lt;/svg&gt;\n
+    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;    &lt;span class="truncate" x-bind:class="collapsed &amp;&amp; 'lg:hidden'"&gt;Browse&lt;/span&gt;\n
+&lt;/a&gt;\n
+            &lt;a class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-indigo-200 hover:bg-indigo-900 hover:text-white" href="http://localhost:8000/map" wire:navigate="" x-bind:class="collapsed &amp;&amp; 'lg:justify-center lg:px-0'" x-bind:title="collapsed ? 'Map' : null"&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;        &lt;svg class="h-5 w-5 h-5 w-5 shrink-0 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="M12 21s7-7.2 7-12.5A7 7 0 1 0 5 8.5C5 13.8 12 21 12 21Z" /&gt;&lt;circle cx="12" cy="8.5" r="2.25" /&gt;\n
+&lt;/svg&gt;\n
+    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;    &lt;span class="truncate" x-bind:class="collapsed &amp;&amp; 'lg:hidden'"&gt;Map&lt;/span&gt;\n
+&lt;/a&gt;\n
+\n
+            &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;                &lt;a class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-indigo-200 hover:bg-indigo-900 hover:text-white" href="http://localhost:8000/dashboard" wire:navigate="" x-bind:class="collapsed &amp;&amp; 'lg:justify-center lg:px-0'" x-bind:title="collapsed ? 'Dashboard' : null"&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;        &lt;svg class="h-5 w-5 h-5 w-5 shrink-0 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="M3 11.5 12 4l9 7.5M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9" /&gt;\n
+&lt;/svg&gt;\n
+    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;    &lt;span class="truncate" x-bind:class="collapsed &amp;&amp; 'lg:hidden'"&gt;Dashboard&lt;/span&gt;\n
+&lt;/a&gt;\n
+\n
+                &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;                    &lt;p class="flex items-center gap-1.5 px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wider text-indigo-400" x-show="!collapsed" x-cloak&gt;\n
+                        &lt;span class="h-1.5 w-1.5 rounded-full bg-blue-400"&gt;&lt;/span&gt; Renting\n
+                    &lt;/p&gt;\n
+                    &lt;a class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-indigo-200 hover:bg-indigo-900 hover:text-white" href="http://localhost:8000/renter/rental-requests" wire:navigate="" x-bind:class="collapsed &amp;&amp; 'lg:justify-center lg:px-0'" x-bind:title="collapsed ? 'My Requests' : null"&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;        &lt;svg class="h-5 w-5 h-5 w-5 shrink-0 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="M4 12h4l2 3h4l2-3h4M4 12l1.4-6.3A1 1 0 0 1 6.4 5h11.2a1 1 0 0 1 1 .7L20 12M4 12v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6" /&gt;\n
+&lt;/svg&gt;\n
+    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;    &lt;span class="truncate" x-bind:class="collapsed &amp;&amp; 'lg:hidden'"&gt;My Requests&lt;/span&gt;\n
+&lt;/a&gt;\n
+                    &lt;a class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-indigo-200 hover:bg-indigo-900 hover:text-white" href="http://localhost:8000/renter/rentals" wire:navigate="" x-bind:class="collapsed &amp;&amp; 'lg:justify-center lg:px-0'" x-bind:title="collapsed ? 'My Rentals' : null"&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;        &lt;svg class="h-5 w-5 h-5 w-5 shrink-0 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;rect x="4" y="4" width="16" height="4.5" rx="1" /&gt;&lt;path stroke-linecap="round" stroke-linejoin="round" d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5M10 13h4" /&gt;\n
+&lt;/svg&gt;\n
+    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;    &lt;span class="truncate" x-bind:class="collapsed &amp;&amp; 'lg:hidden'"&gt;My Rentals&lt;/span&gt;\n
+&lt;/a&gt;\n
+                &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+                &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;                    &lt;p class="flex items-center gap-1.5 px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wider text-indigo-400" x-show="!collapsed" x-cloak&gt;\n
+                        &lt;span class="h-1.5 w-1.5 rounded-full bg-violet-400"&gt;&lt;/span&gt; Owning\n
+                    &lt;/p&gt;\n
+                    &lt;a class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-indigo-200 hover:bg-indigo-900 hover:text-white" href="http://localhost:8000/owner/listings" wire:navigate="" x-bind:class="collapsed &amp;&amp; 'lg:justify-center lg:px-0'" x-bind:title="collapsed ? 'My Listings' : null"&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;        &lt;svg class="h-5 w-5 h-5 w-5 shrink-0 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="M11.6 3.5H6a1 1 0 0 0-1 1v5.6a1 1 0 0 0 .3.7l9 9a1 1 0 0 0 1.4 0l5.6-5.6a1 1 0 0 0 0-1.4l-9-9a1 1 0 0 0-.7-.3Z" /&gt;&lt;circle cx="8.5" cy="8.5" r="1.25" /&gt;\n
+&lt;/svg&gt;\n
+    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;    &lt;span class="truncate" x-bind:class="collapsed &amp;&amp; 'lg:hidden'"&gt;My Listings&lt;/span&gt;\n
+&lt;/a&gt;\n
+                    &lt;a class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-indigo-200 hover:bg-indigo-900 hover:text-white" href="http://localhost:8000/owner/rental-requests" wire:navigate="" x-bind:class="collapsed &amp;&amp; 'lg:justify-center lg:px-0'" x-bind:title="collapsed ? 'Rental Requests' : null"&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;        &lt;svg class="h-5 w-5 h-5 w-5 shrink-0 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="M4 12h4l2 3h4l2-3h4M4 12l1.4-6.3A1 1 0 0 1 6.4 5h11.2a1 1 0 0 1 1 .7L20 12M4 12v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6" /&gt;\n
+&lt;/svg&gt;\n
+    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;    &lt;span class="truncate" x-bind:class="collapsed &amp;&amp; 'lg:hidden'"&gt;Rental Requests&lt;/span&gt;\n
+&lt;/a&gt;\n
+                    &lt;a class="flex items-center gap-3 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm" href="http://localhost:8000/owner/rentals" wire:navigate="" x-bind:class="collapsed &amp;&amp; 'lg:justify-center lg:px-0'" x-bind:title="collapsed ? 'My Rentals' : null"&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;        &lt;svg class="h-5 w-5 h-5 w-5 shrink-0 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;rect x="4" y="4" width="16" height="4.5" rx="1" /&gt;&lt;path stroke-linecap="round" stroke-linejoin="round" d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5M10 13h4" /&gt;\n
+&lt;/svg&gt;\n
+    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;    &lt;span class="truncate" x-bind:class="collapsed &amp;&amp; 'lg:hidden'"&gt;My Rentals&lt;/span&gt;\n
+&lt;/a&gt;\n
+                &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+                &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;            &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;        &lt;/nav&gt;\n
+\n
+        &lt;div class="border-t border-indigo-900 p-3"&gt;\n
+            &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;                &lt;div x-show="!collapsed" x-cloak&gt;\n
+                    &lt;div class="relative" x-data="{ open: false }" @click.outside="open = false" @close.stop="open = false"&gt;\n
+    &lt;div @click="open = ! open"&gt;\n
+        &lt;button class="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-indigo-900"&gt;\n
+                                &lt;span class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-sm font-semibold text-blue-700"&gt;\n
+                                    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;                                        J\n
+                                    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;                                &lt;/span&gt;\n
+                                &lt;span class="min-w-0 flex-1"&gt;\n
+                                    &lt;span class="block truncate text-sm font-medium text-white" x-data="{&amp;quot;name&amp;quot;:&amp;quot;Josiane Runte&amp;quot;}" x-text="name" x-on:profile-updated.window="name = $event.detail.name"&gt;&lt;/span&gt;\n
+                                    &lt;span class="block truncate text-xs text-indigo-300"&gt;ykoss@example.org&lt;/span&gt;\n
+                                &lt;/span&gt;\n
+                                &lt;svg class="h-5 w-5 h-4 w-4 shrink-0 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" /&gt;\n
+&lt;/svg&gt;\n
+                            &lt;/button&gt;\n
+    &lt;/div&gt;\n
+\n
+    &lt;div x-show="open"\n
+            x-transition:enter="transition ease-out duration-200"\n
+            x-transition:enter-start="opacity-0 scale-95"\n
+            x-transition:enter-end="opacity-100 scale-100"\n
+            x-transition:leave="transition ease-in duration-75"\n
+            x-transition:leave-start="opacity-100 scale-100"\n
+            x-transition:leave-end="opacity-0 scale-95"\n
+            class="absolute z-50 mt-2 64 rounded-xl shadow-lg origin-top"\n
+            style="display: none;"\n
+            @click="open = false"&gt;\n
+        &lt;div class="rounded-xl border border-slate-200 py-1 bg-white"&gt;\n
+            &lt;a class="block w-full px-4 py-2 text-start text-sm leading-5 text-slate-700 transition duration-150 ease-in-out hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:outline-none" href="http://localhost:8000/profile" wire:navigate=""&gt;Profile&lt;/a&gt;\n
+\n
+                            &lt;button wire:click="logout" class="w-full text-start"&gt;\n
+                                &lt;a class="block w-full px-4 py-2 text-start text-sm leading-5 text-slate-700 transition duration-150 ease-in-out hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:outline-none"&gt;Log Out&lt;/a&gt;\n
+                            &lt;/button&gt;\n
+        &lt;/div&gt;\n
+    &lt;/div&gt;\n
+&lt;/div&gt;\n
+                &lt;/div&gt;\n
+\n
+                &lt;a href="http://localhost:8000/profile" wire:navigate x-show="collapsed" x-cloak class="hidden items-center justify-center rounded-full p-1 hover:bg-indigo-900" title="Josiane Runte"&gt;\n
+                    &lt;span class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-sm font-semibold text-blue-700"&gt;\n
+                        &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;                            J\n
+                        &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;                    &lt;/span&gt;\n
+                &lt;/a&gt;\n
+            &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;        &lt;/div&gt;\n
+    &lt;/aside&gt;\n
+&lt;/div&gt;\n
+            &lt;div class="min-w-0 flex-1"&gt;\n
+                &lt;!-- Top bar --&gt;\n
+                &lt;div class="sticky top-0 z-20 flex min-h-16 items-center justify-between overflow-hidden bg-gradient-to-r from-blue-100 to-indigo-100 bg-cover bg-right px-4 py-2 shadow-sm sm:px-6 lg:px-8" style="background-image: linear-gradient(90deg, rgba(219,234,254,.98) 0%, rgba(224,231,255,.94) 52%, rgba(15,23,42,.38) 100%), url('http://localhost:8000/images/rental-hero.png');"&gt;\n
+                    &lt;a href="http://localhost:8000/dashboard" wire:navigate class="flex items-center gap-2 lg:hidden"&gt;\n
+                        &lt;span class="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-indigo-600 text-[10px] font-bold text-white"&gt;L&lt;/span&gt;\n
+                        &lt;span class="text-sm font-semibold tracking-tight text-slate-900"&gt;Lendly&lt;/span&gt;\n
+                    &lt;/a&gt;\n
+\n
+                    &lt;span class="hidden lg:block"&gt;&lt;/span&gt;\n
+\n
+                    &lt;div class="flex items-center gap-1"&gt;\n
+                        &lt;div wire:snapshot="{&amp;quot;data&amp;quot;:{&amp;quot;open&amp;quot;:false},&amp;quot;memo&amp;quot;:{&amp;quot;id&amp;quot;:&amp;quot;xAQkepCJFvKzjJQiwJLT&amp;quot;,&amp;quot;name&amp;quot;:&amp;quot;notifications.bell&amp;quot;,&amp;quot;path&amp;quot;:&amp;quot;owner\/rentals\/1&amp;quot;,&amp;quot;method&amp;quot;:&amp;quot;GET&amp;quot;,&amp;quot;release&amp;quot;:&amp;quot;a-a-a&amp;quot;,&amp;quot;children&amp;quot;:[],&amp;quot;scripts&amp;quot;:[],&amp;quot;assets&amp;quot;:[],&amp;quot;errors&amp;quot;:[],&amp;quot;locale&amp;quot;:&amp;quot;en&amp;quot;},&amp;quot;checksum&amp;quot;:&amp;quot;a14245522c363b98cfa9e59a78722dad9fed179c43a8f61cad5045402d341a15&amp;quot;}" wire:effects="{&amp;quot;listeners&amp;quot;:[&amp;quot;notifications-refresh&amp;quot;]}" wire:id="xAQkepCJFvKzjJQiwJLT" class="relative" x-data x-on:click.outside="$wire.open = false"&gt;\n
+    &lt;button type="button" wire:click="toggle" class="relative inline-flex items-center justify-center rounded-md border border-blue-200 bg-white p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"&gt;\n
+        &lt;svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"&gt;\n
+            &lt;path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" /&gt;\n
+        &lt;/svg&gt;\n
+        &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;            &lt;span class="absolute -right-0.5 -top-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-rose-600 text-[8px] font-semibold text-white"&gt;\n
+                1\n
+            &lt;/span&gt;\n
+        &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;    &lt;/button&gt;\n
+\n
+    &lt;div x-show="$wire.open" x-cloak class="absolute right-0 z-50 mt-2 w-80 rounded-lg border border-slate-200 bg-white shadow-lg"&gt;\n
+        &lt;div class="flex items-center justify-between border-b border-slate-100 px-4 py-3"&gt;\n
+            &lt;p class="text-sm font-semibold text-slate-800"&gt;Notifications&lt;/p&gt;\n
+            &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;                &lt;button type="button" wire:click="markAllAsRead" class="text-xs font-medium text-blue-600 hover:text-blue-800"&gt;Mark all read&lt;/button&gt;\n
+            &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;        &lt;/div&gt;\n
+\n
+        &lt;div class="max-h-96 overflow-y-auto"&gt;\n
+            &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;                &lt;a\n
+                    href="http://localhost:8000/owner/rentals/1"\n
+                    wire:navigate\n
+                    wire:click="markAsRead('efc30e8c-5f46-49d3-bbc4-5cbc6ed50a1e')"\n
+                    class="block border-b border-slate-50 px-4 py-3 text-sm hover:bg-slate-50 "\n
+                &gt;\n
+                    &lt;p class="font-medium text-slate-800"&gt;Payment received&lt;/p&gt;\n
+                    &lt;p class="mt-0.5 text-xs text-slate-500"&gt;Payment for &amp;quot;Audit camera&amp;quot; has been confirmed.&lt;/p&gt;\n
+                    &lt;p class="mt-1 text-xs text-slate-400"&gt;10 seconds ago&lt;/p&gt;\n
+                &lt;/a&gt;\n
+            &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;        &lt;/div&gt;\n
+\n
+        &lt;a href="http://localhost:8000/notifications" wire:navigate class="block border-t border-slate-100 px-4 py-2 text-center text-xs font-medium text-blue-600 hover:text-blue-800"&gt;\n
+            View all notifications\n
+        &lt;/a&gt;\n
+    &lt;/div&gt;\n
+&lt;/div&gt;\n
+                        &lt;a href="http://localhost:8000/messages" wire:navigate class="relative rounded-md border border-blue-200 bg-white p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"&gt;\n
+                            &lt;svg class="h-5 w-5 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;rect x="3.5" y="5" width="17" height="11" rx="2.5" /&gt;&lt;path d="M7 16 L7 20 L11 16 Z" fill="currentColor" stroke="none" /&gt;&lt;path stroke-linecap="round" d="M7.5 9h9M7.5 12.5h6" /&gt;\n
+&lt;/svg&gt;\n
+                                                    &lt;/a&gt;\n
+                        &lt;button @click="$dispatch('toggle-sidebar')" class="rounded-md p-1 text-slate-500 hover:bg-blue-100/60 hover:text-slate-700 lg:hidden"&gt;\n
+                            &lt;svg class="h-5 w-5 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" /&gt;\n
+&lt;/svg&gt;\n
+                        &lt;/button&gt;\n
+                    &lt;/div&gt;\n
+                &lt;/div&gt;\n
+\n
+                &lt;!-- Page Content --&gt;\n
+                &lt;main&gt;\n
+                    &lt;div wire:snapshot="{&amp;quot;data&amp;quot;:{&amp;quot;rental&amp;quot;:[null,{&amp;quot;class&amp;quot;:&amp;quot;App\\Models\\Rental&amp;quot;,&amp;quot;key&amp;quot;:1,&amp;quot;s&amp;quot;:&amp;quot;mdl&amp;quot;}],&amp;quot;before_condition&amp;quot;:&amp;quot;good&amp;quot;,&amp;quot;before_notes&amp;quot;:&amp;quot;&amp;quot;,&amp;quot;before_photos&amp;quot;:[[],{&amp;quot;s&amp;quot;:&amp;quot;arr&amp;quot;}],&amp;quot;after_condition&amp;quot;:&amp;quot;good&amp;quot;,&amp;quot;after_notes&amp;quot;:&amp;quot;&amp;quot;,&amp;quot;after_has_damage&amp;quot;:false,&amp;quot;after_photos&amp;quot;:[[],{&amp;quot;s&amp;quot;:&amp;quot;arr&amp;quot;}],&amp;quot;damage_type&amp;quot;:&amp;quot;&amp;quot;,&amp;quot;damage_description&amp;quot;:&amp;quot;&amp;quot;,&amp;quot;damage_estimated_cost&amp;quot;:null,&amp;quot;damage_photos&amp;quot;:[[],{&amp;quot;s&amp;quot;:&amp;quot;arr&amp;quot;}],&amp;quot;renter_rating&amp;quot;:5,&amp;quot;renter_comment&amp;quot;:&amp;quot;&amp;quot;,&amp;quot;dispute_reason&amp;quot;:&amp;quot;&amp;quot;,&amp;quot;dispute_description&amp;quot;:&amp;quot;&amp;quot;,&amp;quot;showDisputeForm&amp;quot;:false},&amp;quot;memo&amp;quot;:{&amp;quot;id&amp;quot;:&amp;quot;CWRnMsYpF5IqGwU3wl3v&amp;quot;,&amp;quot;name&amp;quot;:&amp;quot;owner.rentals.show&amp;quot;,&amp;quot;path&amp;quot;:&amp;quot;owner\/rentals\/1&amp;quot;,&amp;quot;method&amp;quot;:&amp;quot;GET&amp;quot;,&amp;quot;release&amp;quot;:&amp;quot;a-a-a&amp;quot;,&amp;quot;children&amp;quot;:[],&amp;quot;scripts&amp;quot;:[],&amp;quot;assets&amp;quot;:[],&amp;quot;errors&amp;quot;:[],&amp;quot;locale&amp;quot;:&amp;quot;en&amp;quot;},&amp;quot;checksum&amp;quot;:&amp;quot;9a974f13a46b6caf6bb85e5869e71c6d10bf01cf4d2d248bbf1c3dacd3e7d1f0&amp;quot;}" wire:effects="[]" wire:id="CWRnMsYpF5IqGwU3wl3v" class="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8"&gt;\n
+    &lt;a href="http://localhost:8000/owner/rentals" wire:navigate class="flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-700"&gt;\n
+        &lt;svg class="h-5 w-5 h-3.5 w-3.5 rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" /&gt;\n
+&lt;/svg&gt;\n
+ Back to my rentals\n
+    &lt;/a&gt;\n
+\n
+    &lt;div class="mt-3 flex flex-wrap items-center justify-between gap-3"&gt;\n
+        &lt;div class="flex items-center gap-3"&gt;\n
+            &lt;h1 class="text-xl font-semibold text-slate-900"&gt;Audit camera&lt;/h1&gt;\n
+            &lt;span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-700"&gt;\n
+    Paid\n
+&lt;/span&gt;\n
+        &lt;/div&gt;\n
+        &lt;a href="http://localhost:8000/rental-requests/1/chat" wire:navigate class="text-xs font-medium text-blue-600 hover:text-blue-800"&gt;\n
+            Message renter\n
+        &lt;/a&gt;\n
+    &lt;/div&gt;\n
+    &lt;p class="mt-1 text-sm text-slate-500"&gt;\n
+        Oct 12, 2026 &amp;ndash; Oct 14, 2026 &amp;middot; Renter: Piper Renner\n
+    &lt;/p&gt;\n
+\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+    &lt;!-- Before-rental condition --&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;        &lt;div class="mt-6 rounded-xl border border-slate-200 bg-white p-6"&gt;\n
+            &lt;h2 class="text-sm font-semibold text-slate-700"&gt;Record condition before rental&lt;/h2&gt;\n
+            &lt;p class="mt-1 text-sm text-slate-500"&gt;Document the item's condition before handing it over.&lt;/p&gt;\n
+\n
+            &lt;form wire:submit="recordBeforeCondition" class="mt-4 space-y-4"&gt;\n
+                &lt;div&gt;\n
+                    &lt;label class="block font-medium text-sm text-slate-700" for="before_condition"&gt;\n
+    Condition\n
+&lt;/label&gt;\n
+                    &lt;select wire:model="before_condition" id="before_condition" class="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"&gt;\n
+                        &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;                            &lt;option value="new"&gt;New&lt;/option&gt;\n
+                                                    &lt;option value="like_new"&gt;Like New&lt;/option&gt;\n
+                                                    &lt;option value="excellent"&gt;Excellent&lt;/option&gt;\n
+                                                    &lt;option value="good"&gt;Good&lt;/option&gt;\n
+                                                    &lt;option value="fair"&gt;Fair&lt;/option&gt;\n
+                        &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;                    &lt;/select&gt;\n
+                &lt;/div&gt;\n
+                &lt;div&gt;\n
+                    &lt;label class="block font-medium text-sm text-slate-700" for="before_notes"&gt;\n
+    Notes (optional)\n
+&lt;/label&gt;\n
+                    &lt;textarea wire:model="before_notes" id="before_notes" rows="2" class="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="e.g. Minor scratch on handle."&gt;&lt;/textarea&gt;\n
+                &lt;/div&gt;\n
+                &lt;div&gt;\n
+                    &lt;label class="block font-medium text-sm text-slate-700"&gt;\n
+    Photos (optional)\n
+&lt;/label&gt;\n
+                    &lt;input type="file" wire:model="before_photos" multiple accept="image/*" class="mt-1 block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100"&gt;\n
+                    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;                &lt;/div&gt;\n
+                &lt;button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition ease-in-out duration-150 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 active:from-blue-800 active:to-indigo-800"&gt;\n
+    Save condition record\n
+&lt;/button&gt;\n
+            &lt;/form&gt;\n
+        &lt;/div&gt;\n
+    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;        &lt;div class="mt-6 rounded-xl border border-slate-200 bg-white p-6"&gt;\n
+            &lt;h2 class="text-sm font-semibold text-slate-700"&gt;Pickup confirmation&lt;/h2&gt;\n
+            &lt;p class="mt-1 text-sm text-slate-500"&gt;Both you and the renter need to confirm the item was handed over before the rental starts.&lt;/p&gt;\n
+            &lt;ul class="mt-3 space-y-1 text-sm"&gt;\n
+                &lt;li class="text-slate-400"&gt;\n
+                    Waiting on your confirmation\n
+                &lt;/li&gt;\n
+                &lt;li class="text-slate-400"&gt;\n
+                    Waiting on renter confirmation\n
+                &lt;/li&gt;\n
+            &lt;/ul&gt;\n
+\n
+            &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;                &lt;button type="button" wire:click="confirmPickup" class="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"&gt;\n
+                    Confirm pickup handed over\n
+                &lt;/button&gt;\n
+            &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;        &lt;/div&gt;\n
+    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+    &lt;!-- After-rental condition --&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+    &lt;h2 class="mt-6 text-sm font-semibold text-slate-700"&gt;Disputes&lt;/h2&gt;\n
+    &lt;div class="mt-3 rounded-xl border border-slate-200 bg-white p-6"&gt;\n
+        &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+        &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;            &lt;p class="text-sm text-slate-400"&gt;No disputes filed for this rental.&lt;/p&gt;\n
+        &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+        &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;            &lt;button type="button" wire:click="$set('showDisputeForm', true)" class="mt-2 text-sm font-medium text-rose-600 hover:text-rose-800"&gt;\n
+                Report an issue\n
+            &lt;/button&gt;\n
+        &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;    &lt;/div&gt;\n
+\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;        &lt;h2 class="mt-6 text-sm font-semibold text-slate-700"&gt;Earnings breakdown&lt;/h2&gt;\n
+        &lt;div class="mt-3 rounded-xl border border-slate-200 bg-white p-6"&gt;\n
+            &lt;dl class="space-y-2 text-sm"&gt;\n
+                &lt;div class="flex justify-between"&gt;\n
+                    &lt;dt class="text-slate-500"&gt;Rental fee (your earnings)&lt;/dt&gt;\n
+                    &lt;dd class="font-medium text-slate-800"&gt;₱300.00&lt;/dd&gt;\n
+                &lt;/div&gt;\n
+                &lt;div class="flex justify-between"&gt;\n
+                    &lt;dt class="text-slate-500"&gt;Security deposit (held, not your revenue)&lt;/dt&gt;\n
+                    &lt;dd class="font-medium text-slate-800"&gt;₱500.00&lt;/dd&gt;\n
+                &lt;/div&gt;\n
+                &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;            &lt;/dl&gt;\n
+        &lt;/div&gt;\n
+    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;&lt;/div&gt;\n
+                &lt;/main&gt;\n
+            &lt;/div&gt;\n
+        &lt;/div&gt;\n
+    &lt;!-- Livewire Scripts --&gt;\n
+&lt;script src="/livewire/livewire.js?id=bd51a0a6"   data-csrf="QQMKfVotJIs6iTvugpXT12zfDadBGpfkzhHo5r4W" data-update-uri="/livewire/update" data-navigate-once="true"&gt;&lt;/script&gt;\n
+&lt;/body&gt;\n
+&lt;/html&gt;\n
+' [UTF-8](length: 30111) contains "LENDLY-DJLZJRHNFW" [ASCII](length: 17).
+&#13;
+C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:710
+C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php:220</failure>
+    </testcase>
+    <testcase name="test_fr42_paid_booking_displays_reserved_status" file="C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php" line="223" class="Tests\Audit\RequirementsAuditTest" classname="Tests.Audit.RequirementsAuditTest" assertions="2" time="3.270505">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Audit\RequirementsAuditTest::test_fr42_paid_booking_displays_reserved_status&#13;
+Failed asserting that '&lt;!DOCTYPE html&gt;\n
+&lt;html lang="en"&gt;\n
+    &lt;head&gt;\n
+        &lt;meta charset="utf-8"&gt;\n
+        &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;\n
+        &lt;meta name="csrf-token" content="4OfvYX3LREImrJkfD7noLmF1bWFfj1ZY9zqfy2Qj"&gt;\n
+\n
+        &lt;title&gt;Tala&lt;/title&gt;\n
+\n
+        &lt;link rel="preconnect" href="https://fonts.bunny.net"&gt;\n
+        &lt;link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&amp;display=swap" rel="stylesheet" /&gt;\n
+\n
+        &lt;link rel="preload" as="style" href="http://localhost:8000/build/assets/app-Ci-EAem2.css" /&gt;&lt;link rel="preload" as="style" href="http://localhost:8000/build/assets/app-CG6DamIu.css" /&gt;&lt;link rel="modulepreload" as="script" href="http://localhost:8000/build/assets/app-CViR4GL1.js" /&gt;&lt;link rel="stylesheet" href="http://localhost:8000/build/assets/app-Ci-EAem2.css" data-navigate-track="reload" /&gt;&lt;link rel="stylesheet" href="http://localhost:8000/build/assets/app-CG6DamIu.css" data-navigate-track="reload" /&gt;&lt;script type="module" src="http://localhost:8000/build/assets/app-CViR4GL1.js" data-navigate-track="reload"&gt;&lt;/script&gt;    &lt;!-- Livewire Styles --&gt;&lt;style &gt;[wire\:loading][wire\:loading], [wire\:loading\.delay][wire\:loading\.delay], [wire\:loading\.inline-block][wire\:loading\.inline-block], [wire\:loading\.inline][wire\:loading\.inline], [wire\:loading\.block][wire\:loading\.block], [wire\:loading\.flex][wire\:loading\.flex], [wire\:loading\.table][wire\:loading\.table], [wire\:loading\.grid][wire\:loading\.grid], [wire\:loading\.inline-flex][wire\:loading\.inline-flex] {display: none;}[wire\:loading\.delay\.none][wire\:loading\.delay\.none], [wire\:loading\.delay\.shortest][wire\:loading\.delay\.shortest], [wire\:loading\.delay\.shorter][wire\:loading\.delay\.shorter], [wire\:loading\.delay\.short][wire\:loading\.delay\.short], [wire\:loading\.delay\.default][wire\:loading\.delay\.default], [wire\:loading\.delay\.long][wire\:loading\.delay\.long], [wire\:loading\.delay\.longer][wire\:loading\.delay\.longer], [wire\:loading\.delay\.longest][wire\:loading\.delay\.longest] {display: none;}[wire\:offline][wire\:offline] {display: none;}[wire\:dirty]:not(textarea):not(input):not(select) {display: none;}:root {--livewire-progress-bar-color: #2299dd;}[x-cloak] {display: none !important;}[wire\:cloak] {display: none !important;}dialog#livewire-error::backdrop {background-color: rgba(0, 0, 0, .6);}&lt;/style&gt;\n
+&lt;/head&gt;\n
+    &lt;body class="bg-slate-50 font-sans text-slate-900 antialiased"&gt;\n
+        &lt;div x-data class="min-h-screen lg:flex"&gt;\n
+            &lt;div wire:snapshot="{&amp;quot;data&amp;quot;:[],&amp;quot;memo&amp;quot;:{&amp;quot;id&amp;quot;:&amp;quot;H4GbXtYPhzLHhuoA5pmZ&amp;quot;,&amp;quot;name&amp;quot;:&amp;quot;layout.sidebar&amp;quot;,&amp;quot;path&amp;quot;:&amp;quot;listings\/1&amp;quot;,&amp;quot;method&amp;quot;:&amp;quot;GET&amp;quot;,&amp;quot;release&amp;quot;:&amp;quot;a-a-a&amp;quot;,&amp;quot;children&amp;quot;:[],&amp;quot;scripts&amp;quot;:[],&amp;quot;assets&amp;quot;:[],&amp;quot;errors&amp;quot;:[],&amp;quot;locale&amp;quot;:&amp;quot;en&amp;quot;},&amp;quot;checksum&amp;quot;:&amp;quot;5c4cb56851eb6950a93aa539408c31ecdfc43640beefc31d6bebd0a7d195162b&amp;quot;}" wire:effects="[]" wire:id="H4GbXtYPhzLHhuoA5pmZ"\n
+    x-data="{\n
+        open: false,\n
+        collapsed: localStorage.getItem('sidebar-collapsed') === 'true',\n
+        toggleCollapsed() {\n
+            this.collapsed = ! this.collapsed;\n
+            localStorage.setItem('sidebar-collapsed', this.collapsed);\n
+        },\n
+    }"\n
+    @toggle-sidebar.window="open = ! open"\n
+    @close-sidebar.window="open = false"\n
+&gt;\n
+    &lt;!-- Mobile overlay --&gt;\n
+    &lt;div x-show="open" x-transition.opacity @click="open = false" class="fixed inset-0 z-30 bg-slate-900/50 lg:hidden" style="display: none;"&gt;&lt;/div&gt;\n
+\n
+    &lt;aside\n
+        :class="[open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0', collapsed ? 'lg:w-20' : 'lg:w-72']"\n
+        class="fixed inset-y-0 left-0 z-40 flex w-72 shrink-0 flex-col border-r border-indigo-900 bg-gradient-to-b from-indigo-950 to-indigo-900 transition-all duration-200 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:translate-x-0"\n
+    &gt;\n
+        &lt;div class="flex h-12 items-center justify-between border-b border-indigo-900 px-4" :class="collapsed &amp;&amp; 'lg:justify-center lg:px-0'"&gt;\n
+            &lt;a href="http://localhost:8000/dashboard" wire:navigate class="flex items-center gap-2"&gt;\n
+                &lt;span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-indigo-600 text-[10px] font-bold text-white"&gt;L&lt;/span&gt;\n
+                &lt;span class="text-sm font-semibold tracking-tight text-white" x-show="!collapsed" x-cloak x-transition.opacity.duration.100ms&gt;Lendly&lt;/span&gt;\n
+            &lt;/a&gt;\n
+            &lt;button @click="open = false" class="rounded-md p-1 text-indigo-300 hover:bg-indigo-900 hover:text-white lg:hidden"&gt;\n
+                &lt;svg class="h-5 w-5 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6 6 18" /&gt;\n
+&lt;/svg&gt;\n
+            &lt;/button&gt;\n
+        &lt;/div&gt;\n
+\n
+        &lt;button\n
+            type="button"\n
+            @click="toggleCollapsed()"\n
+            class="absolute -right-3 top-3 z-10 hidden h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm hover:text-blue-600 lg:flex"\n
+            :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"\n
+        &gt;\n
+            &lt;svg class="h-5 w-5 h-3.5 w-3.5 transition-transform" x-bind:class="{ '-rotate-90': !collapsed, 'rotate-90': collapsed }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" /&gt;\n
+&lt;/svg&gt;\n
+        &lt;/button&gt;\n
+\n
+        &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+        &lt;nav class="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-3 py-4"&gt;\n
+            &lt;a class="flex items-center gap-3 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm" href="http://localhost:8000/listings" wire:navigate="" x-bind:class="collapsed &amp;&amp; 'lg:justify-center lg:px-0'" x-bind:title="collapsed ? 'Browse' : null"&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;        &lt;svg class="h-5 w-5 h-5 w-5 shrink-0 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;circle cx="10.5" cy="10.5" r="6.5" /&gt;&lt;path stroke-linecap="round" d="m20 20-4.8-4.8" /&gt;\n
+&lt;/svg&gt;\n
+    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;    &lt;span class="truncate" x-bind:class="collapsed &amp;&amp; 'lg:hidden'"&gt;Browse&lt;/span&gt;\n
+&lt;/a&gt;\n
+            &lt;a class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-indigo-200 hover:bg-indigo-900 hover:text-white" href="http://localhost:8000/map" wire:navigate="" x-bind:class="collapsed &amp;&amp; 'lg:justify-center lg:px-0'" x-bind:title="collapsed ? 'Map' : null"&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;        &lt;svg class="h-5 w-5 h-5 w-5 shrink-0 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="M12 21s7-7.2 7-12.5A7 7 0 1 0 5 8.5C5 13.8 12 21 12 21Z" /&gt;&lt;circle cx="12" cy="8.5" r="2.25" /&gt;\n
+&lt;/svg&gt;\n
+    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;    &lt;span class="truncate" x-bind:class="collapsed &amp;&amp; 'lg:hidden'"&gt;Map&lt;/span&gt;\n
+&lt;/a&gt;\n
+\n
+            &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;                &lt;a class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-indigo-200 hover:bg-indigo-900 hover:text-white" href="http://localhost:8000/dashboard" wire:navigate="" x-bind:class="collapsed &amp;&amp; 'lg:justify-center lg:px-0'" x-bind:title="collapsed ? 'Dashboard' : null"&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;        &lt;svg class="h-5 w-5 h-5 w-5 shrink-0 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="M3 11.5 12 4l9 7.5M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9" /&gt;\n
+&lt;/svg&gt;\n
+    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;    &lt;span class="truncate" x-bind:class="collapsed &amp;&amp; 'lg:hidden'"&gt;Dashboard&lt;/span&gt;\n
+&lt;/a&gt;\n
+\n
+                &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;                    &lt;p class="flex items-center gap-1.5 px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wider text-indigo-400" x-show="!collapsed" x-cloak&gt;\n
+                        &lt;span class="h-1.5 w-1.5 rounded-full bg-blue-400"&gt;&lt;/span&gt; Renting\n
+                    &lt;/p&gt;\n
+                    &lt;a class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-indigo-200 hover:bg-indigo-900 hover:text-white" href="http://localhost:8000/renter/rental-requests" wire:navigate="" x-bind:class="collapsed &amp;&amp; 'lg:justify-center lg:px-0'" x-bind:title="collapsed ? 'My Requests' : null"&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;        &lt;svg class="h-5 w-5 h-5 w-5 shrink-0 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="M4 12h4l2 3h4l2-3h4M4 12l1.4-6.3A1 1 0 0 1 6.4 5h11.2a1 1 0 0 1 1 .7L20 12M4 12v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6" /&gt;\n
+&lt;/svg&gt;\n
+    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;    &lt;span class="truncate" x-bind:class="collapsed &amp;&amp; 'lg:hidden'"&gt;My Requests&lt;/span&gt;\n
+&lt;/a&gt;\n
+                    &lt;a class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-indigo-200 hover:bg-indigo-900 hover:text-white" href="http://localhost:8000/renter/rentals" wire:navigate="" x-bind:class="collapsed &amp;&amp; 'lg:justify-center lg:px-0'" x-bind:title="collapsed ? 'My Rentals' : null"&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;        &lt;svg class="h-5 w-5 h-5 w-5 shrink-0 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;rect x="4" y="4" width="16" height="4.5" rx="1" /&gt;&lt;path stroke-linecap="round" stroke-linejoin="round" d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5M10 13h4" /&gt;\n
+&lt;/svg&gt;\n
+    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;    &lt;span class="truncate" x-bind:class="collapsed &amp;&amp; 'lg:hidden'"&gt;My Rentals&lt;/span&gt;\n
+&lt;/a&gt;\n
+                &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+                &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;                    &lt;p class="flex items-center gap-1.5 px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wider text-indigo-400" x-show="!collapsed" x-cloak&gt;\n
+                        &lt;span class="h-1.5 w-1.5 rounded-full bg-violet-400"&gt;&lt;/span&gt; Owning\n
+                    &lt;/p&gt;\n
+                    &lt;a class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-indigo-200 hover:bg-indigo-900 hover:text-white" href="http://localhost:8000/owner/listings" wire:navigate="" x-bind:class="collapsed &amp;&amp; 'lg:justify-center lg:px-0'" x-bind:title="collapsed ? 'My Listings' : null"&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;        &lt;svg class="h-5 w-5 h-5 w-5 shrink-0 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="M11.6 3.5H6a1 1 0 0 0-1 1v5.6a1 1 0 0 0 .3.7l9 9a1 1 0 0 0 1.4 0l5.6-5.6a1 1 0 0 0 0-1.4l-9-9a1 1 0 0 0-.7-.3Z" /&gt;&lt;circle cx="8.5" cy="8.5" r="1.25" /&gt;\n
+&lt;/svg&gt;\n
+    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;    &lt;span class="truncate" x-bind:class="collapsed &amp;&amp; 'lg:hidden'"&gt;My Listings&lt;/span&gt;\n
+&lt;/a&gt;\n
+                    &lt;a class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-indigo-200 hover:bg-indigo-900 hover:text-white" href="http://localhost:8000/owner/rental-requests" wire:navigate="" x-bind:class="collapsed &amp;&amp; 'lg:justify-center lg:px-0'" x-bind:title="collapsed ? 'Rental Requests' : null"&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;        &lt;svg class="h-5 w-5 h-5 w-5 shrink-0 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="M4 12h4l2 3h4l2-3h4M4 12l1.4-6.3A1 1 0 0 1 6.4 5h11.2a1 1 0 0 1 1 .7L20 12M4 12v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6" /&gt;\n
+&lt;/svg&gt;\n
+    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;    &lt;span class="truncate" x-bind:class="collapsed &amp;&amp; 'lg:hidden'"&gt;Rental Requests&lt;/span&gt;\n
+&lt;/a&gt;\n
+                    &lt;a class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-indigo-200 hover:bg-indigo-900 hover:text-white" href="http://localhost:8000/owner/rentals" wire:navigate="" x-bind:class="collapsed &amp;&amp; 'lg:justify-center lg:px-0'" x-bind:title="collapsed ? 'My Rentals' : null"&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;        &lt;svg class="h-5 w-5 h-5 w-5 shrink-0 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;rect x="4" y="4" width="16" height="4.5" rx="1" /&gt;&lt;path stroke-linecap="round" stroke-linejoin="round" d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5M10 13h4" /&gt;\n
+&lt;/svg&gt;\n
+    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;    &lt;span class="truncate" x-bind:class="collapsed &amp;&amp; 'lg:hidden'"&gt;My Rentals&lt;/span&gt;\n
+&lt;/a&gt;\n
+                &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+                &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;            &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;        &lt;/nav&gt;\n
+\n
+        &lt;div class="border-t border-indigo-900 p-3"&gt;\n
+            &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;                &lt;div x-show="!collapsed" x-cloak&gt;\n
+                    &lt;div class="relative" x-data="{ open: false }" @click.outside="open = false" @close.stop="open = false"&gt;\n
+    &lt;div @click="open = ! open"&gt;\n
+        &lt;button class="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-indigo-900"&gt;\n
+                                &lt;span class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-sm font-semibold text-blue-700"&gt;\n
+                                    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;                                        V\n
+                                    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;                                &lt;/span&gt;\n
+                                &lt;span class="min-w-0 flex-1"&gt;\n
+                                    &lt;span class="block truncate text-sm font-medium text-white" x-data="{&amp;quot;name&amp;quot;:&amp;quot;Valerie Daugherty&amp;quot;}" x-text="name" x-on:profile-updated.window="name = $event.detail.name"&gt;&lt;/span&gt;\n
+                                    &lt;span class="block truncate text-xs text-indigo-300"&gt;pfannerstill.carrie@example.net&lt;/span&gt;\n
+                                &lt;/span&gt;\n
+                                &lt;svg class="h-5 w-5 h-4 w-4 shrink-0 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" /&gt;\n
+&lt;/svg&gt;\n
+                            &lt;/button&gt;\n
+    &lt;/div&gt;\n
+\n
+    &lt;div x-show="open"\n
+            x-transition:enter="transition ease-out duration-200"\n
+            x-transition:enter-start="opacity-0 scale-95"\n
+            x-transition:enter-end="opacity-100 scale-100"\n
+            x-transition:leave="transition ease-in duration-75"\n
+            x-transition:leave-start="opacity-100 scale-100"\n
+            x-transition:leave-end="opacity-0 scale-95"\n
+            class="absolute z-50 mt-2 64 rounded-xl shadow-lg origin-top"\n
+            style="display: none;"\n
+            @click="open = false"&gt;\n
+        &lt;div class="rounded-xl border border-slate-200 py-1 bg-white"&gt;\n
+            &lt;a class="block w-full px-4 py-2 text-start text-sm leading-5 text-slate-700 transition duration-150 ease-in-out hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:outline-none" href="http://localhost:8000/profile" wire:navigate=""&gt;Profile&lt;/a&gt;\n
+\n
+                            &lt;button wire:click="logout" class="w-full text-start"&gt;\n
+                                &lt;a class="block w-full px-4 py-2 text-start text-sm leading-5 text-slate-700 transition duration-150 ease-in-out hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:outline-none"&gt;Log Out&lt;/a&gt;\n
+                            &lt;/button&gt;\n
+        &lt;/div&gt;\n
+    &lt;/div&gt;\n
+&lt;/div&gt;\n
+                &lt;/div&gt;\n
+\n
+                &lt;a href="http://localhost:8000/profile" wire:navigate x-show="collapsed" x-cloak class="hidden items-center justify-center rounded-full p-1 hover:bg-indigo-900" title="Valerie Daugherty"&gt;\n
+                    &lt;span class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-sm font-semibold text-blue-700"&gt;\n
+                        &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;                            V\n
+                        &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;                    &lt;/span&gt;\n
+                &lt;/a&gt;\n
+            &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;        &lt;/div&gt;\n
+    &lt;/aside&gt;\n
+&lt;/div&gt;\n
+            &lt;div class="min-w-0 flex-1"&gt;\n
+                &lt;!-- Top bar --&gt;\n
+                &lt;div class="sticky top-0 z-20 flex min-h-16 items-center justify-between overflow-hidden bg-gradient-to-r from-blue-100 to-indigo-100 bg-cover bg-right px-4 py-2 shadow-sm sm:px-6 lg:px-8" style="background-image: linear-gradient(90deg, rgba(219,234,254,.98) 0%, rgba(224,231,255,.94) 52%, rgba(15,23,42,.38) 100%), url('http://localhost:8000/images/rental-hero.png');"&gt;\n
+                    &lt;a href="http://localhost:8000/dashboard" wire:navigate class="flex items-center gap-2 lg:hidden"&gt;\n
+                        &lt;span class="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-indigo-600 text-[10px] font-bold text-white"&gt;L&lt;/span&gt;\n
+                        &lt;span class="text-sm font-semibold tracking-tight text-slate-900"&gt;Lendly&lt;/span&gt;\n
+                    &lt;/a&gt;\n
+\n
+                    &lt;span class="hidden lg:block"&gt;&lt;/span&gt;\n
+\n
+                    &lt;div class="flex items-center gap-1"&gt;\n
+                                                    &lt;div wire:snapshot="{&amp;quot;data&amp;quot;:{&amp;quot;open&amp;quot;:false},&amp;quot;memo&amp;quot;:{&amp;quot;id&amp;quot;:&amp;quot;gFmH1Xs7wW1GHPKkhhku&amp;quot;,&amp;quot;name&amp;quot;:&amp;quot;notifications.bell&amp;quot;,&amp;quot;path&amp;quot;:&amp;quot;listings\/1&amp;quot;,&amp;quot;method&amp;quot;:&amp;quot;GET&amp;quot;,&amp;quot;release&amp;quot;:&amp;quot;a-a-a&amp;quot;,&amp;quot;children&amp;quot;:[],&amp;quot;scripts&amp;quot;:[],&amp;quot;assets&amp;quot;:[],&amp;quot;errors&amp;quot;:[],&amp;quot;locale&amp;quot;:&amp;quot;en&amp;quot;},&amp;quot;checksum&amp;quot;:&amp;quot;9fd4adf5816ebfb6ed443ee7ab8d163a508b6b7eeb04488bb5b72efcb89834c0&amp;quot;}" wire:effects="{&amp;quot;listeners&amp;quot;:[&amp;quot;notifications-refresh&amp;quot;]}" wire:id="gFmH1Xs7wW1GHPKkhhku" class="relative" x-data x-on:click.outside="$wire.open = false"&gt;\n
+    &lt;button type="button" wire:click="toggle" class="relative inline-flex items-center justify-center rounded-md border border-blue-200 bg-white p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"&gt;\n
+        &lt;svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"&gt;\n
+            &lt;path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" /&gt;\n
+        &lt;/svg&gt;\n
+        &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;    &lt;/button&gt;\n
+\n
+    &lt;div x-show="$wire.open" x-cloak class="absolute right-0 z-50 mt-2 w-80 rounded-lg border border-slate-200 bg-white shadow-lg"&gt;\n
+        &lt;div class="flex items-center justify-between border-b border-slate-100 px-4 py-3"&gt;\n
+            &lt;p class="text-sm font-semibold text-slate-800"&gt;Notifications&lt;/p&gt;\n
+            &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;        &lt;/div&gt;\n
+\n
+        &lt;div class="max-h-96 overflow-y-auto"&gt;\n
+            &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;                &lt;p class="px-4 py-6 text-center text-sm text-slate-400"&gt;You're all caught up.&lt;/p&gt;\n
+            &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;        &lt;/div&gt;\n
+\n
+        &lt;a href="http://localhost:8000/notifications" wire:navigate class="block border-t border-slate-100 px-4 py-2 text-center text-xs font-medium text-blue-600 hover:text-blue-800"&gt;\n
+            View all notifications\n
+        &lt;/a&gt;\n
+    &lt;/div&gt;\n
+&lt;/div&gt;\n
+                            &lt;a href="http://localhost:8000/messages" wire:navigate class="relative rounded-md border border-blue-200 bg-white p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"&gt;\n
+                                &lt;svg class="h-5 w-5 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;rect x="3.5" y="5" width="17" height="11" rx="2.5" /&gt;&lt;path d="M7 16 L7 20 L11 16 Z" fill="currentColor" stroke="none" /&gt;&lt;path stroke-linecap="round" d="M7.5 9h9M7.5 12.5h6" /&gt;\n
+&lt;/svg&gt;\n
+                                                            &lt;/a&gt;\n
+                                                &lt;button @click="$dispatch('toggle-sidebar')" class="rounded-md p-1 text-slate-500 hover:bg-blue-100/60 hover:text-slate-700 lg:hidden"&gt;\n
+                            &lt;svg class="h-5 w-5 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" /&gt;\n
+&lt;/svg&gt;\n
+                        &lt;/button&gt;\n
+                    &lt;/div&gt;\n
+                &lt;/div&gt;\n
+\n
+                &lt;main&gt;\n
+                    &lt;div wire:snapshot="{&amp;quot;data&amp;quot;:{&amp;quot;listing&amp;quot;:[null,{&amp;quot;class&amp;quot;:&amp;quot;App\\Models\\Listing&amp;quot;,&amp;quot;key&amp;quot;:1,&amp;quot;s&amp;quot;:&amp;quot;mdl&amp;quot;}]},&amp;quot;memo&amp;quot;:{&amp;quot;id&amp;quot;:&amp;quot;odE7kqLx2rbv1EiCEMHB&amp;quot;,&amp;quot;name&amp;quot;:&amp;quot;listings.show&amp;quot;,&amp;quot;path&amp;quot;:&amp;quot;listings\/1&amp;quot;,&amp;quot;method&amp;quot;:&amp;quot;GET&amp;quot;,&amp;quot;release&amp;quot;:&amp;quot;a-a-a&amp;quot;,&amp;quot;children&amp;quot;:[],&amp;quot;scripts&amp;quot;:[],&amp;quot;assets&amp;quot;:[],&amp;quot;errors&amp;quot;:[],&amp;quot;locale&amp;quot;:&amp;quot;en&amp;quot;},&amp;quot;checksum&amp;quot;:&amp;quot;722753bfd6a5c0014b0d79d8d6d08ab8b3adb64b82c83de9f9b698fce5ad5226&amp;quot;}" wire:effects="[]" wire:id="odE7kqLx2rbv1EiCEMHB" class="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8" x-data&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+    &lt;div class="grid grid-cols-1 gap-8 lg:grid-cols-3"&gt;\n
+        &lt;div class="lg:col-span-2"&gt;\n
+            &lt;div class="overflow-hidden rounded-xl border border-slate-200 bg-white"&gt;\n
+                &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;                    &lt;div class="flex aspect-[4/3] w-full items-center justify-center bg-slate-100 text-slate-300"&gt;No photos&lt;/div&gt;\n
+                &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;            &lt;/div&gt;\n
+\n
+            &lt;div class="mt-6"&gt;\n
+                &lt;div class="flex flex-wrap items-center gap-2"&gt;\n
+                    &lt;span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset bg-slate-100 text-slate-700 ring-slate-600/10"&gt;\n
+    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;        &lt;svg class="h-5 w-5 h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="M11.6 3.5H6a1 1 0 0 0-1 1v5.6a1 1 0 0 0 .3.7l9 9a1 1 0 0 0 1.4 0l5.6-5.6a1 1 0 0 0 0-1.4l-9-9a1 1 0 0 0-.7-.3Z" /&gt;&lt;circle cx="8.5" cy="8.5" r="1.25" /&gt;\n
+&lt;/svg&gt;\n
+    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;    Audit tools\n
+&lt;/span&gt;\n
+                    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;                    &lt;span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-700"&gt;\n
+    Good\n
+&lt;/span&gt;\n
+                    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;                &lt;/div&gt;\n
+                &lt;h1 class="mt-3 text-2xl font-bold tracking-tight text-slate-900"&gt;Audit camera&lt;/h1&gt;\n
+                &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+                &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+                &lt;p class="mt-4 whitespace-pre-line text-sm text-slate-700"&gt;Disposable audit fixture.&lt;/p&gt;\n
+\n
+                &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+                &lt;dl class="mt-6 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3"&gt;\n
+                    &lt;div class="rounded-lg border border-slate-200 bg-white p-3"&gt;\n
+                        &lt;dt class="flex items-center gap-1.5 text-xs text-slate-400"&gt;&lt;svg class="h-5 w-5 h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="M12 21s7-7.2 7-12.5A7 7 0 1 0 5 8.5C5 13.8 12 21 12 21Z" /&gt;&lt;circle cx="12" cy="8.5" r="2.25" /&gt;\n
+&lt;/svg&gt;\n
+ Location&lt;/dt&gt;\n
+                        &lt;dd class="mt-1 font-medium text-slate-700"&gt;Manila&lt;/dd&gt;\n
+                    &lt;/div&gt;\n
+                    &lt;div class="rounded-lg border border-slate-200 bg-white p-3"&gt;\n
+                        &lt;dt class="flex items-center gap-1.5 text-xs text-slate-400"&gt;&lt;svg class="h-5 w-5 h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;rect x="6" y="4" width="12" height="17" rx="1.5" /&gt;&lt;path stroke-linecap="round" d="M9 3.5h6v2H9zM9 10h6M9 13h6M9 16h4" /&gt;\n
+&lt;/svg&gt;\n
+ Max duration&lt;/dt&gt;\n
+                        &lt;dd class="mt-1 font-medium text-slate-700"&gt;10 days&lt;/dd&gt;\n
+                    &lt;/div&gt;\n
+                    &lt;div class="rounded-lg border border-slate-200 bg-white p-3"&gt;\n
+                        &lt;dt class="flex items-center gap-1.5 text-xs text-slate-400"&gt;&lt;svg class="h-5 w-5 h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;rect x="4" y="4" width="16" height="4.5" rx="1" /&gt;&lt;path stroke-linecap="round" stroke-linejoin="round" d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5M10 13h4" /&gt;\n
+&lt;/svg&gt;\n
+ Fulfillment&lt;/dt&gt;\n
+                        &lt;dd class="mt-1 font-medium text-slate-700"&gt;\n
+                            Pickup\n
+                        &lt;/dd&gt;\n
+                    &lt;/div&gt;\n
+                &lt;/dl&gt;\n
+\n
+                &lt;div class="mt-8" x-data="availabilityCalendar(JSON.parse('[{\u0022start\u0022:\u00222026-10-09\u0022,\u0022end\u0022:\u00222026-10-11\u0022}]'))"&gt;\n
+                    &lt;h2 class="flex items-center gap-1.5 text-sm font-semibold text-slate-700"&gt;\n
+                        &lt;svg class="h-5 w-5 h-4 w-4 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;rect x="6" y="4" width="12" height="17" rx="1.5" /&gt;&lt;path stroke-linecap="round" d="M9 3.5h6v2H9zM9 10h6M9 13h6M9 16h4" /&gt;\n
+&lt;/svg&gt;\n
+                        Availability\n
+                    &lt;/h2&gt;\n
+                    &lt;div class="mt-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"&gt;\n
+                        &lt;div class="flex items-center justify-between"&gt;\n
+                            &lt;button type="button" @click="prevMonth" class="rounded-md p-1 text-slate-400 hover:bg-blue-50 hover:text-blue-600"&gt;\n
+                                &lt;svg class="h-5 w-5 h-4 w-4 rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" /&gt;\n
+&lt;/svg&gt;\n
+                            &lt;/button&gt;\n
+                            &lt;p class="text-sm font-medium text-slate-800" x-text="monthLabel"&gt;&lt;/p&gt;\n
+                            &lt;button type="button" @click="nextMonth" class="rounded-md p-1 text-slate-400 hover:bg-blue-50 hover:text-blue-600"&gt;\n
+                                &lt;svg class="h-5 w-5 h-4 w-4 -rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"&gt;\n
+    &lt;path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" /&gt;\n
+&lt;/svg&gt;\n
+                            &lt;/button&gt;\n
+                        &lt;/div&gt;\n
+\n
+                        &lt;div class="mt-3 grid grid-cols-7 gap-1 text-center text-xs font-medium text-slate-400"&gt;\n
+                            &lt;span&gt;Su&lt;/span&gt;&lt;span&gt;Mo&lt;/span&gt;&lt;span&gt;Tu&lt;/span&gt;&lt;span&gt;We&lt;/span&gt;&lt;span&gt;Th&lt;/span&gt;&lt;span&gt;Fr&lt;/span&gt;&lt;span&gt;Sa&lt;/span&gt;\n
+                        &lt;/div&gt;\n
+\n
+                        &lt;template x-for="(week, wi) in weeks" :key="wi"&gt;\n
+                            &lt;div class="grid grid-cols-7 gap-1"&gt;\n
+                                &lt;template x-for="(day, di) in week" :key="di"&gt;\n
+                                    &lt;div\n
+                                        class="flex h-8 items-center justify-center rounded-md text-xs"\n
+                                        :class="{\n
+                                            'text-slate-200': !day,\n
+                                            'bg-rose-100 text-rose-600 font-medium': day &amp;&amp; isBooked(day),\n
+                                            'text-slate-300': day &amp;&amp; isPast(day) &amp;&amp; !isBooked(day),\n
+                                            'bg-blue-50 text-slate-700 hover:bg-blue-100': day &amp;&amp; !isPast(day) &amp;&amp; !isBooked(day),\n
+                                        }"\n
+                                        x-text="day ? day.getDate() : ''"\n
+                                    &gt;&lt;/div&gt;\n
+                                &lt;/template&gt;\n
+                            &lt;/div&gt;\n
+                        &lt;/template&gt;\n
+\n
+                        &lt;div class="mt-3 flex items-center gap-4 text-xs text-slate-500"&gt;\n
+                            &lt;span class="flex items-center gap-1.5"&gt;&lt;span class="h-2.5 w-2.5 rounded-full bg-rose-200"&gt;&lt;/span&gt; Booked&lt;/span&gt;\n
+                            &lt;span class="flex items-center gap-1.5"&gt;&lt;span class="h-2.5 w-2.5 rounded-full bg-blue-100"&gt;&lt;/span&gt; Available&lt;/span&gt;\n
+                        &lt;/div&gt;\n
+                    &lt;/div&gt;\n
+                &lt;/div&gt;\n
+\n
+                &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;            &lt;/div&gt;\n
+        &lt;/div&gt;\n
+\n
+        &lt;div&gt;\n
+            &lt;div class="sticky top-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"&gt;\n
+                &lt;div class="p-6"&gt;\n
+                    &lt;p class="text-2xl font-bold text-slate-900"&gt;\n
+                        ₱100.00\n
+                        &lt;span class="text-sm font-normal text-slate-400"&gt;/day&lt;/span&gt;\n
+                    &lt;/p&gt;\n
+\n
+                    &lt;dl class="mt-3 space-y-1 text-sm text-slate-500"&gt;\n
+                        &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;                        &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;                        &lt;div class="flex justify-between"&gt;&lt;dt&gt;Security deposit&lt;/dt&gt;&lt;dd&gt;₱500.00&lt;/dd&gt;&lt;/div&gt;\n
+                    &lt;/dl&gt;\n
+\n
+                    &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;                        &lt;a href="http://localhost:8000/renter/listings/1/request" wire:navigate class="mt-5 block w-full rounded-lg bg-blue-600 px-4 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-blue-700"&gt;\n
+                            Request to rent\n
+                        &lt;/a&gt;\n
+                    &lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;\n
+                    &lt;div class="mt-6 flex items-center gap-3 border-t border-slate-100 pt-4"&gt;\n
+                        &lt;span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700"&gt;\n
+                            G\n
+                        &lt;/span&gt;\n
+                        &lt;div&gt;\n
+                            &lt;p class="text-xs font-medium text-slate-400"&gt;Listed by&lt;/p&gt;\n
+                            &lt;p class="font-medium text-slate-800"&gt;Giuseppe Beahan&lt;/p&gt;\n
+                            &lt;!--[if BLOCK]&gt;&lt;![endif]--&gt;&lt;!--[if ENDBLOCK]&gt;&lt;![endif]--&gt;                        &lt;/div&gt;\n
+                    &lt;/div&gt;\n
+                &lt;/div&gt;\n
+            &lt;/div&gt;\n
+        &lt;/div&gt;\n
+    &lt;/div&gt;\n
+\n
+&lt;/div&gt;\n
+                &lt;/main&gt;\n
+            &lt;/div&gt;\n
+        &lt;/div&gt;\n
+    &lt;!-- Livewire Scripts --&gt;\n
+&lt;script src="/livewire/livewire.js?id=bd51a0a6"   data-csrf="4OfvYX3LREImrJkfD7noLmF1bWFfj1ZY9zqfy2Qj" data-update-uri="/livewire/update" data-navigate-once="true"&gt;&lt;/script&gt;\n
+&lt;/body&gt;\n
+&lt;/html&gt;\n
+' [UTF-8](length: 31019) contains "Reserved" [ASCII](length: 8).
+&#13;
+C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:710
+C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php:233</failure>
+    </testcase>
+    <testcase name="test_fr34_cancellation_is_blocked_after_owner_marks_the_item_handed_over" file="C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php" line="236" class="Tests\Audit\RequirementsAuditTest" classname="Tests.Audit.RequirementsAuditTest" assertions="1" time="0.180025">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Audit\RequirementsAuditTest::test_fr34_cancellation_is_blocked_after_owner_marks_the_item_handed_over&#13;
+Expected response status code [403] but received 200.
+Failed asserting that 200 is identical to 403.
+&#13;
+C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:175
+C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:141
+C:\laragon\www\lendly\vendor\livewire\livewire\src\Features\SupportTesting\Testable.php:410
+C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php:245</failure>
+    </testcase>
+    <testcase name="test_fr45_closed_rental_prompts_both_parties_on_their_rental_pages" file="C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php" line="248" class="Tests\Audit\RequirementsAuditTest" classname="Tests.Audit.RequirementsAuditTest" assertions="5" time="0.244708"/>
+    <testcase name="test_fr24_deleting_one_account_preserves_the_other_partys_transaction_history" file="C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php" line="263" class="Tests\Audit\RequirementsAuditTest" classname="Tests.Audit.RequirementsAuditTest" assertions="2" time="20.095043">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Audit\RequirementsAuditTest::test_fr24_deleting_one_account_preserves_the_other_partys_transaction_history&#13;
+Failed asserting that a row in the table [rentals] matches the attributes {
+    "id": 1,
+    "owner_id": 1
+}.
+
+The table is empty.
+&#13;
+C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Testing\Concerns\InteractsWithDatabase.php:43
+C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php:273</failure>
+    </testcase>
+    <testcase name="test_fr19_past_due_active_rental_displays_overdue_without_waiting_for_the_daily_job" file="C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php" line="276" class="Tests\Audit\RequirementsAuditTest" classname="Tests.Audit.RequirementsAuditTest" assertions="1" time="0.204280">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Audit\RequirementsAuditTest::test_fr19_past_due_active_rental_displays_overdue_without_waiting_for_the_daily_job&#13;
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'Overdue'
++'Active Rental'
+&#13;
+C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php:283</failure>
+    </testcase>
+    <testcase name="test_fr24_removing_a_listing_does_not_break_the_renters_history_page" file="C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php" line="286" class="Tests\Audit\RequirementsAuditTest" classname="Tests.Audit.RequirementsAuditTest" assertions="1" time="18.825994">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Audit\RequirementsAuditTest::test_fr24_removing_a_listing_does_not_break_the_renters_history_page&#13;
+Expected response status code [200] but received 500.
+Failed asserting that 500 is identical to 200.&#13;
+&#13;
+The following exception occurred during the last request:
+
+ErrorException: Attempt to read property "images" on null in C:\laragon\www\lendly\storage\framework\views\requirements-audit-probes\86eeafa27e961c602dc6d1df4e2d8c3e.php:51
+Stack trace:
+#0 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Bootstrap\HandleExceptions.php(262): Illuminate\Foundation\Bootstrap\HandleExceptions-&gt;handleError(2, 'Attempt to read...', 'C:\\laragon\\www\\...', 51)
+#1 C:\laragon\www\lendly\storage\framework\views\requirements-audit-probes\86eeafa27e961c602dc6d1df4e2d8c3e.php(51): Illuminate\Foundation\Bootstrap\HandleExceptions-&gt;{closure:Illuminate\Foundation\Bootstrap\HandleExceptions::forwardsTo():261}(2, 'Attempt to read...', 'C:\\laragon\\www\\...', 51)
+#2 C:\laragon\www\lendly\vendor\livewire\livewire\src\Mechanisms\ExtendBlade\ExtendedCompilerEngine.php(37): include('C:\\laragon\\www\\...')
+#3 C:\laragon\www\lendly\vendor\livewire\livewire\src\Mechanisms\ExtendBlade\ExtendedCompilerEngine.php(38): App\Livewire\Renter\Rentals\Index-&gt;{closure:Livewire\Mechanisms\ExtendBlade\ExtendedCompilerEngine::evaluatePath():35}()
+#4 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\View\Engines\CompilerEngine.php(76): Livewire\Mechanisms\ExtendBlade\ExtendedCompilerEngine-&gt;evaluatePath('C:/laragon/www/...', Array)
+#5 C:\laragon\www\lendly\vendor\livewire\livewire\src\Mechanisms\ExtendBlade\ExtendedCompilerEngine.php(16): Illuminate\View\Engines\CompilerEngine-&gt;get('C:\\laragon\\www\\...', Array)
+#6 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\View\View.php(208): Livewire\Mechanisms\ExtendBlade\ExtendedCompilerEngine-&gt;get('C:\\laragon\\www\\...', Array)
+#7 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\View\View.php(191): Illuminate\View\View-&gt;getContents()
+#8 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\View\View.php(160): Illuminate\View\View-&gt;renderContents()
+#9 C:\laragon\www\lendly\vendor\livewire\livewire\src\Mechanisms\HandleComponents\HandleComponents.php(288): Illuminate\View\View-&gt;render(Object(Closure))
+#10 C:\laragon\www\lendly\vendor\livewire\livewire\src\Mechanisms\HandleComponents\HandleComponents.php(332): Livewire\Mechanisms\HandleComponents\HandleComponents-&gt;{closure:Livewire\Mechanisms\HandleComponents\HandleComponents::render():280}()
+#11 C:\laragon\www\lendly\vendor\livewire\livewire\src\Mechanisms\HandleComponents\HandleComponents.php(280): Livewire\Mechanisms\HandleComponents\HandleComponents-&gt;trackInRenderStack(Object(App\Livewire\Renter\Rentals\Index), Object(Closure))
+#12 C:\laragon\www\lendly\vendor\livewire\livewire\src\Mechanisms\HandleComponents\HandleComponents.php(54): Livewire\Mechanisms\HandleComponents\HandleComponents-&gt;render(Object(App\Livewire\Renter\Rentals\Index), '&lt;div&gt;&lt;/div&gt;')
+#13 C:\laragon\www\lendly\vendor\livewire\livewire\src\LivewireManager.php(73): Livewire\Mechanisms\HandleComponents\HandleComponents-&gt;mount('App\\Livewire\\Re...', Array, NULL)
+#14 C:\laragon\www\lendly\vendor\livewire\volt\src\LivewireManager.php(23): Livewire\LivewireManager-&gt;mount('App\\Livewire\\Re...', Array, NULL, Array)
+#15 C:\laragon\www\lendly\vendor\livewire\livewire\src\Features\SupportPageComponents\HandlesPageComponents.php(17): Livewire\Volt\LivewireManager-&gt;mount('App\\Livewire\\Re...', Array)
+#16 C:\laragon\www\lendly\vendor\livewire\livewire\src\Features\SupportPageComponents\SupportPageComponents.php(117): Livewire\Component-&gt;{closure:Livewire\Features\SupportPageComponents\HandlesPageComponents::__invoke():14}()
+#17 C:\laragon\www\lendly\vendor\livewire\livewire\src\Features\SupportPageComponents\HandlesPageComponents.php(14): Livewire\Features\SupportPageComponents\SupportPageComponents::interceptTheRenderOfTheComponentAndRetreiveTheLayoutConfiguration(Object(Closure))
+#18 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Routing\ControllerDispatcher.php(46): Livewire\Component-&gt;__invoke()
+#19 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Routing\Route.php(265): Illuminate\Routing\ControllerDispatcher-&gt;dispatch(Object(Illuminate\Routing\Route), Object(App\Livewire\Renter\Rentals\Index), '__invoke')
+#20 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Routing\Route.php(211): Illuminate\Routing\Route-&gt;runController()
+#21 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Routing\Router.php(822): Illuminate\Routing\Route-&gt;run()
+#22 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(180): Illuminate\Routing\Router-&gt;{closure:Illuminate\Routing\Router::runRouteWithinStack():821}(Object(Illuminate\Http\Request))
+#23 C:\laragon\www\lendly\app\Http\Middleware\EnsureUserHasRole.php(32): Illuminate\Pipeline\Pipeline-&gt;{closure:Illuminate\Pipeline\Pipeline::prepareDestination():178}(Object(Illuminate\Http\Request))
+#24 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): App\Http\Middleware\EnsureUserHasRole-&gt;handle(Object(Illuminate\Http\Request), Object(Closure), 'renter')
+#25 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Auth\Middleware\EnsureEmailIsVerified.php(41): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#26 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Auth\Middleware\EnsureEmailIsVerified-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#27 C:\laragon\www\lendly\app\Http\Middleware\EnsureAccountIsActive.php(27): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#28 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): App\Http\Middleware\EnsureAccountIsActive-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#29 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Routing\Middleware\SubstituteBindings.php(50): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#30 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Routing\Middleware\SubstituteBindings-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#31 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Auth\Middleware\Authenticate.php(63): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#32 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Auth\Middleware\Authenticate-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#33 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken.php(87): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#34 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Foundation\Http\Middleware\VerifyCsrfToken-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#35 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\View\Middleware\ShareErrorsFromSession.php(48): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#36 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\View\Middleware\ShareErrorsFromSession-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#37 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Session\Middleware\StartSession.php(120): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#38 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Session\Middleware\StartSession.php(63): Illuminate\Session\Middleware\StartSession-&gt;handleStatefulRequest(Object(Illuminate\Http\Request), Object(Illuminate\Session\Store), Object(Closure))
+#39 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Session\Middleware\StartSession-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#40 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse.php(36): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#41 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#42 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Cookie\Middleware\EncryptCookies.php(74): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#43 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Cookie\Middleware\EncryptCookies-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#44 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(137): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#45 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Routing\Router.php(821): Illuminate\Pipeline\Pipeline-&gt;then(Object(Closure))
+#46 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Routing\Router.php(800): Illuminate\Routing\Router-&gt;runRouteWithinStack(Object(Illuminate\Routing\Route), Object(Illuminate\Http\Request))
+#47 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Routing\Router.php(764): Illuminate\Routing\Router-&gt;runRoute(Object(Illuminate\Http\Request), Object(Illuminate\Routing\Route))
+#48 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Routing\Router.php(753): Illuminate\Routing\Router-&gt;dispatchToRoute(Object(Illuminate\Http\Request))
+#49 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Http\Kernel.php(200): Illuminate\Routing\Router-&gt;dispatch(Object(Illuminate\Http\Request))
+#50 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(180): Illuminate\Foundation\Http\Kernel-&gt;{closure:Illuminate\Foundation\Http\Kernel::dispatchToRouter():197}(Object(Illuminate\Http\Request))
+#51 C:\laragon\www\lendly\vendor\livewire\livewire\src\Features\SupportDisablingBackButtonCache\DisableBackButtonCacheMiddleware.php(19): Illuminate\Pipeline\Pipeline-&gt;{closure:Illuminate\Pipeline\Pipeline::prepareDestination():178}(Object(Illuminate\Http\Request))
+#52 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Livewire\Features\SupportDisablingBackButtonCache\DisableBackButtonCacheMiddleware-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#53 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Http\Middleware\TransformsRequest.php(21): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#54 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull.php(31): Illuminate\Foundation\Http\Middleware\TransformsRequest-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#55 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#56 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Http\Middleware\TransformsRequest.php(21): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#57 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Http\Middleware\TrimStrings.php(51): Illuminate\Foundation\Http\Middleware\TransformsRequest-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#58 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Foundation\Http\Middleware\TrimStrings-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#59 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Http\Middleware\ValidatePostSize.php(27): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#60 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Http\Middleware\ValidatePostSize-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#61 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance.php(109): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#62 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#63 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Http\Middleware\HandleCors.php(61): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#64 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Http\Middleware\HandleCors-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#65 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Http\Middleware\TrustProxies.php(58): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#66 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Http\Middleware\TrustProxies-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#67 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Http\Middleware\InvokeDeferredCallbacks.php(22): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#68 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Foundation\Http\Middleware\InvokeDeferredCallbacks-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#69 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Http\Middleware\ValidatePathEncoding.php(26): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#70 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Http\Middleware\ValidatePathEncoding-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#71 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(137): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#72 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Http\Kernel.php(175): Illuminate\Pipeline\Pipeline-&gt;then(Object(Closure))
+#73 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Http\Kernel.php(144): Illuminate\Foundation\Http\Kernel-&gt;sendRequestThroughRouter(Object(Illuminate\Http\Request))
+#74 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Testing\Concerns\MakesHttpRequests.php(607): Illuminate\Foundation\Http\Kernel-&gt;handle(Object(Illuminate\Http\Request))
+#75 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Testing\Concerns\MakesHttpRequests.php(368): Illuminate\Foundation\Testing\TestCase-&gt;call('GET', 'http://localhos...', Array, Array, Array, Array)
+#76 C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php(295): Illuminate\Foundation\Testing\TestCase-&gt;get('http://localhos...')
+#77 C:\laragon\www\lendly\vendor\phpunit\phpunit\src\Framework\TestCase.php(1667): Tests\Audit\RequirementsAuditTest-&gt;test_fr24_removing_a_listing_does_not_break_the_renters_history_page()
+#78 C:\laragon\www\lendly\vendor\phpunit\phpunit\src\Framework\TestCase.php(519): PHPUnit\Framework\TestCase-&gt;runTest()
+#79 C:\laragon\www\lendly\vendor\phpunit\phpunit\src\Framework\TestRunner\TestRunner.php(87): PHPUnit\Framework\TestCase-&gt;runBare()
+#80 C:\laragon\www\lendly\vendor\phpunit\phpunit\src\Framework\TestCase.php(365): PHPUnit\Framework\TestRunner-&gt;run(Object(Tests\Audit\RequirementsAuditTest))
+#81 C:\laragon\www\lendly\vendor\phpunit\phpunit\src\Framework\TestSuite.php(369): PHPUnit\Framework\TestCase-&gt;run()
+#82 C:\laragon\www\lendly\vendor\phpunit\phpunit\src\TextUI\TestRunner.php(64): PHPUnit\Framework\TestSuite-&gt;run()
+#83 C:\laragon\www\lendly\vendor\phpunit\phpunit\src\TextUI\Application.php(211): PHPUnit\TextUI\TestRunner-&gt;run(Object(PHPUnit\TextUI\Configuration\Configuration), Object(PHPUnit\Runner\ResultCache\DefaultResultCache), Object(PHPUnit\Framework\TestSuite))
+#84 C:\laragon\www\lendly\vendor\phpunit\phpunit\phpunit(104): PHPUnit\TextUI\Application-&gt;run(Array)
+#85 {main}
+
+Next Illuminate\View\ViewException: Attempt to read property "images" on null (View: C:\laragon\www\lendly\resources\views\livewire\renter\rentals\index.blade.php) in C:\laragon\www\lendly\storage\framework\views\requirements-audit-probes\86eeafa27e961c602dc6d1df4e2d8c3e.php:51
+Stack trace:
+#0 C:\laragon\www\lendly\vendor\livewire\livewire\src\Mechanisms\ExtendBlade\ExtendedCompilerEngine.php(58): Illuminate\View\Engines\CompilerEngine-&gt;handleViewException(Object(ErrorException), 1)
+#1 C:\laragon\www\lendly\vendor\livewire\livewire\src\Mechanisms\ExtendBlade\ExtendedCompilerEngine.php(40): Livewire\Mechanisms\ExtendBlade\ExtendedCompilerEngine-&gt;handleViewException(Object(ErrorException), 1)
+#2 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\View\Engines\CompilerEngine.php(76): Livewire\Mechanisms\ExtendBlade\ExtendedCompilerEngine-&gt;evaluatePath('C:/laragon/www/...', Array)
+#3 C:\laragon\www\lendly\vendor\livewire\livewire\src\Mechanisms\ExtendBlade\ExtendedCompilerEngine.php(16): Illuminate\View\Engines\CompilerEngine-&gt;get('C:\\laragon\\www\\...', Array)
+#4 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\View\View.php(208): Livewire\Mechanisms\ExtendBlade\ExtendedCompilerEngine-&gt;get('C:\\laragon\\www\\...', Array)
+#5 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\View\View.php(191): Illuminate\View\View-&gt;getContents()
+#6 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\View\View.php(160): Illuminate\View\View-&gt;renderContents()
+#7 C:\laragon\www\lendly\vendor\livewire\livewire\src\Mechanisms\HandleComponents\HandleComponents.php(288): Illuminate\View\View-&gt;render(Object(Closure))
+#8 C:\laragon\www\lendly\vendor\livewire\livewire\src\Mechanisms\HandleComponents\HandleComponents.php(332): Livewire\Mechanisms\HandleComponents\HandleComponents-&gt;{closure:Livewire\Mechanisms\HandleComponents\HandleComponents::render():280}()
+#9 C:\laragon\www\lendly\vendor\livewire\livewire\src\Mechanisms\HandleComponents\HandleComponents.php(280): Livewire\Mechanisms\HandleComponents\HandleComponents-&gt;trackInRenderStack(Object(App\Livewire\Renter\Rentals\Index), Object(Closure))
+#10 C:\laragon\www\lendly\vendor\livewire\livewire\src\Mechanisms\HandleComponents\HandleComponents.php(54): Livewire\Mechanisms\HandleComponents\HandleComponents-&gt;render(Object(App\Livewire\Renter\Rentals\Index), '&lt;div&gt;&lt;/div&gt;')
+#11 C:\laragon\www\lendly\vendor\livewire\livewire\src\LivewireManager.php(73): Livewire\Mechanisms\HandleComponents\HandleComponents-&gt;mount('App\\Livewire\\Re...', Array, NULL)
+#12 C:\laragon\www\lendly\vendor\livewire\volt\src\LivewireManager.php(23): Livewire\LivewireManager-&gt;mount('App\\Livewire\\Re...', Array, NULL, Array)
+#13 C:\laragon\www\lendly\vendor\livewire\livewire\src\Features\SupportPageComponents\HandlesPageComponents.php(17): Livewire\Volt\LivewireManager-&gt;mount('App\\Livewire\\Re...', Array)
+#14 C:\laragon\www\lendly\vendor\livewire\livewire\src\Features\SupportPageComponents\SupportPageComponents.php(117): Livewire\Component-&gt;{closure:Livewire\Features\SupportPageComponents\HandlesPageComponents::__invoke():14}()
+#15 C:\laragon\www\lendly\vendor\livewire\livewire\src\Features\SupportPageComponents\HandlesPageComponents.php(14): Livewire\Features\SupportPageComponents\SupportPageComponents::interceptTheRenderOfTheComponentAndRetreiveTheLayoutConfiguration(Object(Closure))
+#16 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Routing\ControllerDispatcher.php(46): Livewire\Component-&gt;__invoke()
+#17 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Routing\Route.php(265): Illuminate\Routing\ControllerDispatcher-&gt;dispatch(Object(Illuminate\Routing\Route), Object(App\Livewire\Renter\Rentals\Index), '__invoke')
+#18 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Routing\Route.php(211): Illuminate\Routing\Route-&gt;runController()
+#19 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Routing\Router.php(822): Illuminate\Routing\Route-&gt;run()
+#20 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(180): Illuminate\Routing\Router-&gt;{closure:Illuminate\Routing\Router::runRouteWithinStack():821}(Object(Illuminate\Http\Request))
+#21 C:\laragon\www\lendly\app\Http\Middleware\EnsureUserHasRole.php(32): Illuminate\Pipeline\Pipeline-&gt;{closure:Illuminate\Pipeline\Pipeline::prepareDestination():178}(Object(Illuminate\Http\Request))
+#22 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): App\Http\Middleware\EnsureUserHasRole-&gt;handle(Object(Illuminate\Http\Request), Object(Closure), 'renter')
+#23 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Auth\Middleware\EnsureEmailIsVerified.php(41): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#24 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Auth\Middleware\EnsureEmailIsVerified-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#25 C:\laragon\www\lendly\app\Http\Middleware\EnsureAccountIsActive.php(27): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#26 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): App\Http\Middleware\EnsureAccountIsActive-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#27 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Routing\Middleware\SubstituteBindings.php(50): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#28 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Routing\Middleware\SubstituteBindings-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#29 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Auth\Middleware\Authenticate.php(63): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#30 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Auth\Middleware\Authenticate-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#31 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken.php(87): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#32 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Foundation\Http\Middleware\VerifyCsrfToken-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#33 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\View\Middleware\ShareErrorsFromSession.php(48): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#34 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\View\Middleware\ShareErrorsFromSession-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#35 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Session\Middleware\StartSession.php(120): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#36 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Session\Middleware\StartSession.php(63): Illuminate\Session\Middleware\StartSession-&gt;handleStatefulRequest(Object(Illuminate\Http\Request), Object(Illuminate\Session\Store), Object(Closure))
+#37 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Session\Middleware\StartSession-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#38 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse.php(36): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#39 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#40 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Cookie\Middleware\EncryptCookies.php(74): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#41 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Cookie\Middleware\EncryptCookies-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#42 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(137): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#43 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Routing\Router.php(821): Illuminate\Pipeline\Pipeline-&gt;then(Object(Closure))
+#44 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Routing\Router.php(800): Illuminate\Routing\Router-&gt;runRouteWithinStack(Object(Illuminate\Routing\Route), Object(Illuminate\Http\Request))
+#45 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Routing\Router.php(764): Illuminate\Routing\Router-&gt;runRoute(Object(Illuminate\Http\Request), Object(Illuminate\Routing\Route))
+#46 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Routing\Router.php(753): Illuminate\Routing\Router-&gt;dispatchToRoute(Object(Illuminate\Http\Request))
+#47 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Http\Kernel.php(200): Illuminate\Routing\Router-&gt;dispatch(Object(Illuminate\Http\Request))
+#48 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(180): Illuminate\Foundation\Http\Kernel-&gt;{closure:Illuminate\Foundation\Http\Kernel::dispatchToRouter():197}(Object(Illuminate\Http\Request))
+#49 C:\laragon\www\lendly\vendor\livewire\livewire\src\Features\SupportDisablingBackButtonCache\DisableBackButtonCacheMiddleware.php(19): Illuminate\Pipeline\Pipeline-&gt;{closure:Illuminate\Pipeline\Pipeline::prepareDestination():178}(Object(Illuminate\Http\Request))
+#50 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Livewire\Features\SupportDisablingBackButtonCache\DisableBackButtonCacheMiddleware-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#51 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Http\Middleware\TransformsRequest.php(21): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#52 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull.php(31): Illuminate\Foundation\Http\Middleware\TransformsRequest-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#53 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#54 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Http\Middleware\TransformsRequest.php(21): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#55 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Http\Middleware\TrimStrings.php(51): Illuminate\Foundation\Http\Middleware\TransformsRequest-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#56 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Foundation\Http\Middleware\TrimStrings-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#57 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Http\Middleware\ValidatePostSize.php(27): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#58 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Http\Middleware\ValidatePostSize-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#59 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance.php(109): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#60 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#61 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Http\Middleware\HandleCors.php(61): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#62 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Http\Middleware\HandleCors-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#63 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Http\Middleware\TrustProxies.php(58): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#64 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Http\Middleware\TrustProxies-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#65 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Http\Middleware\InvokeDeferredCallbacks.php(22): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#66 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Foundation\Http\Middleware\InvokeDeferredCallbacks-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#67 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Http\Middleware\ValidatePathEncoding.php(26): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#68 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(219): Illuminate\Http\Middleware\ValidatePathEncoding-&gt;handle(Object(Illuminate\Http\Request), Object(Closure))
+#69 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Pipeline\Pipeline.php(137): Illuminate\Pipeline\Pipeline-&gt;{closure:{closure:Illuminate\Pipeline\Pipeline::carry():194}:195}(Object(Illuminate\Http\Request))
+#70 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Http\Kernel.php(175): Illuminate\Pipeline\Pipeline-&gt;then(Object(Closure))
+#71 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Http\Kernel.php(144): Illuminate\Foundation\Http\Kernel-&gt;sendRequestThroughRouter(Object(Illuminate\Http\Request))
+#72 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Testing\Concerns\MakesHttpRequests.php(607): Illuminate\Foundation\Http\Kernel-&gt;handle(Object(Illuminate\Http\Request))
+#73 C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Foundation\Testing\Concerns\MakesHttpRequests.php(368): Illuminate\Foundation\Testing\TestCase-&gt;call('GET', 'http://localhos...', Array, Array, Array, Array)
+#74 C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php(295): Illuminate\Foundation\Testing\TestCase-&gt;get('http://localhos...')
+#75 C:\laragon\www\lendly\vendor\phpunit\phpunit\src\Framework\TestCase.php(1667): Tests\Audit\RequirementsAuditTest-&gt;test_fr24_removing_a_listing_does_not_break_the_renters_history_page()
+#76 C:\laragon\www\lendly\vendor\phpunit\phpunit\src\Framework\TestCase.php(519): PHPUnit\Framework\TestCase-&gt;runTest()
+#77 C:\laragon\www\lendly\vendor\phpunit\phpunit\src\Framework\TestRunner\TestRunner.php(87): PHPUnit\Framework\TestCase-&gt;runBare()
+#78 C:\laragon\www\lendly\vendor\phpunit\phpunit\src\Framework\TestCase.php(365): PHPUnit\Framework\TestRunner-&gt;run(Object(Tests\Audit\RequirementsAuditTest))
+#79 C:\laragon\www\lendly\vendor\phpunit\phpunit\src\Framework\TestSuite.php(369): PHPUnit\Framework\TestCase-&gt;run()
+#80 C:\laragon\www\lendly\vendor\phpunit\phpunit\src\TextUI\TestRunner.php(64): PHPUnit\Framework\TestSuite-&gt;run()
+#81 C:\laragon\www\lendly\vendor\phpunit\phpunit\src\TextUI\Application.php(211): PHPUnit\TextUI\TestRunner-&gt;run(Object(PHPUnit\TextUI\Configuration\Configuration), Object(PHPUnit\Runner\ResultCache\DefaultResultCache), Object(PHPUnit\Framework\TestSuite))
+#82 C:\laragon\www\lendly\vendor\phpunit\phpunit\phpunit(104): PHPUnit\TextUI\Application-&gt;run(Array)
+#83 {main}
+
+----------------------------------------------------------------------------------
+
+Attempt to read property "images" on null (View: C:\laragon\www\lendly\resources\views\livewire\renter\rentals\index.blade.php)
+&#13;
+C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:175
+C:\laragon\www\lendly\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:16
+C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php:299</failure>
+    </testcase>
+    <testcase name="test_fr51_manila_location_sorts_markers_nearest_first" file="C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php" line="302" class="Tests\Audit\RequirementsAuditTest" classname="Tests.Audit.RequirementsAuditTest" assertions="3" time="1.023796"/>
+    <testcase name="test_nfr20_no_location_ignores_radius_and_allows_browsing" file="C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php" line="314" class="Tests\Audit\RequirementsAuditTest" classname="Tests.Audit.RequirementsAuditTest" assertions="2" time="0.131297"/>
+    <testcase name="test_fr52_map_and_browse_use_the_same_keyword_matches" file="C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php" line="325" class="Tests\Audit\RequirementsAuditTest" classname="Tests.Audit.RequirementsAuditTest" assertions="4" time="2.485541"/>
+    <testcase name="test_fr06_owner_can_upload_multiple_listing_photos" file="C:\laragon\www\lendly\docs\audit\RequirementsAuditTest.php" line="338" class="Tests\Audit\RequirementsAuditTest" classname="Tests.Audit.RequirementsAuditTest" assertions="4" time="9.009362"/>
+  </testsuite>
+</testsuites>

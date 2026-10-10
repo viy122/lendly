@@ -8,6 +8,7 @@ use App\Services\RentalLifecycle;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -16,7 +17,11 @@ class Index extends Component
 {
     use WithPagination;
 
+    #[Url]
     public string $filter = 'open';
+
+    #[Url]
+    public ?int $rental = null;
 
     public ?int $resolving = null;
 
@@ -41,6 +46,7 @@ class Index extends Component
 
     public function confirmResolve(): void
     {
+        abort_unless(auth()->user()?->isAdmin(), 403);
         $dispute = Dispute::with(['rental.securityDeposit', 'damageReport'])->findOrFail($this->resolving);
 
         $rules = [
@@ -68,7 +74,9 @@ class Index extends Component
 
     public function render(): View
     {
+        abort_unless(auth()->user()?->isAdmin(), 403);
         $disputes = Dispute::query()
+            ->when($this->rental, fn ($query) => $query->where('rental_id', $this->rental))
             ->when($this->filter !== 'all', fn ($query) => $query->where('status', $this->filter))
             ->with(['rental.listing', 'rental.owner', 'rental.renter', 'raisedBy', 'damageReport.photos'])
             ->orderByDesc('created_at')

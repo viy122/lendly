@@ -5,7 +5,9 @@ namespace App\Models;
 use App\Enums\ListingCondition;
 use App\Enums\ListingStatus;
 use App\Enums\RentalRequestStatus;
+use App\Enums\RentalStatus;
 use App\Enums\ReviewType;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -83,7 +85,7 @@ class Listing extends Model
 
     public function owner(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'owner_id');
+        return $this->belongsTo(User::class, 'owner_id')->withTrashed();
     }
 
     public function category(): BelongsTo
@@ -138,7 +140,41 @@ class Listing extends Model
             ->overlapping($this->id, $startDate, $endDate)
             ->where('status', RentalRequestStatus::Approved)
             ->when($excludingRequestId, fn ($query) => $query->whereKeyNot($excludingRequestId))
-            ->exists();
+            ->exists()
+            || $this->rentals()
+                ->whereIn('status', [RentalStatus::PaymentPending, RentalStatus::Paid, RentalStatus::Active, RentalStatus::Overdue])
+                ->whereDate('start_date', '<=', $endDate)
+                ->whereDate('end_date', '>=', $startDate)
+                ->when($excludingRequestId, fn ($query) => $query->where('rental_request_id', '!=', $excludingRequestId))
+                ->exists();
+    }
+
+    public function availabilityLabel($date = null): string
+    {
+        if ($this->trashed() || ! $this->isPublished() || ! $this->is_available) {
+            return 'Unavailable';
+        }
+
+        $date = Carbon::parse($date ?? today())->startOfDay();
+        $rentals = $this->relationLoaded('rentals') ? $this->rentals : $this->rentals()->whereIn('status', [RentalStatus::Paid, RentalStatus::Active, RentalStatus::Overdue])->get();
+        $covering = $rentals->filter(fn (Rental $rental) => $rental->start_date->lte($date)
+            && ($rental->end_date->gte($date) || ($date->lte(today()) && in_array($rental->status, [RentalStatus::Active, RentalStatus::Overdue], true))));
+
+        if ($covering->contains(fn (Rental $rental) => in_array($rental->status, [RentalStatus::Active, RentalStatus::Overdue], true))) {
+            return 'Rented';
+        }
+
+        return $covering->contains(fn (Rental $rental) => $rental->isPaid()) ? 'Reserved' : 'Available';
+    }
+
+    public function availabilityColor($date = null): string
+    {
+        return match ($this->availabilityLabel($date)) {
+            'Reserved' => 'amber',
+            'Rented' => 'blue',
+            'Available' => 'green',
+            default => 'slate',
+        };
     }
 
     public function isPublished(): bool

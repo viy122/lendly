@@ -51,7 +51,7 @@ class Map extends Component
             ->get();
 
         $markers = $listings->map(function (Listing $listing) {
-            $distanceKm = ($this->centerLat && $this->centerLng)
+            $distanceKm = ($this->centerLat !== null && $this->centerLng !== null)
                 ? Geo::distanceKm($this->centerLat, $this->centerLng, (float) $listing->latitude, (float) $listing->longitude)
                 : null;
 
@@ -68,11 +68,11 @@ class Map extends Component
             ];
         });
 
-        if ($this->radiusKm && $this->centerLat && $this->centerLng) {
+        if ($this->radiusKm && $this->centerLat !== null && $this->centerLng !== null) {
             $markers = $markers->filter(fn (array $marker) => $marker['distanceKm'] <= $this->radiusKm);
         }
 
-        if ($this->centerLat && $this->centerLng) {
+        if ($this->centerLat !== null && $this->centerLng !== null) {
             $markers = $markers->sortBy('distanceKm');
         }
 

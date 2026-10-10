@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\AccountLockout;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -18,15 +19,21 @@ new #[Layout('layouts.guest')] class extends Component
             'password' => ['required', 'string'],
         ]);
 
+        AccountLockout::ensureNotLocked(Auth::user()->email, 'password');
+
         if (! Auth::guard('web')->validate([
             'email' => Auth::user()->email,
             'password' => $this->password,
         ])) {
+            AccountLockout::recordFailure(Auth::user()->email, 'password');
+
             throw ValidationException::withMessages([
                 'password' => __('auth.password'),
             ]);
         }
 
+        AccountLockout::ensureNotLocked(Auth::user()->email, 'password');
+        AccountLockout::clear(Auth::user()->email);
         session(['auth.password_confirmed_at' => time()]);
 
         $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
@@ -43,10 +50,9 @@ new #[Layout('layouts.guest')] class extends Component
         <div>
             <x-input-label for="password" :value="__('Password')" />
 
-            <x-text-input wire:model="password"
+            <x-password-input wire:model="password"
                           id="password"
                           class="block mt-1 w-full"
-                          type="password"
                           name="password"
                           required autocomplete="current-password" />
 

@@ -1,4 +1,5 @@
 <div>
+    @php($hasLocation = $centerLat !== null && $centerLng !== null)
     <div class="border-b border-blue-200 bg-gradient-to-r from-blue-100 to-indigo-100 shadow-sm">
         <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -23,9 +24,9 @@
                 <button type="button"
                         @click="locating = true; $dispatch('locate-user')"
                         @location-found.window="locating = false"
-                        class="flex items-center justify-center gap-2 rounded-lg border px-5 py-3 text-sm font-semibold {{ $centerLat ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50' }}">
+                        class="flex items-center justify-center gap-2 rounded-lg border px-5 py-3 text-sm font-semibold {{ $hasLocation ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50' }}">
                     <x-icon name="map-pin" class="h-4 w-4" />
-                    <span x-show="! locating">{{ $centerLat ? 'Location set' : 'Use my location' }}</span>
+                    <span x-show="! locating">{{ $hasLocation ? 'Location set' : 'Use my location' }}</span>
                     <span x-show="locating" style="display: none;">Locating...</span>
                 </button>
             </div>
@@ -38,7 +39,7 @@
                     @endforeach
                 </select>
 
-                @if ($centerLat)
+                @if ($hasLocation)
                     <div class="ml-auto flex items-center gap-2">
                         <select wire:model.live="radiusKm" class="rounded-lg border-slate-300 py-1.5 text-xs shadow-sm focus:border-blue-500 focus:ring-blue-500">
                             <option value="">Any distance</option>
@@ -58,7 +59,7 @@
 
     <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <p class="mb-3 text-sm font-semibold text-slate-700">
-            {{ $centerLat ? 'Nearest available' : 'Available listings' }}
+            {{ $hasLocation ? 'Nearest available' : 'Available listings' }}
             <span class="font-normal text-slate-400">({{ count($markers) }})</span>
         </p>
 

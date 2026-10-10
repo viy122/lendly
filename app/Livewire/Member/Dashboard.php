@@ -72,7 +72,7 @@ class Dashboard extends Component
         $rentalsByStatus = collect(RentalStatus::cases())->map(function (RentalStatus $status) {
             return [
                 'label' => $status->label(),
-                'value' => Rental::where('owner_id', auth()->id())->where('status', $status)->count(),
+                'value' => Rental::where('owner_id', auth()->id())->withCurrentStatus($status)->count(),
                 'color' => match ($status->badgeColor()) {
                     'amber' => 'bg-amber-500',
                     'teal' => 'bg-blue-600',
@@ -134,7 +134,7 @@ class Dashboard extends Component
                 ->count(),
             'totalEarnings' => $totalEarnings,
             'totalRentalsCount' => Rental::where('owner_id', auth()->id())->count(),
-            'activeRentalsCount' => Rental::where('owner_id', auth()->id())->where('status', RentalStatus::Active)->count(),
+            'activeRentalsCount' => Rental::where('owner_id', auth()->id())->withCurrentStatus(RentalStatus::Active)->count(),
             'completedRentalsCount' => Rental::where('owner_id', auth()->id())->where('status', RentalStatus::Completed)->count(),
             'averageRating' => auth()->user()->averageRatingAsOwner(),
             'totalListingViews' => (clone $listings)->sum('views_count'),

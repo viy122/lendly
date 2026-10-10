@@ -13,14 +13,16 @@ class EnsureAccountIsActive
     {
         $user = $request->user();
 
-        if ($user && $user->isSuspended()) {
+        if ($user && ($user->trashed() || $user->isSuspended())) {
             Auth::guard('web')->logout();
 
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
             return redirect()->route('login')->withErrors([
-                'email' => 'Your account has been suspended. Please contact support for assistance.',
+                'email' => $user->trashed()
+                    ? 'This account has been closed.'
+                    : 'Your account has been suspended. Please contact support for assistance.',
             ]);
         }
 

@@ -1,12 +1,15 @@
 <?php
 
-use App\Models\User;
+use App\Rules\GmailAddress;
+use App\Support\AuthEmail;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 new class extends Component
 {
@@ -36,13 +39,22 @@ new class extends Component
     public function updateProfileInformation(): void
     {
         $user = Auth::user();
+        $this->email = trim($this->email);
 
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($user->id)],
+            'email' => ['bail', 'required', 'string', 'email', 'max:255', ...($this->email === $user->email ? [] : [new GmailAddress($user->id)])],
             'phone' => ['nullable', 'string', 'max:30'],
             'address' => ['nullable', 'string', 'max:255'],
         ]);
+
+        if ($this->email !== $user->email) {
+            $validated['email'] = AuthEmail::normalize($validated['email']);
+
+            if ($validated['email'] === AuthEmail::normalize($user->email)) {
+                $validated['email'] = $user->email;
+            }
+        }
 
         $user->fill($validated);
 
@@ -99,7 +111,26 @@ new class extends Component
             return;
         }
 
-        $user->sendEmailVerificationNotification();
+        $this->resetErrorBag('verification');
+        Session::forget('status');
+        $throttleKey = 'verification:'.$user->id;
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 1)) {
+            throw ValidationException::withMessages([
+                'verification' => 'Please wait '.RateLimiter::availableIn($throttleKey).' seconds before requesting another verification email.',
+            ]);
+        }
+
+        RateLimiter::hit($throttleKey, 60);
+
+        try {
+            $user->sendEmailVerificationNotification();
+        } catch (TransportExceptionInterface $exception) {
+            report($exception);
+            $this->addError('verification', 'We could not send your verification email. Please try again shortly.');
+
+            return;
+        }
 
         Session::flash('status', 'verification-link-sent');
     }
@@ -174,6 +205,7 @@ new class extends Component
                             {{ __('A new verification link has been sent to your email address.') }}
                         </p>
                     @endif
+                    <x-input-error :messages="$errors->get('verification')" class="mt-2" />
                 </div>
             @endif
         </div>

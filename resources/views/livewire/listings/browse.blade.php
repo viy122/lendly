@@ -140,6 +140,7 @@
                         </div>
                         <div class="p-4">
                             <h3 class="truncate font-semibold text-slate-900">{{ $listing->name }}</h3>
+                            <x-badge :color="$listing->availabilityColor()">{{ $listing->availabilityLabel() }}</x-badge>
                             <p class="mt-1 flex items-center gap-1 text-sm text-slate-500">
                                 <x-icon name="map-pin" class="h-3.5 w-3.5 text-slate-400" />
                                 {{ $listing->location }}

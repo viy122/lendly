@@ -2,20 +2,31 @@
 
 namespace App\Models;
 
+use App\Enums\DamageReportStatus;
+use App\Enums\DisputeStatus;
+use App\Enums\ListingStatus;
+use App\Enums\RentalRequestStatus;
+use App\Enums\RentalStatus;
 use App\Enums\ReviewType;
+use App\Enums\SecurityDepositStatus;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, SoftDeletes;
 
     /**
      * The model's default attribute values.
@@ -101,6 +112,62 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isSuspended(): bool
     {
         return $this->status === UserStatus::Suspended;
+    }
+
+    public function closeAccount(): void
+    {
+        $avatarPath = DB::transaction(function () {
+            $this->newQuery()->whereKey($this->id)->lockForUpdate()->firstOrFail();
+            $this->refresh();
+
+            $hasOutstandingRental = Rental::query()
+                ->where(fn ($query) => $query->where('owner_id', $this->id)->orWhere('renter_id', $this->id))
+                ->where(fn ($query) => $query
+                    ->whereNotIn('status', [RentalStatus::Completed, RentalStatus::Cancelled])
+                    ->orWhereHas('disputes', fn ($dispute) => $dispute->where('status', '!=', DisputeStatus::Resolved))
+                    ->orWhereHas('securityDeposit', fn ($deposit) => $deposit->whereNotIn('status', [SecurityDepositStatus::Released, SecurityDepositStatus::Refunded, SecurityDepositStatus::Deducted]))
+                    ->orWhereHas('damageReport', fn ($damage) => $damage->whereNotIn('status', [DamageReportStatus::Accepted, DamageReportStatus::Rejected])))
+                ->exists();
+            $hasOutstandingRequest = RentalRequest::query()
+                ->where(fn ($query) => $query->where('renter_id', $this->id)
+                    ->orWhereHas('listing', fn ($listing) => $listing->withTrashed()->where('owner_id', $this->id)))
+                ->where(fn ($query) => $query->where('status', RentalRequestStatus::Requested)
+                    ->orWhere(fn ($approved) => $approved->where('status', RentalRequestStatus::Approved)->whereDoesntHave('rental')))
+                ->exists();
+
+            if ($hasOutstandingRental || $hasOutstandingRequest) {
+                throw ValidationException::withMessages([
+                    'account' => 'Settle your rental requests, rentals, deposits, damage claims, and disputes before deleting your account.',
+                ]);
+            }
+
+            $avatarPath = $this->avatar_path;
+            DB::table(config('auth.passwords.users.table'))->where('email', $this->email)->delete();
+            if (config('session.driver') === 'database') {
+                DB::connection(config('session.connection'))->table(config('session.table'))
+                    ->where('user_id', $this->id)->delete();
+            }
+            $this->listings()->update(['status' => ListingStatus::Inactive, 'is_available' => false]);
+            $this->listings()->delete();
+            $this->forceFill([
+                'name' => 'Deleted user',
+                'email' => 'deleted-'.$this->id.'-'.Str::uuid().'@deleted.invalid',
+                'email_verified_at' => null,
+                'phone' => null,
+                'address' => null,
+                'avatar_path' => null,
+                'password' => Str::random(64),
+                'remember_token' => null,
+                'suspension_reason' => null,
+            ])->save();
+            $this->delete();
+
+            return $avatarPath;
+        });
+
+        if ($avatarPath) {
+            Storage::disk('public')->delete($avatarPath);
+        }
     }
 
     public function dashboardRouteName(): string

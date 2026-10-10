@@ -159,9 +159,9 @@ class DashboardAnalyticsTest extends TestCase
 
         $component = Livewire::actingAs($admin)->test(AdminDashboard::class);
 
-        $component->assertViewHas('activeRentalsCount', 1);
+        $component->assertViewHas('activeRentalsCount', 0);
         $component->assertViewHas('completedRentalsCount', 1);
-        $component->assertViewHas('overdueRentalsCount', 1);
+        $component->assertViewHas('overdueRentalsCount', 2);
         $component->assertViewHas('openDisputesCount', 1);
         // 3 paid rentals x ₱830 total_amount each.
         $component->assertViewHas('transactionValue', 2490.0);

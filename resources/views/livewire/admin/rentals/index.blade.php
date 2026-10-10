@@ -47,6 +47,7 @@
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Dates</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Total</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Details</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
@@ -59,6 +60,9 @@
                                     <td class="px-4 py-3 font-medium text-slate-800">₱{{ number_format($rental->total_amount, 2) }}</td>
                                     <td class="px-4 py-3">
                                         <x-badge :color="$rental->displayStatusColor()">{{ $rental->displayStatusLabel() }}</x-badge>
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        <a href="{{ route('admin.rentals.show', $rental) }}" wire:navigate class="whitespace-nowrap font-medium text-blue-600 hover:text-blue-800">View transaction</a>
                                     </td>
                                 </tr>
                             @endforeach

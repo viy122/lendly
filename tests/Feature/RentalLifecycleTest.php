@@ -10,7 +10,6 @@ use App\Livewire\Owner\Rentals\Show as OwnerRentalShow;
 use App\Livewire\RentalRequests\Create;
 use App\Livewire\Renter\Rentals\Show as RenterRentalShow;
 use App\Models\Category;
-use App\Models\ConditionRecord;
 use App\Models\Listing;
 use App\Models\Payment;
 use App\Models\Rental;
@@ -195,7 +194,7 @@ class RentalLifecycleTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_rental_becomes_returned_only_after_both_parties_confirm_return(): void
+    public function test_rental_becomes_returned_after_the_owner_confirms_return(): void
     {
         $owner = User::factory()->owner()->create();
         $renter = User::factory()->renter()->create();
@@ -209,16 +208,17 @@ class RentalLifecycleTest extends TestCase
             ->test(OwnerRentalShow::class, ['rental' => $rental->fresh()])
             ->call('confirmReturn');
 
-        $this->assertSame(RentalStatus::Active, $rental->fresh()->status);
+        $this->assertSame(RentalStatus::Returned, $rental->fresh()->status);
+        $this->assertNull($rental->fresh()->return_confirmed_by_renter_at);
 
         Livewire::actingAs($renter)
             ->test(RenterRentalShow::class, ['rental' => $rental->fresh()])
-            ->call('confirmReturn');
+            ->call('confirmReturn')->assertForbidden();
 
         $this->assertSame(RentalStatus::Returned, $rental->fresh()->status);
     }
 
-    public function test_only_owner_can_complete_inspection_and_it_frees_the_deposit(): void
+    public function test_recording_returned_condition_automatically_completes_the_rental_and_frees_the_deposit(): void
     {
         $owner = User::factory()->owner()->create();
         $renter = User::factory()->renter()->create();
@@ -234,20 +234,13 @@ class RentalLifecycleTest extends TestCase
 
         Livewire::actingAs($renter)
             ->test(RenterRentalShow::class, ['rental' => $rental])
-            ->call('confirmReturn') // renter has no completeInspection ability at all
+            ->call('confirmReturn')
             ->assertForbidden();
-
-        // Completing inspection requires an after-rental condition record first (Phase 7).
-        ConditionRecord::create([
-            'rental_id' => $rental->id,
-            'recorded_by' => $owner->id,
-            'type' => 'after',
-            'condition' => 'good',
-        ]);
 
         Livewire::actingAs($owner)
             ->test(OwnerRentalShow::class, ['rental' => $rental])
-            ->call('completeInspection');
+            ->set('after_condition', 'good')
+            ->call('recordAfterCondition')->assertHasNoErrors();
 
         $rental->refresh();
         $this->assertSame(RentalStatus::Completed, $rental->status);

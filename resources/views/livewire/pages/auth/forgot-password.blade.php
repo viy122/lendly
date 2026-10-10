@@ -1,6 +1,6 @@
 <?php
 
-use Illuminate\Support\Facades\Password;
+use App\Services\PasswordResetCodes;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -8,54 +8,34 @@ new #[Layout('layouts.guest')] class extends Component
 {
     public string $email = '';
 
-    /**
-     * Send a password reset link to the provided email address.
-     */
-    public function sendPasswordResetLink(): void
+    public function sendPasswordResetCode(PasswordResetCodes $codes): void
     {
-        $this->validate([
-            'email' => ['required', 'string', 'email'],
-        ]);
+        $this->email = trim($this->email);
+        $this->validate(['email' => ['required', 'string', 'email', 'max:255']]);
+        $codes->send($this->email);
 
-        // We will send the password reset link to this user. Once we have attempted
-        // to send the link, we will examine the response then see the message we
-        // need to show to the user. Finally, we'll send out a proper response.
-        $status = Password::sendResetLink(
-            $this->only('email')
-        );
-
-        if ($status != Password::RESET_LINK_SENT) {
-            $this->addError('email', __($status));
-
-            return;
-        }
-
-        $this->reset('email');
-
-        session()->flash('status', __($status));
+        session()->flash('status', 'If an account exists for this email, a reset code has been sent. The code expires in 10 minutes.');
+        $this->redirect(route('password.reset', ['email' => $this->email], absolute: false), navigate: true);
     }
 }; ?>
 
 <div>
-    <div class="mb-4 text-sm text-slate-600">
-        {{ __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}
-    </div>
-
-    <!-- Session Status -->
+    <h1 class="text-xl font-semibold text-slate-900">Forgot password</h1>
+    <p class="mt-2 mb-4 text-sm text-slate-600">
+        Enter your account email. We will send a 6-digit code to help you choose a new password.
+    </p>
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
-    <form wire:submit="sendPasswordResetLink">
-        <!-- Email Address -->
+    <form wire:submit="sendPasswordResetCode">
         <div>
             <x-input-label for="email" :value="__('Email')" />
-            <x-text-input wire:model="email" id="email" class="block mt-1 w-full" type="email" name="email" required autofocus />
+            <x-text-input wire:model="email" id="email" class="block mt-1 w-full" type="email" name="email" required autofocus autocomplete="username" />
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
 
-        <div class="flex items-center justify-end mt-4">
-            <x-primary-button>
-                {{ __('Email Password Reset Link') }}
-            </x-primary-button>
+        <div class="flex items-center justify-between mt-4">
+            <a href="{{ route('login') }}" wire:navigate class="text-sm underline text-slate-600 hover:text-slate-900">Back to login</a>
+            <x-primary-button wire:loading.attr="disabled">{{ __('Send reset code') }}</x-primary-button>
         </div>
     </form>
 </div>

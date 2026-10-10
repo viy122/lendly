@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\Admin\Dashboard;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use Livewire\Volt\Volt;
 use Tests\TestCase;
@@ -92,18 +93,21 @@ class RoleAccessTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_registering_sends_user_to_the_unified_dashboard_as_a_member(): void
+    public function test_registered_member_must_verify_email_before_entering_the_dashboard(): void
     {
+        Notification::fake();
+
         $component = Volt::test('pages.auth.register')
             ->set('name', 'New Person')
-            ->set('email', 'new-signup@example.com')
-            ->set('password', 'password')
-            ->set('password_confirmation', 'password');
+            ->set('email', 'newsignup@gmail.com')
+            ->set('password', 'NewPassword1!')
+            ->set('password_confirmation', 'NewPassword1!');
 
         $component->call('register');
 
-        $component->assertRedirect(route('dashboard', absolute: false));
+        $component->assertHasNoErrors()->assertRedirect(route('verification.notice', absolute: false));
 
         $this->assertSame('member', auth()->user()->role->value);
+        $this->get('/dashboard')->assertRedirect('/verify-email');
     }
 }

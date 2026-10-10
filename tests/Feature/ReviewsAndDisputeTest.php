@@ -100,19 +100,14 @@ class ReviewsAndDisputeTest extends TestCase
     }
 
     /**
-     * completeInspection requires an after-condition record to exist first
-     * (a Phase 7 rule) — record a plain no-damage one, then complete.
+     * Saving the returned condition automatically completes the rental.
      */
     private function markRentalCompleted(Rental $rental, User $owner): void
     {
         Livewire::actingAs($owner)
             ->test(OwnerRentalShow::class, ['rental' => $rental])
             ->set('after_condition', 'good')
-            ->call('recordAfterCondition');
-
-        Livewire::actingAs($owner)
-            ->test(OwnerRentalShow::class, ['rental' => $rental->fresh()])
-            ->call('completeInspection');
+            ->call('recordAfterCondition')->assertHasNoErrors();
     }
 
     public function test_renter_can_review_owner_and_listing_after_completion(): void
@@ -199,10 +194,6 @@ class ReviewsAndDisputeTest extends TestCase
             ->set('damage_estimated_cost', 400)
             ->call('recordAfterCondition');
 
-        Livewire::actingAs($owner)
-            ->test(OwnerRentalShow::class, ['rental' => $rental->fresh()])
-            ->call('completeInspection');
-
         Livewire::actingAs($renter)
             ->test(RenterRentalShow::class, ['rental' => $rental->fresh()])
             ->set('damage_response_notes', 'That scratch was already there.')
@@ -230,10 +221,6 @@ class ReviewsAndDisputeTest extends TestCase
             ->set('damage_description', 'Scratches on the surface.')
             ->set('damage_estimated_cost', 400)
             ->call('recordAfterCondition');
-
-        Livewire::actingAs($owner)
-            ->test(OwnerRentalShow::class, ['rental' => $rental->fresh()])
-            ->call('completeInspection');
 
         Livewire::actingAs($renter)
             ->test(RenterRentalShow::class, ['rental' => $rental->fresh()])
@@ -275,10 +262,6 @@ class ReviewsAndDisputeTest extends TestCase
             ->set('damage_description', 'Scratches on the surface.')
             ->set('damage_estimated_cost', 400)
             ->call('recordAfterCondition');
-
-        Livewire::actingAs($owner)
-            ->test(OwnerRentalShow::class, ['rental' => $rental->fresh()])
-            ->call('completeInspection');
 
         Livewire::actingAs($renter)
             ->test(RenterRentalShow::class, ['rental' => $rental->fresh()])

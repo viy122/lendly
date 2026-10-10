@@ -56,7 +56,7 @@ class Browse extends Component
         $listings = Listing::query()
             ->published()
             ->where('is_available', true)
-            ->with(['category', 'images'])
+            ->with(['category', 'images', 'rentals' => fn ($query) => $query->whereIn('status', ['paid', 'active', 'overdue'])])
             ->when($this->keyword, fn ($query) => $query->where(fn ($q) => $q
                 ->where('name', 'like', "%{$this->keyword}%")
                 ->orWhere('description', 'like', "%{$this->keyword}%")

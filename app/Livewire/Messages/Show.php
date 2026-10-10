@@ -34,6 +34,8 @@ class Show extends Component
         $this->validate(['body' => ['required', 'string', 'max:2000']]);
 
         $otherParty = $this->rentalRequest->otherPartyFor(auth()->user());
+        $this->authorize('converse', $this->rentalRequest);
+        abort_if($otherParty->trashed() || $otherParty->isSuspended(), 403, 'This account is unavailable for new messages.');
 
         Message::create([
             'rental_request_id' => $this->rentalRequest->id,

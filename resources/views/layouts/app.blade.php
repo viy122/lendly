@@ -20,7 +20,7 @@
 
             <div class="min-w-0 flex-1">
                 <!-- Top bar -->
-                <div class="sticky top-0 z-20 flex items-center justify-between bg-gradient-to-r from-blue-100 to-indigo-100 px-4 py-1 shadow-sm sm:px-6 lg:px-8">
+                <div class="sticky top-0 z-20 flex min-h-16 items-center justify-between overflow-hidden bg-gradient-to-r from-blue-100 to-indigo-100 bg-cover bg-right px-4 py-2 shadow-sm sm:px-6 lg:px-8" style="background-image: linear-gradient(90deg, rgba(219,234,254,.98) 0%, rgba(224,231,255,.94) 52%, rgba(15,23,42,.38) 100%), url('{{ asset('images/rental-hero.png') }}');">
                     <a href="{{ route(auth()->user()->dashboardRouteName()) }}" wire:navigate class="flex items-center gap-2 lg:hidden">
                         <span class="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-indigo-600 text-[10px] font-bold text-white">L</span>
                         <span class="text-sm font-semibold tracking-tight text-slate-900">Lendly</span>

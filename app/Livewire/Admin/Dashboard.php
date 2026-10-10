@@ -13,6 +13,7 @@ use App\Models\Rental;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -21,6 +22,7 @@ class Dashboard extends Component
 {
     use WithPagination;
 
+    #[Url]
     public string $search = '';
 
     public function updatingSearch(): void
@@ -30,6 +32,7 @@ class Dashboard extends Component
 
     public function toggleSuspension(int $userId): void
     {
+        abort_unless(auth()->user()?->isAdmin(), 403);
         $user = User::findOrFail($userId);
 
         abort_if($user->isAdmin(), 403, 'Admin accounts cannot be suspended.');
@@ -44,6 +47,7 @@ class Dashboard extends Component
 
     public function render(): View
     {
+        abort_unless(auth()->user()?->isAdmin(), 403);
         $users = User::query()
             ->when($this->search, fn ($query) => $query->where(fn ($q) => $q
                 ->where('name', 'like', "%{$this->search}%")
@@ -88,7 +92,7 @@ class Dashboard extends Component
 
         $rentalsByStatus = collect(RentalStatus::cases())->map(fn (RentalStatus $status) => [
             'label' => $status->label(),
-            'value' => Rental::where('status', $status)->count(),
+            'value' => Rental::withCurrentStatus($status)->count(),
             'color' => match ($status->badgeColor()) {
                 'amber' => 'bg-amber-500',
                 'teal' => 'bg-blue-600',
@@ -106,9 +110,9 @@ class Dashboard extends Component
             'suspendedUsers' => User::where('status', UserStatus::Suspended)->count(),
             'activeListingsCount' => Listing::where('status', ListingStatus::Published)->count(),
             'pendingListingsCount' => Listing::where('status', ListingStatus::PendingApproval)->count(),
-            'activeRentalsCount' => Rental::where('status', RentalStatus::Active)->count(),
+            'activeRentalsCount' => Rental::withCurrentStatus(RentalStatus::Active)->count(),
             'completedRentalsCount' => Rental::where('status', RentalStatus::Completed)->count(),
-            'overdueRentalsCount' => Rental::where('status', RentalStatus::Overdue)->count(),
+            'overdueRentalsCount' => Rental::withCurrentStatus(RentalStatus::Overdue)->count(),
             'openDisputesCount' => Dispute::where('status', DisputeStatus::Open)->count(),
             'transactionValue' => (clone $paidRentals)->sum('total_amount'),
             'platformRevenue' => (clone $paidRentals)->sum('commission_amount'),

@@ -1,0 +1,36 @@
+{
+    "listings": 1000,
+    "samples": 5,
+    "database": "SQLite :memory:",
+    "method": "Sequential Livewire test harness, warm views; elapsed milliseconds include assertions and component rendering. Search includes mount+keyword update; map includes mount+3 updates. Request\/approval time their submit actions only.",
+    "milliseconds": {
+        "search": [
+            196.95,
+            189.57,
+            173.41,
+            177.27,
+            169.02
+        ],
+        "map": [
+            2770.01,
+            2123.46,
+            2415.52,
+            2260.75,
+            2106.95
+        ],
+        "request": [
+            151.91,
+            14.97,
+            16.84,
+            15.58,
+            16.5
+        ],
+        "approval": [
+            52.49,
+            21.24,
+            21.27,
+            21.43,
+            22.86
+        ]
+    }
+}
