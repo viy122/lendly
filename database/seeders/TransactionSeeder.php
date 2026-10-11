@@ -29,9 +29,9 @@ use Illuminate\Database\Seeder;
  */
 class TransactionSeeder extends Seeder
 {
-    private float $commissionRate;
+    protected float $commissionRate;
 
-    private array $renterCursor = [];
+    protected array $renterCursor = [];
 
     public function run(): void
     {
@@ -94,7 +94,7 @@ class TransactionSeeder extends Seeder
      * Round-robins a renter that isn't the listing's own owner, so no
      * seeded transaction has someone renting their own item.
      */
-    private function renterFor(Listing $listing): User
+    protected function renterFor(Listing $listing): User
     {
         static $pointer = 0;
 
@@ -106,7 +106,7 @@ class TransactionSeeder extends Seeder
         return User::find($id);
     }
 
-    private function costBreakdown(Listing $listing, int $days): array
+    protected function costBreakdown(Listing $listing, int $days): array
     {
         $rentalFee = round((float) $listing->price_per_day * $days, 2);
         $commissionAmount = round($rentalFee * ($this->commissionRate / 100), 2);
@@ -121,7 +121,7 @@ class TransactionSeeder extends Seeder
         ];
     }
 
-    private function createPendingRequest(Listing $listing, User $renter): RentalRequest
+    protected function createPendingRequest(Listing $listing, User $renter): RentalRequest
     {
         $days = 3;
         $cost = $this->costBreakdown($listing, $days);
@@ -139,7 +139,7 @@ class TransactionSeeder extends Seeder
         ]);
     }
 
-    private function createRejectedRequest(Listing $listing, User $renter, string $reason): RentalRequest
+    protected function createRejectedRequest(Listing $listing, User $renter, string $reason): RentalRequest
     {
         $days = 2;
         $cost = $this->costBreakdown($listing, $days);
@@ -158,7 +158,7 @@ class TransactionSeeder extends Seeder
         ]);
     }
 
-    private function createRental(
+    protected function createRental(
         Listing $listing,
         User $renter,
         RentalStatus $status,
@@ -228,7 +228,7 @@ class TransactionSeeder extends Seeder
         return $rental;
     }
 
-    private function createCompletedRental(Listing $listing, User $renter): Rental
+    protected function createCompletedRental(Listing $listing, User $renter): Rental
     {
         $days = 3;
         $startDate = now()->subDays(25);
@@ -280,7 +280,7 @@ class TransactionSeeder extends Seeder
         return $rental;
     }
 
-    private function createCancelledRental(Listing $listing, User $renter, bool $paid): Rental
+    protected function createCancelledRental(Listing $listing, User $renter, bool $paid): Rental
     {
         $days = 3;
         $startDate = $paid ? now()->addHours(20) : now()->addDays(10);
@@ -302,7 +302,7 @@ class TransactionSeeder extends Seeder
         return $rental;
     }
 
-    private function attachPayment(Rental $rental): void
+    protected function attachPayment(Rental $rental): void
     {
         Payment::create([
             'rental_id' => $rental->id,
@@ -312,7 +312,7 @@ class TransactionSeeder extends Seeder
         ]);
     }
 
-    private function attachConditionRecord(Rental $rental, ConditionRecordType $type, int $ownerId): void
+    protected function attachConditionRecord(Rental $rental, ConditionRecordType $type, int $ownerId): void
     {
         ConditionRecord::create([
             'rental_id' => $rental->id,

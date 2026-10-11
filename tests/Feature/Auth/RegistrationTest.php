@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Support\AuthEmail;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Volt\Volt;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -32,6 +33,7 @@ class RegistrationTest extends TestCase
         $component = Volt::test('pages.auth.register')
             ->set('name', 'Test User')
             ->set('email', ' Test.User+rent@GMAIL.COM ')
+            ->set('phone', '09171234567')
             ->set('password', 'LendlyPass123!')
             ->set('password_confirmation', 'LendlyPass123!');
 
@@ -43,6 +45,15 @@ class RegistrationTest extends TestCase
         $this->assertSame('member', auth()->user()->role->value);
         $this->assertSame('testuser@gmail.com', auth()->user()->email);
         $this->assertFalse(auth()->user()->hasVerifiedEmail());
+        $this->assertDatabaseHas('users', [
+            'id' => auth()->id(),
+            'name' => 'Test User',
+            'email' => 'testuser@gmail.com',
+            'phone' => '09171234567',
+            'email_verified_at' => null,
+        ]);
+        $this->assertTrue(Hash::check('LendlyPass123!', auth()->user()->password));
+        $this->get(route('dashboard'))->assertRedirect(route('verification.notice'));
         Notification::assertSentTo(auth()->user(), VerifyEmail::class);
     }
 

@@ -11,10 +11,14 @@ function mapComponents() {
     const wireValues = {};
     const layer = () => ({
         handlers: {},
+        icon: { handlers: {}, attributes: {}, setAttribute(name, value) { this.attributes[name] = value; }, addEventListener(name, handler) { this.handlers[name] = handler; } },
         addTo() { return this; },
+        getElement() { return this.icon; },
         on(event, handler) { this.handlers[event] = handler; return this; },
         bindPopup(content) { this.popup = content; return this; },
         bindTooltip(content) { this.tooltip = content; return this; },
+        openTooltip() { this.tooltipOpen = true; },
+        closeTooltip() { this.tooltipOpen = false; },
         setLatLng(position) { this.position = position; return this; },
         getLatLng() { return this.position; },
         clearLayers() {},
@@ -42,12 +46,14 @@ function mapComponents() {
             return {
                 tagName, style: {}, children: [], textContent: '',
                 append(...children) { this.children.push(...children); },
+                addEventListener() {},
                 set innerHTML(value) { throw new Error('Listing preview must not parse HTML'); },
             };
         },
     };
     const source = readFileSync(new URL('../resources/js/map.js', import.meta.url), 'utf8').replace(/^import .*;\r?\n/gm, '');
-    vm.runInNewContext(source, {
+    const pinsSource = readFileSync(new URL('../resources/js/listing-map-pin.js', import.meta.url), 'utf8').replace(/^export /gm, '');
+    vm.runInNewContext(`${pinsSource}\n${source}`, {
         L, document, markerIcon2x: '', markerIcon: '', markerShadow: '',
         Alpine: { data(name, factory) { components[name] = factory; } },
         setTimeout() {}, navigator: {},
@@ -122,8 +128,11 @@ test('pin preview contains a photo and literal name and daily price without pars
     assert.equal(image.src, '/storage/listings/camera.jpg');
     assert.equal(image.alt, name);
     assert.equal(preview.children.find((child) => child.tagName === 'strong').textContent, name);
-    assert.equal(preview.children.find((child) => child.tagName === 'p').textContent, '₱1,234.50/day · 0.0 km away');
-    assert.equal(pins[0].options.title, name);
+    assert.equal(preview.children.find((child) => child.className === 'listing-map-preview__price').textContent, '₱1,234.50 per day');
+    assert.equal(preview.children.find((child) => child.className === 'listing-map-preview__distance').textContent, '0.0 km away');
+    assert.equal(pins[0].options.title, `${name} · ₱1,234.50 per day`);
+    assert.equal(pins[0].icon.attributes.role, 'link');
+    assert.equal(preview.children.find((child) => child.tagName === 'a').href, '/listings/7');
 });
 
 test('selecting either pin navigates directly to that listing detail', () => {
@@ -146,10 +155,10 @@ test('Enter and Space select the focused listing pin while other keys keep map n
         { lat: 0, lng: 0, name: 'Camera', image: null, price: '100.00', distance: null, url: '/listings/7' },
     ], null, null);
     map.init();
-    assert.equal(typeof pins[0].handlers.keydown, 'function');
+    assert.equal(typeof pins[0].icon.handlers.keydown, 'function');
     const prevented = [];
     for (const key of ['ArrowRight', 'Enter', ' ']) {
-        pins[0].handlers.keydown({ originalEvent: { key, preventDefault() { prevented.push(key); } } });
+        pins[0].icon.handlers.keydown({ key, preventDefault() { prevented.push(key); }, stopPropagation() {} });
     }
     assert.deepEqual(navigated, ['/listings/7', '/listings/7']);
     assert.deepEqual(prevented, ['Enter', ' ']);

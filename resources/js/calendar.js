@@ -1,10 +1,23 @@
 document.addEventListener('alpine:init', () => {
-    Alpine.data('availabilityCalendar', (bookedRanges) => ({
+    Alpine.data('availabilityCalendar', (bookedRanges, reservedRanges = [], availableFrom = null, availableUntil = null) => ({
         viewDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
         ranges: bookedRanges.map((r) => ({
             start: new Date(r.start + 'T00:00:00'),
             end: new Date(r.end + 'T00:00:00'),
         })),
+
+        reservations: reservedRanges.map((r) => ({
+            start: new Date(r.start + 'T00:00:00'),
+            end: new Date(r.end + 'T00:00:00'),
+        })),
+
+        availableFrom: availableFrom ? new Date(availableFrom + 'T00:00:00') : null,
+        availableUntil: availableUntil ? new Date(availableUntil + 'T00:00:00') : null,
+
+        isOutsideWindow(date) {
+            return !!date && ((this.availableFrom && date < this.availableFrom)
+                || (this.availableUntil && date > this.availableUntil));
+        },
 
         get monthLabel() {
             return this.viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -27,7 +40,11 @@ document.addEventListener('alpine:init', () => {
         },
 
         isBooked(date) {
-            return !!date && this.ranges.some((r) => date >= r.start && date <= r.end);
+            return !!date && (this.ranges.some((r) => date >= r.start && date <= r.end) || this.isReserved(date));
+        },
+
+        isReserved(date) {
+            return !!date && this.reservations.some((r) => date >= r.start && date <= r.end);
         },
 
         isPast(date) {

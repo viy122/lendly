@@ -18,11 +18,14 @@ class CancellationPolicy
 
     public static function evaluate(Rental $rental): array
     {
+        $terms = $rental->rentalRequest?->agreement_terms;
+        $windowHours = $terms['cancellation_window_hours'] ?? self::CHARGEABLE_WINDOW_HOURS;
+        $feePercentage = ($terms['cancellation_fee_percentage'] ?? self::FEE_PERCENTAGE * 100) / 100;
         $hoursUntilStart = round(max(0, now()->diffInHours($rental->start_date, false)), 1);
-        $withinChargeableWindow = now()->diffInHours($rental->start_date, false) < self::CHARGEABLE_WINDOW_HOURS;
+        $withinChargeableWindow = now()->diffInHours($rental->start_date, false) < $windowHours;
 
         $fee = $withinChargeableWindow
-            ? round((float) $rental->rental_fee * self::FEE_PERCENTAGE, 2)
+            ? round((float) $rental->rental_fee * $feePercentage, 2)
             : 0.0;
 
         return [
@@ -30,8 +33,8 @@ class CancellationPolicy
             'hours_until_start' => $hoursUntilStart,
             'within_chargeable_window' => $withinChargeableWindow,
             'reason' => $withinChargeableWindow
-                ? 'Cancelled within '.self::CHARGEABLE_WINDOW_HOURS.' hours of the rental start date — a '.(self::FEE_PERCENTAGE * 100).'% cancellation fee applies per the rental terms and agreement.'
-                : 'Cancelled more than '.self::CHARGEABLE_WINDOW_HOURS.' hours before the rental start date — no cancellation fee applies.',
+                ? 'Cancelled less than '.$windowHours.' hours before the rental start date — a '.($feePercentage * 100).'% cancellation fee applies per the rental terms and agreement.'
+                : 'Cancelled at least '.$windowHours.' hours before the rental start date — no cancellation fee applies.',
         ];
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Livewire\Messages;
 
 use App\Enums\NotificationType;
+use App\Livewire\Messages\Concerns\ListsThreads;
 use App\Models\Message;
 use App\Models\RentalRequest;
 use App\Notifications\TalaNotification;
@@ -13,6 +14,8 @@ use Livewire\Component;
 #[Layout('layouts.app')]
 class Show extends Component
 {
+    use ListsThreads;
+
     public RentalRequest $rentalRequest;
 
     public string $body = '';
@@ -31,6 +34,7 @@ class Show extends Component
 
     public function send(): void
     {
+        $this->authorize('converse', $this->rentalRequest);
         $this->validate(['body' => ['required', 'string', 'max:2000']]);
 
         $otherParty = $this->rentalRequest->otherPartyFor(auth()->user());
@@ -53,12 +57,23 @@ class Show extends Component
 
         $this->reset('body');
         $this->rentalRequest->refresh()->load('messages.sender');
+        $this->dispatch('message-sent');
     }
 
     public function render(): View
     {
+        $this->rentalRequest->refresh();
+        $this->authorize('converse', $this->rentalRequest);
+        $this->rentalRequest->messages()->where('receiver_id', auth()->id())
+            ->whereNull('read_at')->update(['read_at' => now()]);
+        $this->rentalRequest->load(['listing.images', 'listing.owner', 'renter', 'messages.sender']);
+
         return view('livewire.messages.show', [
+            'listing' => $this->rentalRequest->listing,
+            'messages' => $this->rentalRequest->messages,
+            'activeId' => $this->rentalRequest->id,
             'otherParty' => $this->rentalRequest->otherPartyFor(auth()->user()),
+            'threads' => $this->threadsForCurrentUser(),
         ]);
     }
 }

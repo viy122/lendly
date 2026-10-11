@@ -21,66 +21,69 @@
     ];
 @endphp
 
-<div x-data="{ filtersOpen: false }">
-    <div class="border-b border-blue-200 bg-gradient-to-r from-blue-100 to-indigo-100 shadow-sm">
-        <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <p class="text-xs font-semibold uppercase tracking-wide text-blue-600">Lendly marketplace</p>
-                    <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900">Find what you need to rent</h1>
-                    <p class="mt-1 text-sm text-slate-500">{{ $listings->total() }} item{{ $listings->total() === 1 ? '' : 's' }} available right now.</p>
-                </div>
-                <div class="flex items-center gap-2">
-                    <a href="{{ route('map') }}" wire:navigate class="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
-                        <x-icon name="map-pin" class="h-4 w-4" />
-                        View on map
-                    </a>
-                </div>
-            </div>
+<div x-data="{
+    filtersOpen: false,
+    headerHeight: 128,
+    searchPanelHeight: 80,
+    resizeObserver: null,
+    init() {
+        this.$nextTick(() => {
+            this.resizeObserver = new ResizeObserver(() => {
+                this.headerHeight = this.$root.querySelector('header').offsetHeight;
+                this.searchPanelHeight = this.$refs.searchPanel.offsetHeight;
+            });
+            this.resizeObserver.observe(this.$root.querySelector('header'));
+            this.resizeObserver.observe(this.$refs.searchPanel);
+        });
+    },
+    destroy() {
+        this.resizeObserver?.disconnect();
+    },
+}">
+    <x-page-header
+        eyebrow="Lendly marketplace"
+        title="Find what you need to rent"
+        :subtitle="$listings->total() . ' item' . ($listings->total() === 1 ? '' : 's') . ' accepting rental requests.'"
+    />
 
-            <div class="mt-6 flex flex-col gap-3 sm:flex-row">
-                <div class="relative flex-1">
+    <div class="w-full px-4 py-6 sm:px-6 lg:px-8">
+        <div x-ref="searchPanel" :style="{ top: (headerHeight + 16) + 'px' }"
+             class="sticky z-10 rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_12px_36px_rgba(15,45,95,0.14)] backdrop-blur-xl">
+            <div class="flex flex-col gap-3 lg:flex-row">
+                <div class="relative min-w-0 flex-1">
                     <x-icon name="search" class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                    <input type="text" wire:model.live.debounce.400ms="keyword" placeholder="Search for tools, cameras, tents..."
+                    <input type="text" wire:model.live.debounce.400ms="keyword" placeholder="Search for tools, cameras, tents..." aria-label="Search items"
                            class="w-full rounded-lg border-slate-300 py-3 pl-11 pr-4 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                 </div>
 
-                <select wire:model.live="category" class="rounded-lg border-slate-300 py-3 pl-4 pr-8 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                    <option value="">All categories</option>
-                    @foreach ($categories as $cat)
-                        <option value="{{ $cat->id }}">{{ $cat->name }}</option>
-                    @endforeach
-                </select>
+                <div class="relative min-w-0 lg:w-56">
+                    <x-icon name="map-pin" class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                    <input type="text" wire:model.live.debounce.400ms="location" placeholder="City or area" aria-label="Filter by city or area"
+                           class="w-full rounded-lg border-slate-300 py-3 pl-11 pr-4 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
 
-                <button type="button" @click="filtersOpen = ! filtersOpen"
-                        class="flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
-                    <x-icon name="filter" class="h-4 w-4" />
-                    Filters
-                </button>
-
-                <button type="button" wire:click="$refresh"
-                        class="rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-3 text-sm font-semibold text-white shadow-sm hover:from-blue-700 hover:to-indigo-700">
-                    Search
-                </button>
-            </div>
-
-            <div class="mt-5 -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-                <button type="button" wire:click="$set('category', '')"
-                        class="flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-semibold transition {{ $category === '' ? 'border-transparent bg-blue-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300' }}">
-                    <x-icon name="sparkles" class="h-3.5 w-3.5" />
-                    All
-                </button>
-                @foreach ($categories as $cat)
-                    @php($style = $cat->style())
-                    <button type="button" wire:click="$set('category', '{{ $cat->id }}')"
-                            class="flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-semibold transition {{ (string) $category === (string) $cat->id ? ($accentSolid[$style['accent']] ?? $accentSolid['slate']) : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300' }}">
-                        <x-icon :name="$style['icon']" class="h-3.5 w-3.5" />
-                        {{ $cat->name }}
+                <div class="flex flex-col gap-3 sm:flex-row">
+                    <button type="button" @click="filtersOpen = ! filtersOpen" :aria-expanded="filtersOpen" aria-controls="listing-filters"
+                            class="flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
+                        <x-icon name="filter" class="h-4 w-4" />
+                        Filters
                     </button>
-                @endforeach
+
+                    <div class="flex gap-4">
+                        <button type="button" wire:click="$refresh"
+                                class="flex-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-3 text-sm font-semibold text-white shadow-sm hover:from-blue-700 hover:to-indigo-700 sm:flex-none">
+                            Search
+                        </button>
+
+                        <a href="{{ route('map') }}" wire:navigate class="flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 sm:flex-none">
+                            <x-icon name="map-pin" class="h-4 w-4" />
+                            View on Map
+                        </a>
+                    </div>
+                </div>
             </div>
 
-            <div x-show="filtersOpen" x-transition class="mt-4 grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2 lg:grid-cols-4" style="display: none;">
+            <div id="listing-filters" x-show="filtersOpen" x-transition class="mt-4 grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_minmax(18rem,1.5fr)]" style="display: none;">
                 <select wire:model.live="condition" class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     <option value="">Any condition</option>
                     @foreach ($conditions as $option)
@@ -101,65 +104,108 @@
                     <option value="popular">Most popular</option>
                 </select>
 
-                <div class="flex items-center gap-2">
-                    <input type="number" wire:model.live.debounce.400ms="minPrice" placeholder="Min ₱/day" class="w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                <div class="flex min-w-0 items-center gap-2">
+                    <input type="number" wire:model.live.debounce.400ms="minPrice" placeholder="Min ₱/day" aria-label="Minimum price per day" class="min-w-0 w-full rounded-lg border-slate-300 px-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     <span class="text-slate-400">–</span>
-                    <input type="number" wire:model.live.debounce.400ms="maxPrice" placeholder="Max ₱/day" class="w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <input type="number" wire:model.live.debounce.400ms="maxPrice" placeholder="Max ₱/day" aria-label="Maximum price per day" class="min-w-0 w-full rounded-lg border-slate-300 px-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <button type="button" wire:click="resetFilters" aria-label="Clear filters" title="Clear filters"
+                            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-500 shadow-sm hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                        <x-icon name="x-mark" class="h-4 w-4" aria-hidden="true" />
+                    </button>
                 </div>
-
-                <button type="button" wire:click="resetFilters" class="text-left text-sm font-medium text-slate-500 hover:text-slate-700 sm:col-span-2 lg:col-span-4">
-                    Clear filters
-                </button>
             </div>
         </div>
-    </div>
 
-    <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        @if ($listings->isEmpty())
-            <x-empty-state title="No listings match your filters" message="Try widening your search or clearing some filters.">
-                <span class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-300">
-                    <x-icon name="search" class="h-6 w-6" />
-                </span>
-            </x-empty-state>
-        @else
-            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                @foreach ($listings as $listing)
-                    @php($style = $listing->category->style())
-                    <a href="{{ route('listings.show', $listing) }}" wire:navigate wire:key="listing-{{ $listing->id }}" class="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-                        <div class="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
-                            @if ($listing->images->first())
-                                <img src="{{ $listing->images->first()->url() }}" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
-                            @else
-                                <div class="flex h-full w-full items-center justify-center text-slate-300">No photo</div>
-                            @endif
-                            <div class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/40 to-transparent"></div>
-                            <x-category-badge :category="$listing->category" class="absolute left-3 top-3 shadow-sm" />
-                            <span class="absolute bottom-3 right-3 rounded-full bg-white/95 px-3 py-1 text-sm font-bold text-slate-900 shadow-sm">
-                                ₱{{ number_format($listing->price_per_day, 0) }}<span class="text-xs font-medium text-slate-400">/day</span>
+        <div class="mt-6 lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start lg:gap-6">
+            <aside :style="{ top: (headerHeight + searchPanelHeight + 32) + 'px' }" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-[0.14em] text-blue-600">Explore</p>
+                        <h2 class="mt-1 text-base font-bold text-[#071a3d]">Categories</h2>
+                    </div>
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600">
+                        <x-icon name="filter" class="h-4 w-4" />
+                    </span>
+                </div>
+
+                <div class="-mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0">
+                    <button type="button" wire:click="$set('category', '')"
+                            class="group flex shrink-0 items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-left text-xs font-semibold transition duration-200 lg:w-full {{ $category === '' ? 'border-transparent bg-blue-600 text-white shadow-[0_7px_18px_rgba(37,99,235,0.24)]' : 'border-slate-200 bg-white text-slate-600 hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 lg:hover:translate-x-1 lg:hover:translate-y-0' }}">
+                        <span class="grid h-7 w-7 shrink-0 place-items-center rounded-lg {{ $category === '' ? 'bg-white/15' : 'bg-slate-50 text-blue-500 group-hover:bg-white' }}">
+                            <x-icon name="sparkles" class="h-3.5 w-3.5" />
+                        </span>
+                        <span>All items</span>
+                    </button>
+
+                    @foreach ($categories as $cat)
+                        @php($style = $cat->style())
+                        <button type="button" wire:click="$set('category', '{{ $cat->id }}')"
+                                class="group flex shrink-0 items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-left text-xs font-semibold transition duration-200 lg:w-full {{ (string) $category === (string) $cat->id ? ($accentSolid[$style['accent']] ?? $accentSolid['slate']) : 'border-slate-200 bg-white text-slate-600 hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 lg:hover:translate-x-1 lg:hover:translate-y-0' }}">
+                            <span class="grid h-7 w-7 shrink-0 place-items-center rounded-lg {{ (string) $category === (string) $cat->id ? 'bg-white/15 text-white' : 'bg-slate-50 ' . ($accentText[$style['accent']] ?? $accentText['slate']) . ' group-hover:bg-white' }}">
+                                <x-icon :name="$style['icon']" class="h-3.5 w-3.5" />
                             </span>
-                        </div>
-                        <div class="p-4">
-                            <h3 class="truncate font-semibold text-slate-900">{{ $listing->name }}</h3>
-                            <x-badge :color="$listing->availabilityColor()">{{ $listing->availabilityLabel() }}</x-badge>
-                            <p class="mt-1 flex items-center gap-1 text-sm text-slate-500">
-                                <x-icon name="map-pin" class="h-3.5 w-3.5 text-slate-400" />
-                                {{ $listing->location }}
-                            </p>
-                            <div class="mt-3 flex items-center justify-between">
-                                <x-badge color="slate">{{ $listing->condition->label() }}</x-badge>
-                                <span class="flex items-center gap-1 text-xs font-semibold {{ $accentText[$style['accent']] ?? $accentText['slate'] }}">
-                                    View details
-                                    <x-icon name="chevron-down" class="h-3.5 w-3.5 -rotate-90 transition group-hover:translate-x-0.5" />
+                            <span>{{ $cat->name }}</span>
+                        </button>
+                    @endforeach
+                </div>
+
+                @if ($category !== '')
+                    <button type="button" wire:click="$set('category', '')" class="mt-4 hidden w-full items-center justify-center gap-1.5 border-t border-slate-100 pt-3 text-xs font-semibold text-slate-400 transition hover:text-blue-600 lg:flex">
+                        Clear category
+                        <span aria-hidden="true">×</span>
+                    </button>
+                @endif
+            </aside>
+
+            <section class="mt-5 min-w-0 lg:mt-0">
+            @if ($listings->isEmpty())
+                <x-empty-state title="No listings match your filters" message="Try widening your search or clearing some filters.">
+                    <span class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-300">
+                        <x-icon name="search" class="h-6 w-6" />
+                    </span>
+                </x-empty-state>
+            @else
+                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                    @foreach ($listings as $listing)
+                        @php($style = $listing->category->style())
+                        <a href="{{ route('listings.show', $listing) }}" wire:navigate wire:key="listing-{{ $listing->id }}" class="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+                            <div class="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
+                                @if ($listing->images->first())
+                                    <img src="{{ $listing->images->first()->url() }}" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
+                                @else
+                                    <div class="flex h-full w-full items-center justify-center text-slate-300">No photo</div>
+                                @endif
+                                <div class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/40 to-transparent"></div>
+                                <x-category-badge :category="$listing->category" class="absolute left-3 top-3 shadow-sm" />
+                                <span class="absolute bottom-3 right-3 rounded-full bg-white/95 px-3 py-1 text-sm font-bold text-slate-900 shadow-sm">
+                                    ₱{{ number_format($listing->price_per_day, 0) }}<span class="text-xs font-medium text-slate-400">/day</span>
                                 </span>
                             </div>
-                        </div>
-                    </a>
-                @endforeach
-            </div>
+                            <div class="p-4">
+                                <h3 class="truncate font-semibold text-slate-900">{{ $listing->name }}</h3>
+                                @php($availability = $listing->availabilityStatus())
+                                <div class="mt-2"><x-badge :color="$availability->badgeColor()">{{ $availability->label() }}</x-badge></div>
+                                <p class="mt-1 flex items-center gap-1 text-sm text-slate-500">
+                                    <x-icon name="map-pin" class="h-3.5 w-3.5 text-slate-400" />
+                                    {{ $listing->location }}
+                                </p>
+                                <div class="mt-3 flex items-center justify-between">
+                                    <x-badge color="slate">{{ $listing->condition->label() }}</x-badge>
+                                    <span class="flex items-center gap-1 text-xs font-semibold {{ $accentText[$style['accent']] ?? $accentText['slate'] }}">
+                                        View details
+                                        <x-icon name="chevron-down" class="h-3.5 w-3.5 -rotate-90 transition group-hover:translate-x-0.5" />
+                                    </span>
+                                </div>
+                            </div>
+                        </a>
+                    @endforeach
+                </div>
 
-            <div class="mt-8">
-                {{ $listings->links() }}
-            </div>
-        @endif
+                <div class="mt-8">
+                    {{ $listings->links() }}
+                </div>
+            @endif
+            </section>
+        </div>
     </div>
 </div>

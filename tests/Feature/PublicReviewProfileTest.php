@@ -194,7 +194,7 @@ class PublicReviewProfileTest extends TestCase
         $originalEmail = $author->email;
         $author->closeAccount();
 
-        $this->get('/users/'.$recipient->id)->assertOk()->assertSee('Preserved completed review')->assertSee('Deleted user')
+        $this->get('/users/'.$recipient->id)->assertOk()->assertSee('Preserved completed review')->assertSee('Deleted account')
             ->assertDontSee($originalName)->assertDontSee($originalEmail);
     }
 

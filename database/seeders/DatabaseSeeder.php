@@ -31,10 +31,12 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call([
+            TestLoginSeeder::class,
             CategorySeeder::class,
             MemberSeeder::class,
             ListingSeeder::class,
             TransactionSeeder::class,
+            DemoContentSeeder::class,
         ]);
     }
 }

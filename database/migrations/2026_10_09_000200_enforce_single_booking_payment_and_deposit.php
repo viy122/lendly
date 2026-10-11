@@ -26,7 +26,12 @@ return new class extends Migration
     public function down(): void
     {
         foreach ($this->keys as $table => $column) {
-            Schema::table($table, fn (Blueprint $blueprint) => $blueprint->dropUnique([$column]));
+            if ($table === 'rentals' && DB::table('migrations')->where('migration', '2026_10_07_000001_add_agreement_terms_to_rental_requests')->exists()) {
+                continue;
+            }
+            if (Schema::hasIndex($table, "{$table}_{$column}_unique")) {
+                Schema::table($table, fn (Blueprint $blueprint) => $blueprint->dropUnique([$column]));
+            }
         }
     }
 };

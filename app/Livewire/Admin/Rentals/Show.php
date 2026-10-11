@@ -2,43 +2,116 @@
 
 namespace App\Livewire\Admin\Rentals;
 
+use App\Enums\RentalAdminActionType;
 use App\Models\Rental;
+use App\Services\CancellationPolicy;
+use App\Services\RentalAdministration;
+use App\Services\RentalLifecycle;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Layout('layouts.app')]
 class Show extends Component
 {
-    public Rental $rental;
+    use WithPagination;
+
+    #[Locked]
+    public int $rentalId;
+
+    public string $reason = '';
+
+    public string $note = '';
+
+    public bool $funds_received = false;
 
     public function mount(Rental $rental): void
     {
-        abort_unless(auth()->user()?->isAdmin(), 403);
+        $this->authorize('manage', $rental);
+        $this->rentalId = $rental->id;
+    }
 
-        $this->rental = $rental->load([
-            'rentalRequest', 'listing', 'owner', 'renter', 'payment', 'securityDeposit',
-            'conditionRecords.photos', 'conditionRecords.recordedBy', 'damageReport.photos',
-            'disputes.raisedBy', 'disputes.resolvedBy',
-        ]);
+    public function cancelBooking(): void
+    {
+        $this->perform(RentalAdminActionType::BookingCancelled);
+    }
+
+    public function completeInspection(): void
+    {
+        $this->perform(RentalAdminActionType::InspectionCompleted);
+    }
+
+    public function releaseDeposit(): void
+    {
+        $this->perform(RentalAdminActionType::DepositReleased);
+    }
+
+    public function addNote(): void
+    {
+        $this->perform(RentalAdminActionType::NoteAdded);
+    }
+
+    public function verifyPayment(int $submissionId): void
+    {
+        $this->perform(RentalAdminActionType::PaymentVerified, $submissionId);
+    }
+
+    public function rejectPayment(int $submissionId): void
+    {
+        $this->perform(RentalAdminActionType::PaymentRejected, $submissionId);
+    }
+
+    private function perform(RentalAdminActionType $action, ?int $submissionId = null): void
+    {
+        $rental = Rental::findOrFail($this->rentalId);
+        $this->authorize($action->ability(), $rental);
+        $field = $action === RentalAdminActionType::NoteAdded ? 'note' : 'reason';
+        $this->$field = trim($this->$field);
+        $this->validate([$field => ['required', 'string', 'max:1000']]);
+        if ($action === RentalAdminActionType::PaymentVerified) {
+            $this->validate(['funds_received' => ['accepted']]);
+        }
+
+        RentalAdministration::perform($rental, auth()->user(), $action, $this->$field, $submissionId, $this->funds_received);
+
+        $this->reset($field);
+        $this->reset('funds_received');
+        $this->resetPage();
+        session()->flash('status', $action->label().'.');
     }
 
     public function render(): View
     {
-        abort_unless(auth()->user()?->isAdmin(), 403);
+        $rental = Rental::findOrFail($this->rentalId);
+        $this->authorize('manage', $rental);
+        RentalLifecycle::synchronizeRentalStatus($rental);
+        $rental->refresh()->load([
+            'listing.images', 'owner', 'renter', 'rentalRequest', 'payment', 'securityDeposit',
+            'exchangeSchedule.proposer', 'conditionRecords.photos', 'conditionRecords.recordedBy',
+            'damageReport.photos', 'disputes.raisedBy', 'disputes.resolvedBy', 'reviews',
+            'paymentSubmissions.reviewer',
+        ]);
 
         $timeline = collect([
-            'Request submitted' => $this->rental->rentalRequest->created_at,
-            'Booking approved' => $this->rental->created_at,
-            'Payment confirmed' => $this->rental->paid_at,
-            'Owner confirmed pickup' => $this->rental->pickup_confirmed_by_owner_at,
-            'Renter confirmed pickup' => $this->rental->pickup_confirmed_by_renter_at,
-            'Owner confirmed return' => $this->rental->return_confirmed_by_owner_at,
-            'Renter confirmed return' => $this->rental->return_confirmed_by_renter_at,
-            'Inspection completed' => $this->rental->completed_at,
-            'Rental cancelled' => $this->rental->cancelled_at,
+            'Request submitted' => $rental->rentalRequest?->created_at,
+            'Booking approved' => $rental->created_at,
+            'Payment confirmed' => $rental->paid_at,
+            'Owner confirmed pickup' => $rental->pickup_confirmed_by_owner_at,
+            'Renter confirmed pickup' => $rental->pickup_confirmed_by_renter_at,
+            'Owner confirmed return' => $rental->return_confirmed_by_owner_at,
+            'Renter confirmed return' => $rental->return_confirmed_by_renter_at,
+            'Inspection completed' => $rental->completed_at,
+            'Rental archived' => $rental->archived_at,
+            'Rental cancelled' => $rental->cancelled_at,
         ])->filter()->sortBy(fn ($date) => $date->timestamp);
 
-        return view('livewire.admin.rentals.show', ['timeline' => $timeline]);
+        return view('livewire.admin.rentals.show', [
+            'timeline' => $timeline,
+            'rental' => $rental,
+            'cancellation' => $rental->isCancellableByRenter() ? CancellationPolicy::evaluate($rental) : null,
+            'actions' => $rental->adminActions()->with('administrator')->orderByDesc('id')->paginate(10),
+        ]);
     }
 }

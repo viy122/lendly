@@ -3,11 +3,13 @@
 namespace App\Livewire\RentalRequests;
 
 use App\Enums\FulfillmentMethod;
+use App\Enums\NotificationType;
 use App\Enums\RentalRequestStatus;
 use App\Models\CommissionSetting;
 use App\Models\Listing;
 use App\Models\RentalRequest;
 use App\Models\User;
+use App\Notifications\TalaNotification;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +24,12 @@ class Create extends Component
     public Listing $listing;
 
     #[Locked]
+    public bool $modal = false;
+
+    #[Locked]
     public array $presentedTerms = [];
+
+    public bool $accept_terms = false;
 
     public string $start_date = '';
 
@@ -30,18 +37,18 @@ class Create extends Component
 
     public string $fulfillment_method = '';
 
-    public bool $accept_terms = false;
-
-    public function mount(Listing $listing): void
+    public function mount(Listing $listing, bool $modal = false): void
     {
-        abort_unless($listing->isPublished() && $listing->is_available, 404);
+        $this->authorizeRenter();
+        abort_unless(! $listing->trashed() && $listing->isPublished() && $listing->is_available && $listing->hasRequestableDates(), 404);
         abort_if($listing->owner_id === auth()->id(), 403, 'You cannot rent your own listing.');
 
         $this->listing = $listing;
         $this->presentedTerms = $listing->only(['price_per_day', 'security_deposit', 'rental_rules']);
         $this->presentedTerms['commission_rate'] = CommissionSetting::current()->commission_rate;
-        $this->start_date = now()->addDay()->toDateString();
-        $this->end_date = now()->addDay()->toDateString();
+        $this->modal = $modal;
+        $this->start_date = max(now()->addDay()->toDateString(), $listing->available_from?->toDateString() ?? '');
+        $this->end_date = $this->start_date;
 
         $this->fulfillment_method = $listing->pickup_available
             ? FulfillmentMethod::Pickup->value
@@ -82,91 +89,128 @@ class Create extends Component
 
     public function submit(): void
     {
+        $this->authorizeRenter();
+
+        // Share the listing lock used by approval, so its date hold cannot
+        // change between the availability check and saving this request.
+        $submitted = DB::transaction(fn () => $this->persistRequest(), 3);
+
+        if (! $submitted) {
+            return;
+        }
+
+        session()->flash('status', 'Rental request sent! The owner will review it shortly.');
+        $this->redirect(route('renter.rental-requests.index'), navigate: true);
+    }
+
+    private function persistRequest(): bool
+    {
+        $participants = User::whereIn('id', [auth()->id(), $this->listing->owner_id])->orderBy('id')->lockForUpdate()->get();
+        abort_unless($participants->count() === 2 && $participants->every(fn (User $user) => ! $user->isSuspended()), 403);
+        $listing = Listing::withTrashed()->whereKey($this->listing->id)->lockForUpdate()->first();
+
+        if (! $listing || $listing->trashed() || ! $listing->isPublished() || ! $listing->is_available || ! $listing->hasRequestableDates()) {
+            $this->addError('listing', 'This item is no longer available for rent. Please choose another item.');
+
+            return false;
+        }
+
+        $this->listing = $listing;
+        abort_if($listing->owner_id === auth()->id(), 403, 'You cannot rent your own listing.');
+
+        $currentTerms = $listing->only(['price_per_day', 'security_deposit', 'rental_rules']);
+        $currentTerms['commission_rate'] = CommissionSetting::current()->commission_rate;
+        $pricingChanged = $currentTerms !== $this->presentedTerms;
+        $this->presentedTerms = $currentTerms;
+        if ($pricingChanged) {
+            $this->accept_terms = false;
+            $this->addError('accept_terms', 'The listing terms or price changed. Review the updated details and accept them again.');
+
+            return false;
+        }
+
         $this->validate([
             'start_date' => ['required', 'date', 'after_or_equal:tomorrow'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'fulfillment_method' => ['required', Rule::enum(FulfillmentMethod::class)],
             'accept_terms' => ['accepted'],
-        ], [
-            'accept_terms.accepted' => 'You must accept the rental terms and agreement to continue.',
         ]);
 
-        $request = DB::transaction(function () {
-            $participants = User::whereIn('id', [auth()->id(), $this->listing->owner_id])->orderBy('id')->lockForUpdate()->get();
-            abort_unless($participants->count() === 2 && $participants->every(fn (User $user) => ! $user->isSuspended()), 403);
-            $current = Listing::whereKey($this->listing->id)->lockForUpdate()->first();
-            if (! $current || ! $current->isPublished() || ! $current->is_available) {
-                $this->addError('start_date', 'This item is no longer available. Please choose another listing.');
+        if (! $listing->includesAvailableDates($this->start_date, $this->end_date)) {
+            $this->addError('start_date', 'Choose rental dates within the owner’s availability window.');
+            $this->addError('end_date', 'The entire rental period must fit within the available dates.');
 
-                return null;
-            }
-            abort_if($current->owner_id === auth()->id(), 403);
-            $currentTerms = $current->only(['price_per_day', 'security_deposit', 'rental_rules']);
-            $currentTerms['commission_rate'] = CommissionSetting::current()->commission_rate;
-            $pricingChanged = $currentTerms !== $this->presentedTerms;
-            $this->presentedTerms = $currentTerms;
-            $this->listing = $current;
-            if ($pricingChanged) {
-                $this->accept_terms = false;
-                $this->addError('accept_terms', 'The listing terms or price changed. Review the updated details and accept them again.');
-
-                return null;
-            }
-
-            if ($this->fulfillment_method === FulfillmentMethod::Pickup->value && ! $this->listing->pickup_available) {
-                $this->addError('fulfillment_method', 'Pickup is not available for this item.');
-
-                return;
-            }
-
-            if ($this->fulfillment_method === FulfillmentMethod::Delivery->value && ! $this->listing->delivery_available) {
-                $this->addError('fulfillment_method', 'Delivery is not available for this item.');
-
-                return;
-            }
-
-            $days = $this->rentalDays();
-
-            if ($days > $this->listing->max_rental_duration_days) {
-                $this->addError('end_date', "This item can be rented for at most {$this->listing->max_rental_duration_days} days.");
-
-                return;
-            }
-
-            if ($this->listing->hasApprovedOverlap($this->start_date, $this->end_date)) {
-                $this->addError('start_date', 'These dates are no longer available for this item. Please choose different dates.');
-
-                return;
-            }
-
-            $rentalRequest = RentalRequest::create([
-                'listing_id' => $this->listing->id,
-                'renter_id' => auth()->id(),
-                'start_date' => $this->start_date,
-                'end_date' => $this->end_date,
-                'rental_days' => $days,
-                'fulfillment_method' => $this->fulfillment_method,
-                'rental_fee' => $this->rentalFee(),
-                'commission_rate' => $this->commissionRate(),
-                'commission_amount' => $this->commissionAmount(),
-                'security_deposit' => $this->listing->security_deposit,
-                'total_amount' => $this->totalAmount(),
-                'status' => RentalRequestStatus::Requested,
-                'renter_terms_accepted_at' => now(),
-            ]);
-
-            $rentalRequest->notifyStatus();
-
-            return $rentalRequest;
-        }, 3);
-
-        if (! $request) {
-            return;
+            return false;
         }
 
-        session()->flash('status', 'Rental request sent! The owner will review it shortly.');
+        if ($this->fulfillment_method === FulfillmentMethod::Pickup->value && ! $this->listing->pickup_available) {
+            $this->addError('fulfillment_method', 'Pickup is not available for this item.');
 
-        $this->redirect(route('renter.rental-requests.index'), navigate: true);
+            return false;
+        }
+
+        if ($this->fulfillment_method === FulfillmentMethod::Delivery->value && ! $this->listing->delivery_available) {
+            $this->addError('fulfillment_method', 'Delivery is not available for this item.');
+
+            return false;
+        }
+
+        $days = $this->rentalDays();
+
+        if ($days > $this->listing->max_rental_duration_days) {
+            $this->addError('end_date', "This item can be rented for at most {$this->listing->max_rental_duration_days} days.");
+
+            return false;
+        }
+
+        if ($this->listing->hasApprovedOverlap($this->start_date, $this->end_date)) {
+            $this->addError('start_date', 'These dates are no longer available for this item. Please choose different dates.');
+
+            return false;
+        }
+
+        // Read the rate once so every saved charge uses the same snapshot.
+        $rentalFee = round((float) $listing->price_per_day * $days, 2);
+        $commissionRate = $this->commissionRate();
+        $commissionAmount = round($rentalFee * ($commissionRate / 100), 2);
+        $totalAmount = round($rentalFee + $commissionAmount + (float) $listing->security_deposit, 2);
+
+        $rentalRequest = RentalRequest::create([
+            'listing_id' => $this->listing->id,
+            'renter_id' => auth()->id(),
+            'start_date' => $this->start_date,
+            'end_date' => $this->end_date,
+            'rental_days' => $days,
+            'fulfillment_method' => $this->fulfillment_method,
+            'rental_fee' => $rentalFee,
+            'commission_rate' => $commissionRate,
+            'commission_amount' => $commissionAmount,
+            'security_deposit' => $this->listing->security_deposit,
+            'total_amount' => $totalAmount,
+            'status' => RentalRequestStatus::Requested,
+        ]);
+
+        $this->listing->owner->notify(new TalaNotification(
+            NotificationType::RentalRequestSubmitted->value,
+            'New rental request',
+            auth()->user()->name." wants to rent \"{$this->listing->name}\". The request is pending your review.",
+            route('owner.rental-requests.index'),
+        ));
+        $rentalRequest->renter->notify(new TalaNotification(
+            NotificationType::RentalRequestSubmitted->value,
+            'Request pending',
+            "Your request for \"{$this->listing->name}\" is pending the owner's review.",
+            route('renter.rental-requests.index'),
+        ));
+
+        return true;
+    }
+
+    private function authorizeRenter(): void
+    {
+        $user = auth()->user();
+
+        abort_unless($user && $user->isRenter() && $user->activeInterface() === 'renter', 403);
     }
 
     public function render(): View

@@ -142,7 +142,7 @@ class AdminTransactionDetailTest extends TestCase
         $rental->renter->closeAccount();
 
         $this->actingAs(User::factory()->admin()->create())->get('/admin/rentals/'.$rental->id)
-            ->assertOk()->assertSee('Booked camera')->assertSee('Listing removed')->assertSee('Deleted user')->assertSee('Account closed');
+            ->assertOk()->assertSee('Booked camera')->assertSee('Listing removed')->assertSee('Deleted account')->assertSee('Account closed');
     }
 
     public function test_non_admin_cannot_open_transaction_details(): void

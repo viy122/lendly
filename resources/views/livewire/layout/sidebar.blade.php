@@ -15,16 +15,13 @@ new class extends Component
         $this->redirect('/', navigate: true);
     }
 
-    /**
-     * Local administrators can switch between seeded demo accounts.
-     */
+    /** Local administrators can switch between seeded demo accounts. */
     public function switchDemoUser(string $role): void
     {
         abort_unless(app()->environment('local') && Auth::user()?->isAdmin(), 403);
         abort_unless(in_array($role, ['admin', 'owner'], true), 403);
 
         $user = User::where('email', "{$role}@tala.test")->first();
-
         if (! $user) {
             return;
         }
@@ -34,7 +31,6 @@ new class extends Component
 
         Auth::login($user);
         session()->regenerate();
-
         $this->redirect(route($user->dashboardRouteName()), navigate: true);
     }
 }; ?>
@@ -49,21 +45,21 @@ new class extends Component
         },
     }"
     @toggle-sidebar.window="open = ! open"
-    @close-sidebar.window="open = false"
->
+    @close-sidebar.window="open = false">
     <!-- Mobile overlay -->
     <div x-show="open" x-transition.opacity @click="open = false" class="fixed inset-0 z-30 bg-slate-900/50 lg:hidden" style="display: none;"></div>
 
     <aside
         :class="[open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0', collapsed ? 'lg:w-20' : 'lg:w-72']"
-        class="fixed inset-y-0 left-0 z-40 flex w-72 shrink-0 flex-col border-r border-indigo-900 bg-gradient-to-b from-indigo-950 to-indigo-900 transition-all duration-200 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:translate-x-0"
-    >
-        <div class="flex h-12 items-center justify-between border-b border-indigo-900 px-4" :class="collapsed && 'lg:justify-center lg:px-0'">
-            <a href="{{ auth()->check() ? route(auth()->user()->dashboardRouteName()) : route('listings.index') }}" wire:navigate class="flex items-center gap-2">
-                <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-indigo-600 text-[10px] font-bold text-white">L</span>
-                <span class="text-sm font-semibold tracking-tight text-white" x-show="!collapsed" x-cloak x-transition.opacity.duration.100ms>Lendly</span>
+        class="fixed inset-y-0 left-0 z-40 flex w-72 shrink-0 flex-col border-r border-indigo-900 bg-gradient-to-b from-indigo-950 to-indigo-900 transition-all duration-200 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:translate-x-0">
+        <div class="relative flex h-24 items-center justify-between border-b border-indigo-900 px-4" :class="collapsed && 'lg:justify-center lg:px-0'">
+            <a href="{{ auth()->check() ? route(auth()->user()->dashboardRouteName()) : route('listings.index') }}" wire:navigate class="group flex items-center gap-2.5" aria-label="Lendly dashboard">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/80 bg-white p-0.5 shadow-[0_5px_16px_rgba(37,99,235,0.35)] transition duration-200 group-hover:-translate-y-0.5 group-hover:shadow-[0_8px_20px_rgba(59,130,246,0.45)]">
+                    <img src="{{ asset('images/lendlylogo_transparent.png') }}" alt="Lendly logo" class="h-full w-full scale-[1.35] object-contain" />
+                </span>
+                <span class="text-sm font-semibold tracking-tight text-white" x-show="!collapsed" x-cloak x-transition.opacity.duration.100ms>{{ auth()->check() && ! auth()->user()->isAdmin() ? ucfirst(auth()->user()->activeInterface()).' interface' : 'Rent · Share · Earn' }}</span>
             </a>
-            <button @click="open = false" class="rounded-md p-1 text-indigo-300 hover:bg-indigo-900 hover:text-white lg:hidden">
+            <button @click="open = false" class="rounded-md p-1 text-indigo-300 hover:bg-indigo-900 hover:text-white lg:hidden" aria-label="Close sidebar">
                 <x-icon name="x-mark" class="h-4 w-4" />
             </button>
         </div>
@@ -71,150 +67,139 @@ new class extends Component
         <button
             type="button"
             @click="toggleCollapsed()"
-            class="absolute -right-3 top-3 z-10 hidden h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm hover:text-blue-600 lg:flex"
-            :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-        >
+            class="absolute -right-3 top-7 z-10 hidden h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm hover:text-blue-600 lg:flex"
+            :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'">
             <x-icon name="chevron-down" class="h-3.5 w-3.5 transition-transform" x-bind:class="{ '-rotate-90': !collapsed, 'rotate-90': collapsed }" />
         </button>
 
         @if (app()->environment('local') && auth()->user()?->isAdmin())
-            <div class="border-b border-indigo-900 px-3 py-3" x-show="!collapsed" x-cloak x-transition>
-                <p class="px-1 pb-1.5 text-xs font-semibold uppercase tracking-wider text-indigo-400">Demo: switch user</p>
-                <div class="grid grid-cols-2 gap-1 rounded-lg bg-indigo-900 p-1">
-                    @foreach (['admin' => 'Admin', 'owner' => 'Renter/Owner'] as $role => $label)
-                        <button
-                            type="button"
-                            wire:click="switchDemoUser('{{ $role }}')"
-                            @class([
-                                'rounded-md px-2 py-1.5 text-xs font-semibold transition',
-                                'bg-white text-blue-700 shadow-sm' => auth()->check() && auth()->user()->email === "{$role}@tala.test",
-                                'text-indigo-300 hover:text-white' => ! (auth()->check() && auth()->user()->email === "{$role}@tala.test"),
-                            ])
-                        >
-                            {{ $label }}
-                        </button>
-                    @endforeach
+            <div class="border-b border-indigo-900 px-3 py-3" x-show="!collapsed" x-cloak>
+                <p class="pb-2 text-xs font-semibold uppercase tracking-wider text-indigo-400">Demo: switch user</p>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" wire:click="switchDemoUser('admin')" class="min-h-10 rounded-lg bg-indigo-800 px-3 text-sm text-white">Admin</button>
+                    <button type="button" wire:click="switchDemoUser('owner')" class="min-h-10 rounded-lg bg-indigo-800 px-3 text-sm text-white">Member</button>
                 </div>
+                <x-input-error :messages="$errors->get('account')" class="mt-2" />
             </div>
         @endif
 
         <nav class="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-3 py-4">
-            <x-sidebar-link :href="route('listings.index')" :active="request()->routeIs('listings.*')" icon="search" wire:navigate>
+            @if (! auth()->check() || auth()->user()->isAdmin() || auth()->user()->activeInterface() === 'renter')
+            <x-sidebar-link :href="route('listings.index')" :active="request()->routeIs('listings.*') && ! request()->routeIs('listings.message', 'listings.contact')" icon="search" wire:navigate>
                 {{ __('Browse') }}
             </x-sidebar-link>
             <x-sidebar-link :href="route('map')" :active="request()->routeIs('map')" icon="map-pin" wire:navigate>
                 {{ __('Map') }}
             </x-sidebar-link>
+            @endif
 
             @auth
-                <x-sidebar-link :href="route(auth()->user()->dashboardRouteName())" :active="request()->routeIs('*.dashboard') || request()->routeIs('dashboard')" icon="home" wire:navigate>
-                    {{ __('Dashboard') }}
-                </x-sidebar-link>
+            <x-sidebar-link :href="route(auth()->user()->dashboardRouteName())" :active="request()->routeIs('*.dashboard') || request()->routeIs('dashboard')" icon="home" wire:navigate>
+                {{ __('Dashboard') }}
+            </x-sidebar-link>
 
-                @if (auth()->user()->isRenter())
-                    <p class="flex items-center gap-1.5 px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wider text-indigo-400" x-show="!collapsed" x-cloak>
-                        <span class="h-1.5 w-1.5 rounded-full bg-blue-400"></span> Renting
-                    </p>
-                    <x-sidebar-link :href="route('renter.rental-requests.index')" :active="request()->routeIs('renter.rental-requests.*')" icon="inbox" wire:navigate>
-                        {{ __('My Requests') }}
-                    </x-sidebar-link>
-                    <x-sidebar-link :href="route('renter.rentals.index')" :active="request()->routeIs('renter.rentals.*')" icon="archive" wire:navigate>
-                        {{ __('My Rentals') }}
-                    </x-sidebar-link>
+            @if (auth()->user()->isRenter() || auth()->user()->isOwner())
+            <x-sidebar-link :href="route('messages.index')" :active="request()->routeIs('messages.*', 'listings.message', 'listings.contact', 'listing-conversations.show', 'rental-requests.chat')" icon="chat" wire:navigate>
+                {{ __('Messages') }}
+                @if (auth()->user()->unreadMessagesCount() > 0)
+                <x-slot:badge>{{ auth()->user()->unreadMessagesCount() > 9 ? '9+' : auth()->user()->unreadMessagesCount() }}</x-slot:badge>
                 @endif
+            </x-sidebar-link>
+            @endif
 
-                @if (auth()->user()->isOwner())
-                    <p class="flex items-center gap-1.5 px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wider text-indigo-400" x-show="!collapsed" x-cloak>
-                        <span class="h-1.5 w-1.5 rounded-full bg-violet-400"></span> Owning
-                    </p>
-                    <x-sidebar-link :href="route('owner.listings.index')" :active="request()->routeIs('owner.listings.*')" icon="tag" wire:navigate>
-                        {{ __('My Listings') }}
-                    </x-sidebar-link>
-                    <x-sidebar-link :href="route('owner.rental-requests.index')" :active="request()->routeIs('owner.rental-requests.*')" icon="inbox" wire:navigate>
-                        {{ __('Rental Requests') }}
-                    </x-sidebar-link>
-                    <x-sidebar-link :href="route('owner.rentals.index')" :active="request()->routeIs('owner.rentals.*')" icon="archive" wire:navigate>
-                        {{ __('My Rentals') }}
-                    </x-sidebar-link>
-                @endif
+            @if (auth()->user()->activeInterface() === 'renter')
+            <p class="flex items-center gap-1.5 px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wider text-indigo-400" x-show="!collapsed" x-cloak>
+                <span class="h-1.5 w-1.5 rounded-full bg-blue-400"></span> Renting
+            </p>
+            <x-sidebar-link :href="route('renter.rental-requests.index')" :active="request()->routeIs('renter.rental-requests.*')" icon="inbox" wire:navigate>
+                {{ __('My Requests') }}
+            </x-sidebar-link>
+            <x-sidebar-link :href="route('renter.rentals.index')" :active="request()->routeIs('renter.rentals.*')" icon="archive" wire:navigate>
+                {{ __('My Rentals') }}
+            </x-sidebar-link>
+            @endif
 
-                @if (auth()->user()->isAdmin())
-                    <p class="flex items-center gap-1.5 px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wider text-indigo-400" x-show="!collapsed" x-cloak>
-                        <span class="h-1.5 w-1.5 rounded-full bg-rose-400"></span> Administration
-                    </p>
-                    <x-sidebar-link :href="route('admin.listings.index')" :active="request()->routeIs('admin.listings.*')" icon="list" wire:navigate>
-                        {{ __('Listings') }}
-                    </x-sidebar-link>
-                    <x-sidebar-link :href="route('admin.rentals.index')" :active="request()->routeIs('admin.rentals.*')" icon="archive" wire:navigate>
-                        {{ __('Transactions') }}
-                    </x-sidebar-link>
-                    <x-sidebar-link :href="route('admin.damage-reports.index')" :active="request()->routeIs('admin.damage-reports.*')" icon="exclamation-triangle" wire:navigate>
-                        {{ __('Damage Reports') }}
-                    </x-sidebar-link>
-                    <x-sidebar-link :href="route('admin.disputes.index')" :active="request()->routeIs('admin.disputes.*')" icon="scale" wire:navigate>
-                        {{ __('Disputes') }}
-                    </x-sidebar-link>
-                @endif
+            @if (auth()->user()->activeInterface() === 'owner')
+            <p class="flex items-center gap-1.5 px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wider text-indigo-400" x-show="!collapsed" x-cloak>
+                <span class="h-1.5 w-1.5 rounded-full bg-violet-400"></span> Owning
+            </p>
+            <x-sidebar-link :href="route('owner.listings.index')" :active="request()->routeIs('owner.listings.*')" icon="tag" wire:navigate>
+                {{ __('My Listings') }}
+            </x-sidebar-link>
+            <x-sidebar-link :href="route('owner.rental-requests.index')" :active="request()->routeIs('owner.rental-requests.*')" icon="inbox" wire:navigate>
+                {{ __('Rental Requests') }}
+            </x-sidebar-link>
+            <x-sidebar-link :href="route('owner.rentals.index')" :active="request()->routeIs('owner.rentals.*')" icon="archive" wire:navigate>
+                {{ __('My Rentals') }}
+            </x-sidebar-link>
+            @endif
+
+            @if (auth()->user()->isAdmin())
+            <p class="flex items-center gap-1.5 px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wider text-indigo-400" x-show="!collapsed" x-cloak>
+                <span class="h-1.5 w-1.5 rounded-full bg-rose-400"></span> Administration
+            </p>
+            <x-sidebar-link :href="route('admin.listings.index')" :active="request()->routeIs('admin.listings.*')" icon="list" wire:navigate>
+                {{ __('Listings') }}
+            </x-sidebar-link>
+            <x-sidebar-link :href="route('admin.rentals.index')" :active="request()->routeIs('admin.rentals.*')" icon="archive" wire:navigate>
+                {{ __('Transactions') }}
+            </x-sidebar-link>
+            <x-sidebar-link :href="route('admin.damage-reports.index')" :active="request()->routeIs('admin.damage-reports.*')" icon="exclamation-triangle" wire:navigate>
+                {{ __('Damage Reports') }}
+            </x-sidebar-link>
+            <x-sidebar-link :href="route('admin.disputes.index')" :active="request()->routeIs('admin.disputes.*')" icon="scale" wire:navigate>
+                {{ __('Disputes') }}
+            </x-sidebar-link>
+            @endif
             @endauth
         </nav>
 
         <div class="border-t border-indigo-900 p-3">
             @auth
-                <div x-show="!collapsed" x-cloak>
-                    <x-dropdown align="top" width="64">
-                        <x-slot name="trigger">
-                            <button class="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-indigo-900">
-                                <span class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
-                                    @if (auth()->user()->avatar_path)
-                                        <img src="{{ auth()->user()->avatarUrl() }}" class="h-full w-full object-cover">
-                                    @else
-                                        {{ Str::of(auth()->user()->name)->substr(0, 1)->upper() }}
-                                    @endif
-                                </span>
-                                <span class="min-w-0 flex-1">
-                                    <span class="block truncate text-sm font-medium text-white" x-data="{{ json_encode(['name' => auth()->user()->name]) }}" x-text="name" x-on:profile-updated.window="name = $event.detail.name"></span>
-                                    <span class="block truncate text-xs text-indigo-300">{{ auth()->user()->email }}</span>
-                                </span>
-                                <x-icon name="chevron-down" class="h-4 w-4 shrink-0 text-indigo-400" />
-                            </button>
-                        </x-slot>
+            <div>
+                <x-dropdown align="top" width="64">
+                    <x-slot name="trigger">
+                        <button type="button" aria-label="{{ __('Account menu') }}" :aria-expanded="open" class="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-indigo-900" :class="collapsed && 'justify-center px-0'">
+                            <span class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
+                                @if (auth()->user()->avatar_path)
+                                <img src="{{ auth()->user()->avatarUrl() }}" class="h-full w-full object-cover">
+                                @else
+                                {{ Str::of(auth()->user()->name)->substr(0, 1)->upper() }}
+                                @endif
+                            </span>
+                            <span class="min-w-0 flex-1" x-show="!collapsed" x-cloak>
+                                <span class="block truncate text-sm font-medium text-white" x-data="{{ json_encode(['name' => auth()->user()->name]) }}" x-text="name" x-on:profile-updated.window="name = $event.detail.name"></span>
+                                <span class="block truncate text-xs text-indigo-300">{{ auth()->user()->email }}</span>
+                            </span>
+                            <x-icon name="chevron-down" class="h-4 w-4 shrink-0 text-indigo-400" x-show="!collapsed" x-cloak />
+                        </button>
+                    </x-slot>
 
-                        <x-slot name="content">
-                            <x-dropdown-link :href="route('profile')" wire:navigate>
-                                {{ __('Profile') }}
-                            </x-dropdown-link>
+                    <x-slot name="content">
+                        <x-dropdown-link :href="route('profile')" wire:navigate>
+                            {{ __('Profile') }}
+                        </x-dropdown-link>
 
-                            <button wire:click="logout" class="w-full text-start">
-                                <x-dropdown-link>
-                                    {{ __('Log Out') }}
-                                </x-dropdown-link>
-                            </button>
-                        </x-slot>
-                    </x-dropdown>
-                </div>
+                        <button type="button" wire:click="logout" class="block w-full px-4 py-2 text-start text-sm leading-5 text-slate-700 transition duration-150 ease-in-out hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:outline-none">
+                            {{ __('Log Out') }}
+                        </button>
+                    </x-slot>
+                </x-dropdown>
+            </div>
 
-                <a href="{{ route('profile') }}" wire:navigate x-show="collapsed" x-cloak class="hidden items-center justify-center rounded-full p-1 hover:bg-indigo-900" title="{{ auth()->user()->name }}">
-                    <span class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
-                        @if (auth()->user()->avatar_path)
-                            <img src="{{ auth()->user()->avatarUrl() }}" class="h-full w-full object-cover">
-                        @else
-                            {{ Str::of(auth()->user()->name)->substr(0, 1)->upper() }}
-                        @endif
-                    </span>
-                </a>
             @else
-                <div class="space-y-2" x-show="!collapsed" x-cloak>
-                    <a href="{{ route('login') }}" wire:navigate class="block rounded-lg border border-indigo-700 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-indigo-900">
-                        {{ __('Log in') }}
-                    </a>
-                    <a href="{{ route('register') }}" wire:navigate class="block rounded-lg bg-blue-600 px-4 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-blue-700">
-                        {{ __('Get started') }}
-                    </a>
-                </div>
-
-                <a href="{{ route('login') }}" wire:navigate x-show="collapsed" x-cloak class="hidden items-center justify-center rounded-lg p-2 text-indigo-300 hover:bg-indigo-900" title="{{ __('Log in') }}">
-                    <x-icon name="user-circle" class="h-6 w-6" />
+            <div class="space-y-2" x-show="!collapsed" x-cloak>
+                <a href="{{ route('login') }}" wire:navigate class="block rounded-lg border border-indigo-700 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-indigo-900">
+                    {{ __('Log in') }}
                 </a>
+                <a href="{{ route('register') }}" wire:navigate class="block rounded-lg bg-blue-600 px-4 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-blue-700">
+                    {{ __('Get started') }}
+                </a>
+            </div>
+
+            <a href="{{ route('login') }}" wire:navigate x-show="collapsed" x-cloak class="hidden items-center justify-center rounded-lg p-2 text-indigo-300 hover:bg-indigo-900" title="{{ __('Log in') }}">
+                <x-icon name="user-circle" class="h-6 w-6" />
+            </a>
             @endauth
         </div>
     </aside>

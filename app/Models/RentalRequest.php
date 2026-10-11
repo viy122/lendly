@@ -34,6 +34,10 @@ class RentalRequest extends Model
         'rejection_reason',
         'renter_terms_accepted_at',
         'owner_terms_accepted_at',
+        'agreement_terms',
+        'cancelled_at',
+        'cancellation_reason',
+        'cancellation_fee',
     ];
 
     protected function casts(): array
@@ -50,6 +54,9 @@ class RentalRequest extends Model
             'total_amount' => 'decimal:2',
             'renter_terms_accepted_at' => 'datetime',
             'owner_terms_accepted_at' => 'datetime',
+            'agreement_terms' => 'array',
+            'cancelled_at' => 'datetime',
+            'cancellation_fee' => 'decimal:2',
         ];
     }
 
@@ -102,7 +109,7 @@ class RentalRequest extends Model
     {
         [$type, $title, $message] = match ($this->status) {
             RentalRequestStatus::Requested => [NotificationType::RentalRequestSubmitted, 'Rental request pending', 'The rental request is pending owner approval.'],
-            RentalRequestStatus::Approved => [NotificationType::RequestApproved, 'Booking confirmed', 'Both parties accepted the terms. The booking is confirmed and awaiting payment.'],
+            RentalRequestStatus::Approved => [NotificationType::RequestApproved, 'Request approved', 'The owner approved the request. Both parties must accept the saved agreement to confirm the booking.'],
             RentalRequestStatus::Rejected => [NotificationType::RequestRejected, 'Request declined', $this->rejection_reason ?: 'The owner declined the request.'],
             RentalRequestStatus::Cancelled => [NotificationType::RentalCancelled, 'Rental request cancelled', 'The renter cancelled the request.'],
         };

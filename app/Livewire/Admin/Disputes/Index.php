@@ -21,7 +21,15 @@ class Index extends Component
     public string $filter = 'open';
 
     #[Url]
+    public ?int $rentalId = null;
+
+    #[Url]
     public ?int $rental = null;
+
+    public function updatingRentalId(): void
+    {
+        $this->resetPage();
+    }
 
     public ?int $resolving = null;
 
@@ -76,7 +84,7 @@ class Index extends Component
     {
         abort_unless(auth()->user()?->isAdmin(), 403);
         $disputes = Dispute::query()
-            ->when($this->rental, fn ($query) => $query->where('rental_id', $this->rental))
+            ->when(($this->rentalId ?? $this->rental) !== null, fn ($query) => $query->where('rental_id', $this->rentalId ?? $this->rental))
             ->when($this->filter !== 'all', fn ($query) => $query->where('status', $this->filter))
             ->with(['rental.listing', 'rental.owner', 'rental.renter', 'raisedBy', 'damageReport.photos'])
             ->orderByDesc('created_at')

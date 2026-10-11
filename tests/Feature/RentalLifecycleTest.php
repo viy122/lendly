@@ -7,6 +7,7 @@ use App\Enums\RentalStatus;
 use App\Enums\SecurityDepositStatus;
 use App\Livewire\Owner\RentalRequests\Index as OwnerRentalRequestsIndex;
 use App\Livewire\Owner\Rentals\Show as OwnerRentalShow;
+use App\Livewire\RentalRequests\Agreement;
 use App\Livewire\RentalRequests\Create;
 use App\Livewire\Renter\Rentals\Show as RenterRentalShow;
 use App\Models\Category;
@@ -19,14 +20,16 @@ use App\Models\User;
 use App\Services\RentalLifecycle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Tests\Concerns\CompletesOfflinePayment;
 use Tests\TestCase;
 
 class RentalLifecycleTest extends TestCase
 {
+    use CompletesOfflinePayment;
     use RefreshDatabase;
 
     /**
-     * Builds a paid rental through the real request -> approve -> pay flow.
+     * Builds a paid rental through request -> approve -> both accept -> pay.
      * Only usable for future dates, since the request form correctly
      * rejects past start dates (see createPaidRentalWithDates() below for
      * the overdue tests, which need a rental that already ended).
@@ -51,24 +54,25 @@ class RentalLifecycleTest extends TestCase
         ]);
 
         Livewire::actingAs($renter)
-            ->test(Create::class, ['listing' => $listing])
+            ->test(Create::class, ['listing' => $listing])->set('accept_terms', true)
             ->set('start_date', now()->addDays(3)->toDateString())
             ->set('end_date', now()->addDays(5)->toDateString())
-            ->set('accept_terms', true)
             ->call('submit');
 
         $request = RentalRequest::first();
 
         Livewire::actingAs($owner)
             ->test(OwnerRentalRequestsIndex::class)
-            ->set('accept_terms', true)
             ->call('approve', $request->id);
+
+        foreach ([$owner, $renter] as $user) {
+            Livewire::actingAs($user)->test(Agreement::class, ['rentalRequest' => $request->fresh()])
+                ->set('accept_terms', true)->call('acceptTerms')->assertHasNoErrors();
+        }
 
         $rental = Rental::where('rental_request_id', $request->id)->first();
 
-        Livewire::actingAs($renter)
-            ->test(RenterRentalShow::class, ['rental' => $rental])
-            ->call('confirmPayment');
+        $this->completeOfflinePayment($rental);
 
         return $rental->fresh();
     }

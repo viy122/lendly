@@ -1,7 +1,7 @@
 <div>
-    <x-page-header eyebrow="Owning" title="Rental requests" subtitle="Approve or reject requests for your listings." />
+    <x-page-header eyebrow="Owning" title="Rental requests" subtitle="Review requests and view the complete request history for your listings." />
 
-    <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div class="w-full px-4 py-8 sm:px-6 lg:px-8">
         @error('approve')
             <div class="mb-6 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{{ $message }}</div>
         @enderror
@@ -37,43 +37,36 @@
                                             <p class="font-semibold text-slate-800">{{ $request->listing->name }}</p>
                                             <x-badge :color="$request->status->badgeColor()">{{ $request->status->label() }}</x-badge>
                                         </div>
+                                        @if ($request->listing->trashed())
+                                            <p class="mt-1 text-xs text-slate-500">Listing removed</p>
+                                        @endif
                                         <p class="mt-1 text-sm text-slate-500">
                                             {{ $request->start_date->format('M d, Y') }} &ndash; {{ $request->end_date->format('M d, Y') }}
                                             ({{ $request->rental_days }} day{{ $request->rental_days === 1 ? '' : 's' }})
                                         </p>
                                         <p class="mt-1 text-xs text-slate-400">
-                                            Renter: {{ $request->renter->name }} ({{ $request->renter->email }}) &middot; {{ ucfirst($request->fulfillment_method->value) }} &middot; Total ₱{{ number_format($request->total_amount, 2) }}
+                                            Renter: {{ $request->renter->name }}@unless ($request->renter->trashed()) ({{ $request->renter->email }})@endunless &middot; {{ ucfirst($request->fulfillment_method->value) }} &middot; Total ₱{{ number_format($request->total_amount, 2) }}
                                         </p>
                                         @if ($request->status->value === 'rejected' && $request->rejection_reason)
                                             <p class="mt-1 text-xs text-rose-600">Reason: {{ $request->rejection_reason }}</p>
                                         @endif
+                                        @if ($request->status->value === 'cancelled')
+                                            <x-cancellation-details :record="$request" />
+                                        @endif
                                     </div>
-                                </div>
-
-                                <div class="flex items-center gap-3 text-xs font-medium">
-                                    <a href="{{ route('rental-requests.chat', $request) }}" wire:navigate class="text-blue-600 hover:text-blue-800">Message renter</a>
-                                    @if ($request->isPending())
-                                        <button type="button" wire:click="startApproving({{ $request->id }})" class="rounded-lg bg-blue-600 px-3 py-1.5 text-white shadow-sm hover:bg-blue-700">Approve</button>
-                                        <button type="button" wire:click="startRejecting({{ $request->id }})" class="rounded-lg border border-rose-200 px-3 py-1.5 text-rose-600 hover:bg-rose-50">Reject</button>
-                                    @endif
                                 </div>
                             </div>
 
                             @if ($approving === $request->id)
                                 <div class="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
                                     <p class="text-sm font-semibold text-blue-800">Approve this request</p>
-                                    <p class="mt-1 text-xs text-blue-700">
-                                        By approving, you agree to the rental terms and agreement for this booking, including the
-                                        cancellation policy (free more than 48 hours before the start date, 20% fee within 48 hours).
-                                    </p>
-                                    <label class="mt-3 flex items-start gap-2 text-sm text-slate-700">
-                                        <input type="checkbox" wire:model="accept_terms" class="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
-                                        <span>I accept the rental terms and agreement for this booking.</span>
-                                    </label>
-                                    <x-input-error :messages="$errors->get('accept_terms')" class="mt-2" />
-                                    <div class="mt-3 flex justify-end gap-2">
-                                        <button type="button" wire:click="$set('approving', null)" class="text-xs font-medium text-slate-500 hover:text-slate-700">Cancel</button>
-                                        <button type="button" wire:click="approve({{ $request->id }})" class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700">Confirm approval</button>
+                                    <p class="mt-1 text-xs text-blue-700">After approval, both you and the renter must review and accept the rental agreement before a booking is finalized.</p>
+                                    <div class="mt-4 flex flex-wrap justify-end gap-2">
+                                        <button type="button" wire:click="$set('approving', null)" class="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2">Cancel</button>
+                                        <button type="button" wire:click="approve({{ $request->id }})" wire:loading.attr="disabled" wire:target="approve({{ $request->id }})" class="inline-flex min-h-11 items-center justify-center rounded-xl border border-blue-600 bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:border-blue-700 hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60">
+                                            <span wire:loading.remove wire:target="approve({{ $request->id }})">Confirm approval</span>
+                                            <span wire:loading wire:target="approve({{ $request->id }})">Approving&hellip;</span>
+                                        </button>
                                     </div>
                                 </div>
                             @endif
@@ -83,12 +76,38 @@
                                     <x-input-label for="rejection_reason" value="Reason for rejection" />
                                     <textarea wire:model="rejection_reason" id="rejection_reason" rows="2" class="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-rose-500 focus:ring-rose-500"></textarea>
                                     <x-input-error :messages="$errors->get('rejection_reason')" class="mt-2" />
-                                    <div class="mt-3 flex justify-end gap-2">
-                                        <button type="button" wire:click="$set('rejecting', null)" class="text-xs font-medium text-slate-500 hover:text-slate-700">Cancel</button>
-                                        <button type="button" wire:click="confirmReject" class="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-700">Confirm rejection</button>
+                                    <div class="mt-4 flex flex-wrap justify-end gap-2">
+                                        <button type="button" wire:click="$set('rejecting', null)" class="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2">Cancel</button>
+                                        <button type="button" wire:click="confirmReject" wire:loading.attr="disabled" wire:target="confirmReject" class="inline-flex min-h-11 items-center justify-center rounded-xl border border-rose-600 bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:border-rose-700 hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60">
+                                            <span wire:loading.remove wire:target="confirmReject">Confirm rejection</span>
+                                            <span wire:loading wire:target="confirmReject">Rejecting&hellip;</span>
+                                        </button>
                                     </div>
                                 </div>
                             @endif
+
+                            <div class="-mx-5 -mb-5 mt-5 grid grid-cols-2 gap-2.5 rounded-b-xl border-t border-slate-100 bg-slate-50/60 px-5 py-4 sm:flex sm:flex-wrap sm:items-center sm:justify-end">
+                                <a href="{{ route('rental-requests.chat', $request) }}" wire:navigate class="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:mr-auto">
+                                    <x-icon name="chat" class="h-4 w-4 shrink-0" aria-hidden="true" />
+                                    <span>Message renter</span>
+                                </a>
+                                @if ($request->isPending())
+                                    <button type="button" wire:click="startApproving({{ $request->id }})" wire:loading.attr="disabled" wire:target="startApproving({{ $request->id }}), startRejecting({{ $request->id }}), approve({{ $request->id }}), confirmReject" class="inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-blue-600 bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:border-blue-700 hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60">
+                                        <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" />
+                                        </svg>
+                                        <span>Approve</span>
+                                    </button>
+                                    <button type="button" wire:click="startRejecting({{ $request->id }})" wire:loading.attr="disabled" wire:target="startApproving({{ $request->id }}), startRejecting({{ $request->id }}), approve({{ $request->id }}), confirmReject" class="inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-600 shadow-sm transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60">
+                                        <x-icon name="x-mark" class="h-4 w-4 shrink-0" aria-hidden="true" />
+                                        <span>Reject</span>
+                                    </button>
+                                @elseif ($request->rental)
+                                    <a href="{{ route('owner.rentals.show', $request->rental) }}" wire:navigate class="inline-flex min-h-11 items-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white">View booking</a>
+                                @elseif ($request->isApproved())
+                                    <a href="{{ route('owner.rental-requests.agreement', $request) }}" wire:navigate class="inline-flex min-h-11 items-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white">Review rental agreement</a>
+                                @endif
+                            </div>
                         </div>
                     @endforeach
                 </div>

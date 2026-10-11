@@ -94,11 +94,11 @@ class Dashboard extends Component
             'label' => $status->label(),
             'value' => Rental::withCurrentStatus($status)->count(),
             'color' => match ($status->badgeColor()) {
-                'amber' => 'bg-amber-500',
-                'teal' => 'bg-blue-600',
-                'green' => 'bg-emerald-600',
-                'red' => 'bg-rose-600',
-                default => 'bg-slate-400',
+                'amber' => '#d97706',
+                'teal' => '#2563eb',
+                'green' => '#059669',
+                'red' => '#e11d48',
+                default => '#94a3b8',
             },
         ])->filter(fn ($row) => $row['value'] > 0)->values();
 

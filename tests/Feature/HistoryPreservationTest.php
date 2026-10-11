@@ -88,7 +88,7 @@ class HistoryPreservationTest extends TestCase
         }
         $closed = User::withTrashed()->findOrFail($closing->id);
         $this->assertTrue($closed->trashed());
-        $this->assertSame('Deleted user', $closed->name);
+        $this->assertSame('Deleted account', $closed->name);
         $this->assertNotSame($originalEmail, $closed->email);
         $this->assertNull($closed->phone);
         $this->assertNull($closed->address);
@@ -103,8 +103,8 @@ class HistoryPreservationTest extends TestCase
 
         $historyRole = $party === 'owner' ? 'renter' : 'owner';
         $this->actingAs($remaining)->get(route($historyRole.'.rentals.index'))->assertOk()->assertSee('Retained camera');
-        $this->get(route($historyRole.'.rentals.show', $rental))->assertOk()->assertSee('Deleted user');
-        $this->get(route('messages.index'))->assertOk()->assertSee('Deleted user');
+        $this->get(route($historyRole.'.rentals.show', $rental))->assertOk()->assertSee('Deleted account');
+        $this->get(route('messages.index'))->assertOk()->assertSee('Deleted account');
         $this->get(route('rental-requests.chat', $rental->rental_request_id))->assertOk()->assertSee('Retained conversation');
         if ($party === 'owner') {
             $this->assertNull(Listing::find($rental->listing_id));

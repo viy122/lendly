@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\NotificationType;
+use App\Enums\RentalAdminActionType;
 use App\Enums\RentalStatus;
 use App\Livewire\Admin\Dashboard;
 use App\Livewire\Listings\Browse;
@@ -15,19 +16,25 @@ use App\Livewire\Renter\RentalRequests\Index;
 use App\Livewire\Renter\Rentals\Show as RenterRental;
 use App\Models\Category;
 use App\Models\Listing;
+use App\Models\OfflinePaymentSetting;
 use App\Models\Payment;
 use App\Models\Rental;
 use App\Models\RentalRequest;
 use App\Models\SecurityDeposit;
 use App\Models\User;
 use App\Notifications\TalaNotification;
+use App\Services\RentalAdministration;
+use App\Services\RentalAgreement;
 use App\Services\RentalLifecycle;
+use App\Services\RentalPayments;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Livewire\Volt\Volt;
+use Tests\Concerns\CompletesOfflinePayment;
 use Tests\TestCase;
 
 /**
@@ -36,6 +43,7 @@ use Tests\TestCase;
  */
 class RentalRequirementsFixTest extends TestCase
 {
+    use CompletesOfflinePayment;
     use RefreshDatabase;
 
     private function listing(User $owner, array $attributes = []): Listing
@@ -67,7 +75,10 @@ class RentalRequirementsFixTest extends TestCase
     {
         $listing = $this->listing($owner);
         $request = $this->request($renter, $listing);
-        $request->update(['status' => 'approved', 'owner_terms_accepted_at' => now()]);
+        $request->update([
+            'status' => 'approved', 'owner_terms_accepted_at' => now(),
+            'agreement_terms' => RentalAgreement::termsFor($request),
+        ]);
 
         return Rental::create(array_merge($request->only([
             'listing_id', 'renter_id', 'start_date', 'end_date', 'rental_days',
@@ -102,15 +113,17 @@ class RentalRequirementsFixTest extends TestCase
         $this->assertSame(0, RentalRequest::count(), 'An unavailable listing accepted a new request.');
     }
 
-    public function test_nfr01_interrupted_approval_does_not_leave_an_approved_request_without_a_booking(): void
+    public function test_nfr01_interrupted_final_acceptance_does_not_finalize_terms_without_a_booking(): void
     {
         $owner = User::factory()->create();
         $renter = User::factory()->create();
         $request = $this->request($renter, $this->listing($owner));
+        Livewire::actingAs($owner)->test(Approvals::class)->call('approve', $request->id);
+        RentalAgreement::accept($request, $owner);
         Rental::creating(fn () => throw new \RuntimeException('Audit: booking storage unavailable'));
 
         try {
-            Livewire::actingAs($owner)->test(Approvals::class)->set('accept_terms', true)->call('approve', $request->id);
+            RentalAgreement::accept($request, $renter);
             $this->fail('The injected failure did not run.');
         } catch (\RuntimeException $exception) {
             $this->assertSame('Audit: booking storage unavailable', $exception->getMessage());
@@ -118,7 +131,9 @@ class RentalRequirementsFixTest extends TestCase
             app('events')->forget('eloquent.creating: '.Rental::class);
         }
 
-        $this->assertSame('requested', $request->fresh()->status->value);
+        $this->assertSame('approved', $request->fresh()->status->value);
+        $this->assertNotNull($request->fresh()->owner_terms_accepted_at);
+        $this->assertNull($request->fresh()->renter_terms_accepted_at);
         $this->assertSame(0, Rental::count());
     }
 
@@ -130,7 +145,7 @@ class RentalRequirementsFixTest extends TestCase
         SecurityDeposit::creating(fn () => throw new \RuntimeException('Audit: deposit storage unavailable'));
 
         try {
-            Livewire::actingAs($renter)->test(RenterRental::class, ['rental' => $rental])->call('confirmPayment');
+            $this->completeOfflinePayment($rental);
             $this->fail('The injected failure did not run.');
         } catch (\RuntimeException $exception) {
             $this->assertSame('Audit: deposit storage unavailable', $exception->getMessage());
@@ -160,13 +175,19 @@ class RentalRequirementsFixTest extends TestCase
         $owner = User::factory()->create();
         $renter = User::factory()->create();
         $rental = $this->booking($owner, $renter);
-        $this->actingAs($renter);
-        $first = app(RenterRental::class);
-        $second = app(RenterRental::class);
-        $first->mount($rental->fresh());
-        $second->mount($rental->fresh());
-        $first->confirmPayment();
-        $second->confirmPayment();
+        Storage::fake('local');
+        OfflinePaymentSetting::create(['method' => 'bank_transfer', 'instructions' => 'Test payment instructions', 'enabled' => true]);
+        $submission = RentalPayments::submit($rental, $renter, 'TRANSFER-STALE', $this->paymentProof());
+        $admin = User::factory()->admin()->create();
+        $first = $rental->fresh();
+        $second = $rental->fresh();
+        RentalAdministration::perform($first, $admin, RentalAdminActionType::PaymentVerified, 'Funds received', $submission->id, true);
+        try {
+            RentalAdministration::perform($second, $admin, RentalAdminActionType::PaymentVerified, 'Funds received', $submission->id, true);
+            $this->fail('A stale payment verification must be rejected.');
+        } catch (AuthorizationException) {
+            $this->assertSame(RentalStatus::Paid, $rental->fresh()->status);
+        }
 
         $this->assertSame(1, Payment::where('rental_id', $rental->id)->count());
         $this->assertSame(1, SecurityDeposit::where('rental_id', $rental->id)->count());
@@ -185,20 +206,21 @@ class RentalRequirementsFixTest extends TestCase
             if ($request->id === $first->id && $request->status->value === 'approved' && ! $interleaved) {
                 $interleaved = true;
                 $otherAction = app(Approvals::class);
-                $otherAction->accept_terms = true;
                 $otherAction->approve($second->id);
             }
         });
 
         try {
             $action = app(Approvals::class);
-            $action->accept_terms = true;
             $action->approve($first->id);
         } finally {
             app('events')->forget('eloquent.updating: '.RentalRequest::class);
         }
 
         $this->assertTrue($interleaved, 'The controlled interleaving did not run.');
+        $approved = RentalRequest::where('listing_id', $listing->id)->where('status', 'approved')->sole();
+        RentalAgreement::accept($approved, $owner);
+        RentalAgreement::accept($approved, $approved->renter);
         $this->assertSame(1, Rental::where('listing_id', $listing->id)->count());
     }
 
@@ -209,7 +231,9 @@ class RentalRequirementsFixTest extends TestCase
         $renter = User::factory()->create();
         $request = $this->request($renter, $this->listing($owner));
 
-        Livewire::actingAs($owner)->test(Approvals::class)->set('accept_terms', true)->call('approve', $request->id);
+        Livewire::actingAs($owner)->test(Approvals::class)->call('approve', $request->id);
+        RentalAgreement::accept($request, $owner);
+        RentalAgreement::accept($request, $renter);
 
         Notification::assertSentTo($renter, TalaNotification::class);
         Notification::assertSentTo($owner, TalaNotification::class);
@@ -223,7 +247,9 @@ class RentalRequirementsFixTest extends TestCase
         $second = $this->request(User::factory()->create(), $listing);
         $second->update(['start_date' => $first->end_date, 'end_date' => $first->end_date->copy()->addDays(2)]);
 
-        Livewire::actingAs($owner)->test(Approvals::class)->set('accept_terms', true)->call('approve', $first->id);
+        Livewire::actingAs($owner)->test(Approvals::class)->call('approve', $first->id);
+        RentalAgreement::accept($first, $owner);
+        RentalAgreement::accept($first, $first->renter);
 
         $this->assertSame('rejected', $second->fresh()->status->value);
         $this->assertSame(1, Rental::count());
@@ -237,7 +263,7 @@ class RentalRequirementsFixTest extends TestCase
             $request = $this->request(User::factory()->create(), $listing);
             $listing->update($changedOptions);
 
-            Livewire::actingAs($owner)->test(Approvals::class)->set('accept_terms', true)
+            Livewire::actingAs($owner)->test(Approvals::class)
                 ->call('approve', $request->id)->assertHasErrors('approve');
 
             $this->assertSame('requested', $request->fresh()->status->value);
@@ -352,7 +378,7 @@ class RentalRequirementsFixTest extends TestCase
         $owner = User::factory()->create();
         $renter = User::factory()->create();
         $rental = $this->booking($owner, $renter);
-        Livewire::actingAs($renter)->test(RenterRental::class, ['rental' => $rental])->call('confirmPayment');
+        $this->completeOfflinePayment($rental);
 
         $this->assertSame('Available', $rental->listing->availabilityLabel());
         $this->assertSame('Reserved', $rental->listing->availabilityLabel($rental->start_date));
@@ -388,15 +414,16 @@ class RentalRequirementsFixTest extends TestCase
         $this->assertSame('approved', $rental->rentalRequest->fresh()->status->value);
     }
 
-    public function test_fr36_cancelling_a_paid_booking_from_requests_releases_dates_and_notifies_both_parties(): void
+    public function test_fr36_cancelling_a_paid_booking_releases_dates_and_notifies_both_parties(): void
     {
         $owner = User::factory()->create();
         $renter = User::factory()->create();
         $rental = $this->booking($owner, $renter);
-        Livewire::actingAs($renter)->test(RenterRental::class, ['rental' => $rental])->call('confirmPayment');
+        $this->completeOfflinePayment($rental);
         Notification::fake();
 
-        Livewire::actingAs($renter)->test(Index::class)->call('cancel', $rental->rental_request_id);
+        Livewire::actingAs($renter)->test(RenterRental::class, ['rental' => $rental])
+            ->set('cancellation_reason', 'Plans changed')->call('cancelRental')->assertHasNoErrors();
 
         $this->assertSame('cancelled', $rental->fresh()->status->value);
         $this->assertSame('cancelled', $rental->rentalRequest->fresh()->status->value);
@@ -443,7 +470,7 @@ class RentalRequirementsFixTest extends TestCase
         $owner = User::factory()->create();
         $renter = User::factory()->create();
         $rental = $this->booking($owner, $renter);
-        Livewire::actingAs($renter)->test(RenterRental::class, ['rental' => $rental])->call('confirmPayment');
+        $this->completeOfflinePayment($rental);
 
         $this->actingAs($owner)->get(route('owner.rentals.show', $rental))
             ->assertOk()->assertSee($rental->fresh()->payment->transaction_reference);
@@ -457,7 +484,7 @@ class RentalRequirementsFixTest extends TestCase
         $dates = ['start_date' => now()->toDateString(), 'end_date' => now()->addDays(2)->toDateString()];
         $rental->update($dates);
         $rental->rentalRequest->update($dates);
-        Livewire::actingAs($renter)->test(RenterRental::class, ['rental' => $rental])->call('confirmPayment');
+        $this->completeOfflinePayment($rental);
 
         $this->get(route('listings.show', $rental->listing))->assertOk()->assertSee('Reserved');
     }
@@ -486,7 +513,7 @@ class RentalRequirementsFixTest extends TestCase
         $isPrompt = fn (TalaNotification $notification) => $notification->type === NotificationType::ReviewRequest->value;
         Notification::assertSentTo($renter, TalaNotification::class, $isPrompt);
         $this->actingAs($owner)->get(route('owner.rentals.show', $rental))->assertOk()->assertSee('Rate the renter');
-        $this->actingAs($renter)->get(route('renter.rentals.show', $rental))->assertOk()->assertSee('Leave a review');
+        $this->actingAs($renter)->get(route('renter.rentals.show', $rental))->assertOk()->assertSee('Rate the owner')->assertSee('Rate the item');
     }
 
     public function test_fr24_deleting_one_account_preserves_the_other_partys_transaction_history(): void
@@ -572,7 +599,9 @@ class RentalRequirementsFixTest extends TestCase
         Livewire::actingAs($owner)->test(Form::class)
             ->set('category_id', $category->id)->set('name', 'Photo audit listing')
             ->set('description', 'Two uploaded images.')->set('price_per_day', 100)
-            ->set('location', 'Manila')->set('photos', [
+            ->set('location', 'Manila')->set('latitude', 14.5995)->set('longitude', 120.9842)
+            ->set('available_from', today()->toDateString())->set('available_until', today()->addMonth()->toDateString())
+            ->set('photos', [
                 UploadedFile::fake()->image('first.png'),
                 UploadedFile::fake()->image('second.png'),
             ])->call('save')->assertHasNoErrors();

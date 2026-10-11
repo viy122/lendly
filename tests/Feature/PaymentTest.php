@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\ListingStatus;
 use App\Enums\RentalStatus;
 use App\Livewire\Owner\RentalRequests\Index as OwnerRentalRequestsIndex;
+use App\Livewire\RentalRequests\Agreement;
 use App\Livewire\RentalRequests\Create;
 use App\Livewire\Renter\Rentals\Show as RenterRentalShow;
 use App\Models\Category;
@@ -15,10 +16,12 @@ use App\Models\RentalRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Tests\Concerns\CompletesOfflinePayment;
 use Tests\TestCase;
 
 class PaymentTest extends TestCase
 {
+    use CompletesOfflinePayment;
     use RefreshDatabase;
 
     private function publishedListing(User $owner): Listing
@@ -44,23 +47,26 @@ class PaymentTest extends TestCase
     private function approvedRentalRequest(User $owner, User $renter, Listing $listing): RentalRequest
     {
         Livewire::actingAs($renter)
-            ->test(Create::class, ['listing' => $listing])
+            ->test(Create::class, ['listing' => $listing])->set('accept_terms', true)
             ->set('start_date', now()->addDays(3)->toDateString())
             ->set('end_date', now()->addDays(5)->toDateString())
-            ->set('accept_terms', true)
             ->call('submit');
 
         $request = RentalRequest::first();
 
         Livewire::actingAs($owner)
             ->test(OwnerRentalRequestsIndex::class)
-            ->set('accept_terms', true)
             ->call('approve', $request->id);
+
+        foreach ([$owner, $renter] as $user) {
+            Livewire::actingAs($user)->test(Agreement::class, ['rentalRequest' => $request->fresh()])
+                ->set('accept_terms', true)->call('acceptTerms')->assertHasNoErrors();
+        }
 
         return $request->fresh();
     }
 
-    public function test_approving_a_request_creates_a_rental_awaiting_payment(): void
+    public function test_approval_and_both_terms_acceptances_create_a_rental_awaiting_payment(): void
     {
         $owner = User::factory()->owner()->create();
         $renter = User::factory()->renter()->create();
@@ -77,7 +83,7 @@ class PaymentTest extends TestCase
         $this->assertSame($renter->id, $rental->renter_id);
     }
 
-    public function test_renter_can_confirm_simulated_payment_and_it_creates_payment_and_deposit_records(): void
+    public function test_verified_offline_payment_creates_payment_and_deposit_records(): void
     {
         $owner = User::factory()->owner()->create();
         $renter = User::factory()->renter()->create();
@@ -86,9 +92,7 @@ class PaymentTest extends TestCase
         $request = $this->approvedRentalRequest($owner, $renter, $listing);
         $rental = Rental::where('rental_request_id', $request->id)->first();
 
-        Livewire::actingAs($renter)
-            ->test(RenterRentalShow::class, ['rental' => $rental])
-            ->call('confirmPayment');
+        $this->completeOfflinePayment($rental);
 
         $rental->refresh();
 
@@ -113,9 +117,7 @@ class PaymentTest extends TestCase
         $request = $this->approvedRentalRequest($owner, $renter, $listing);
         $rental = Rental::where('rental_request_id', $request->id)->first();
 
-        Livewire::actingAs($renter)
-            ->test(RenterRentalShow::class, ['rental' => $rental])
-            ->call('confirmPayment');
+        $this->completeOfflinePayment($rental);
 
         $rental->refresh();
 
@@ -142,7 +144,7 @@ class PaymentTest extends TestCase
 
         Livewire::actingAs($owner)
             ->test(RenterRentalShow::class, ['rental' => $rental])
-            ->call('confirmPayment')
+            ->call('submitPaymentProof')
             ->assertForbidden();
 
         $this->assertSame(RentalStatus::PaymentPending, $rental->fresh()->status);
@@ -172,14 +174,12 @@ class PaymentTest extends TestCase
         $request = $this->approvedRentalRequest($owner, $renter, $listing);
         $rental = Rental::where('rental_request_id', $request->id)->first();
 
-        Livewire::actingAs($renter)
-            ->test(RenterRentalShow::class, ['rental' => $rental])
-            ->call('confirmPayment');
+        $this->completeOfflinePayment($rental);
 
         Livewire::actingAs($renter)
             ->test(RenterRentalShow::class, ['rental' => $rental->fresh()])
-            ->call('confirmPayment')
-            ->assertHasNoErrors();
+            ->call('submitPaymentProof')
+            ->assertForbidden();
 
         $this->assertSame(1, Payment::where('rental_id', $rental->id)->count());
     }
@@ -194,9 +194,7 @@ class PaymentTest extends TestCase
         $request = $this->approvedRentalRequest($owner, $renter, $listing);
         $rental = Rental::where('rental_request_id', $request->id)->first();
 
-        Livewire::actingAs($renter)
-            ->test(RenterRentalShow::class, ['rental' => $rental])
-            ->call('confirmPayment');
+        $this->completeOfflinePayment($rental);
 
         $rental->refresh();
 

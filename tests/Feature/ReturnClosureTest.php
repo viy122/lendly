@@ -98,7 +98,7 @@ class ReturnClosureTest extends TestCase
         $this->assertSame(SecurityDepositStatus::ReturnEligible, $rental->securityDeposit->status);
         foreach ([$owner, $renter] as $participant) {
             $prompt = $participant->notifications()->where('data->type', 'review_request')->sole();
-            $this->assertSame(route($participant->id === $owner->id ? 'owner.rentals.show' : 'renter.rentals.show', $rental), $prompt->data['url']);
+            $this->assertSame(route($participant->id === $owner->id ? 'owner.rentals.show' : 'renter.rentals.show', $rental).'#reviews', $prompt->data['url']);
             $this->assertStringContainsString('can', $prompt->data['message']);
         }
         $this->actingAs($owner)->get(route('owner.rentals.index'))->assertOk()->assertSee($rental->listing->name);

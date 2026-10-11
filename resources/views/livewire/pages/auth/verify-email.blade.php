@@ -17,7 +17,7 @@ new #[Layout('layouts.guest')] class extends Component
     public function sendVerification(): void
     {
         if (Auth::user()->hasVerifiedEmail()) {
-            $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
+            $this->redirectIntended(default: route(Auth::user()->dashboardRouteName(), absolute: false), navigate: true);
 
             return;
         }
@@ -58,8 +58,13 @@ new #[Layout('layouts.guest')] class extends Component
 }; ?>
 
 <div>
+    <h1 class="mb-3 text-2xl font-bold text-slate-900">{{ __('Verify your email') }}</h1>
     <div class="mb-4 text-sm text-slate-600">
-        {{ __('Verify your Gmail address using the link in your email before getting started. If the message has not arrived, check your spam folder or request another verification email below.') }}
+        @if (auth()->user()->isAdmin())
+            {{ __('Verify your email using the link we emailed you to access your admin account. If you did not receive the email, you can request another below.') }}
+        @else
+            {{ __('Verify your Gmail address using the link in your email before getting started. If the message has not arrived, check your spam folder or request another verification email below.') }}
+        @endif
     </div>
 
     @if (session('status') === 'verification-mail-failed')
@@ -76,12 +81,12 @@ new #[Layout('layouts.guest')] class extends Component
         </div>
     @endif
 
-    <div class="mt-4 flex items-center justify-between">
-        <x-primary-button wire:click="sendVerification" wire:loading.attr="disabled">
+    <div class="mt-4 flex flex-wrap items-center justify-between gap-4">
+        <x-primary-button wire:click="sendVerification" wire:loading.attr="disabled" wire:target="sendVerification">
             {{ __('Resend Verification Email') }}
         </x-primary-button>
 
-        <button wire:click="logout" type="submit" class="underline text-sm text-slate-600 hover:text-slate-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+        <button wire:click="logout" type="button" class="underline text-sm text-slate-600 hover:text-slate-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
             {{ __('Log Out') }}
         </button>
     </div>

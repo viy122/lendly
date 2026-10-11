@@ -13,8 +13,10 @@ use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -27,6 +29,52 @@ class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, SoftDeletes;
+
+    protected static function booted(): void
+    {
+        static::deleting(function (User $user) {
+            if ($user->isForceDeleting()) {
+                return;
+            }
+
+            $email = $user->email;
+            $avatar = $user->avatar_path;
+            $user->forceFill([
+                'name' => 'Deleted account',
+                'email' => 'deleted-'.Str::uuid().'@example.invalid',
+                'password' => Str::random(64),
+                'phone' => null,
+                'address' => null,
+                'avatar_path' => null,
+                'remember_token' => null,
+                'email_verified_at' => null,
+                'status' => UserStatus::Suspended,
+                'suspended_at' => now(),
+                'suspension_reason' => null,
+            ])->save();
+
+            // Keep shared transaction evidence while removing listings from the marketplace.
+            $user->listings()->update([
+                'status' => ListingStatus::Inactive,
+                'is_available' => false,
+                'deleted_at' => now(),
+            ]);
+            DB::table(config('auth.passwords.users.table'))->where('email', $email)->delete();
+            if (config('session.driver') === 'database') {
+                DB::connection(config('session.connection'))->table(config('session.table'))
+                    ->where('user_id', $user->id)->delete();
+            }
+
+            if ($avatar) {
+                DB::afterCommit(fn () => Storage::disk('public')->delete($avatar));
+            }
+        });
+    }
+
+    public function delete()
+    {
+        return DB::transaction(fn () => parent::delete());
+    }
 
     /**
      * The model's default attribute values.
@@ -116,7 +164,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function closeAccount(): void
     {
-        $avatarPath = DB::transaction(function () {
+        DB::transaction(function () {
             $this->newQuery()->whereKey($this->id)->lockForUpdate()->firstOrFail();
             $this->refresh();
 
@@ -141,41 +189,25 @@ class User extends Authenticatable implements MustVerifyEmail
                 ]);
             }
 
-            $avatarPath = $this->avatar_path;
-            DB::table(config('auth.passwords.users.table'))->where('email', $this->email)->delete();
-            if (config('session.driver') === 'database') {
-                DB::connection(config('session.connection'))->table(config('session.table'))
-                    ->where('user_id', $this->id)->delete();
-            }
-            $this->listings()->update(['status' => ListingStatus::Inactive, 'is_available' => false]);
-            $this->listings()->delete();
-            $this->forceFill([
-                'name' => 'Deleted user',
-                'email' => 'deleted-'.$this->id.'-'.Str::uuid().'@deleted.invalid',
-                'email_verified_at' => null,
-                'phone' => null,
-                'address' => null,
-                'avatar_path' => null,
-                'password' => Str::random(64),
-                'remember_token' => null,
-                'suspension_reason' => null,
-            ])->save();
             $this->delete();
-
-            return $avatarPath;
         });
-
-        if ($avatarPath) {
-            Storage::disk('public')->delete($avatarPath);
-        }
     }
 
     public function dashboardRouteName(): string
     {
+        if (! $this->isAdmin() && in_array(session('active_interface'), ['renter', 'owner'], true)) {
+            return session('active_interface').'.dashboard';
+        }
+
         return match ($this->role) {
             UserRole::Member => 'dashboard',
             UserRole::Admin => 'admin.dashboard',
         };
+    }
+
+    public function activeInterface(): string
+    {
+        return $this->isAdmin() ? 'admin' : session('active_interface', 'renter');
     }
 
     public function avatarUrl(): ?string
@@ -203,16 +235,30 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Rental::class, 'owner_id');
     }
 
+    /** Received person reviews from completed transactions, in either member role. */
+    public function receivedReviews(): Builder
+    {
+        return Review::query()
+            ->whereHas('rental', fn ($query) => $query->where('status', RentalStatus::Completed)
+                ->whereColumn('owner_id', '!=', 'renter_id'))
+            ->where(function ($query) {
+                $query->where(fn ($query) => $query->where('type', ReviewType::RenterToOwner)
+                    ->whereHas('rental', fn ($query) => $query->where('owner_id', $this->id)))
+                    ->orWhere(fn ($query) => $query->where('type', ReviewType::OwnerToRenter)
+                        ->whereHas('rental', fn ($query) => $query->where('renter_id', $this->id)));
+            });
+    }
+
     public function averageRatingAsOwner(): ?float
     {
-        return Review::whereHas('rental', fn ($query) => $query->where('owner_id', $this->id))
+        return $this->receivedReviews()
             ->where('type', ReviewType::RenterToOwner)
             ->avg('rating');
     }
 
     public function averageRatingAsRenter(): ?float
     {
-        return Review::whereHas('rental', fn ($query) => $query->where('renter_id', $this->id))
+        return $this->receivedReviews()
             ->where('type', ReviewType::OwnerToRenter)
             ->avg('rating');
     }
@@ -229,6 +275,54 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function unreadMessagesCount(): int
     {
-        return $this->messagesReceived()->whereNull('read_at')->count();
+        return $this->messagesReceived()->whereNull('read_at')
+            ->when(session('active_interface') === 'renter', fn ($query) => $query
+                ->where(fn ($query) => $query
+                    ->whereHas('rentalRequest', fn ($request) => $request->where('renter_id', $this->id))
+                    ->orWhereHas('listingConversation', fn ($conversation) => $conversation->where('renter_id', $this->id))))
+            ->when(session('active_interface') === 'owner', fn ($query) => $query
+                ->where(fn ($query) => $query
+                    ->whereHas('rentalRequest.listing', fn ($listing) => $listing->where('owner_id', $this->id))
+                    ->orWhereHas('listingConversation', fn ($conversation) => $conversation->where('owner_id', $this->id))))
+            ->count();
+    }
+
+    public function notificationsForActiveInterface(): MorphMany
+    {
+        $notifications = $this->notifications();
+        $interface = session('active_interface');
+
+        if ($this->isAdmin() || ! in_array($interface, ['renter', 'owner'], true)) {
+            return $notifications;
+        }
+
+        $otherInterface = $interface === 'owner' ? 'renter' : 'owner';
+        $chatUrls = RentalRequest::query()
+            ->when($interface === 'renter', fn ($query) => $query->where('renter_id', $this->id))
+            ->when($interface === 'owner', fn ($query) => $query->whereHas('listing', fn ($listing) => $listing->where('owner_id', $this->id)))
+            ->pluck('id')
+            ->map(fn ($id) => route('rental-requests.chat', $id));
+
+        $listingChatUrls = ListingConversation::query()
+            ->when($interface === 'renter', fn ($query) => $query->where('renter_id', $this->id))
+            ->when($interface === 'owner', fn ($query) => $query->where('owner_id', $this->id))
+            ->pluck('id')
+            ->flatMap(fn ($id) => [route('listing-conversations.show', $id), route('messages.listing', $id)]);
+
+        return $notifications->where(function ($query) use ($otherInterface, $chatUrls, $listingChatUrls) {
+            $query->whereNull('data->url')->orWhere(function ($query) use ($otherInterface, $chatUrls, $listingChatUrls) {
+                $query->where('data->url', 'not like', '%/'.$otherInterface.'/%')
+                    ->where(function ($query) use ($chatUrls) {
+                        $query->where('data->url', 'not like', '%/rental-requests/%/chat')
+                            ->orWhereIn('data->url', $chatUrls);
+                    })
+                    ->where(function ($query) use ($listingChatUrls) {
+                        $query->where(fn ($query) => $query
+                            ->where('data->url', 'not like', '%/listing-conversations/%')
+                            ->where('data->url', 'not like', '%/messages/listings/%'))
+                            ->orWhereIn('data->url', $listingChatUrls);
+                    });
+            });
+        });
     }
 }

@@ -12,6 +12,7 @@ use App\Models\Message;
 use App\Models\RentalRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -117,7 +118,8 @@ class ListingInquiryTest extends TestCase
         $this->get('/listings/'.$listing->id.'/contact')->assertForbidden();
         $owner->update(['status' => 'active']);
         $owner->delete();
-        $this->get('/listings/'.$listing->id.'/contact')->assertForbidden();
+        $this->assertSoftDeleted($listing);
+        $this->get('/listings/'.$listing->id.'/contact')->assertNotFound();
         $listing->delete();
         $this->get('/listings/'.$listing->id.'/contact')->assertNotFound();
 
@@ -238,7 +240,7 @@ class ListingInquiryTest extends TestCase
         $this->assertSame('Latest inquiry', $inquiry['lastMessage']->body);
         $this->assertSame(1, $inquiry['unreadCount']);
         $this->actingAs($renter)->get(route('messages.index'))->assertOk()
-            ->assertSee(route('messages.listing', $conversation), false)
+            ->assertSee(route('listing-conversations.show', $conversation), false)
             ->assertSee(route('rental-requests.chat', $request), false);
     }
 
@@ -282,6 +284,9 @@ class ListingInquiryTest extends TestCase
         $conversation = $this->conversationFor($this->listingFor($owner), $renter);
         $conversation->messages()->create(['sender_id' => $renter->id, 'receiver_id' => $owner->id, 'body' => 'Keep this history']);
         $migration = require database_path('migrations/2026_10_09_000100_create_listing_conversations_table.php');
+
+        // With no sibling migration applied, this rollback would remove the last inquiry schema.
+        DB::table('migrations')->where('migration', '2026_10_07_000007_add_listing_conversations')->delete();
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('inquiry messages exist');

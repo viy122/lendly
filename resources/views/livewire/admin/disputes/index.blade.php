@@ -1,7 +1,13 @@
 <div>
     <x-page-header eyebrow="Administration" title="Disputes" subtitle="Review and resolve disputes raised by renters and owners." />
 
-    <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div class="w-full px-4 py-8 sm:px-6 lg:px-8">
+        @if ($rentalId !== null)
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+                <a href="{{ route('admin.rentals.show', $rentalId) }}" wire:navigate class="font-semibold">Transaction #{{ $rentalId }}</a>
+                <button type="button" wire:click="$set('rentalId', null)" class="font-semibold">Show disputes for all transactions</button>
+            </div>
+        @endif
         <div class="flex flex-wrap gap-2">
             @foreach (['open' => 'Open', 'resolved' => 'Resolved', 'all' => 'All'] as $value => $label)
                 <button

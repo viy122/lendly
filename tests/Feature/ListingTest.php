@@ -10,6 +10,8 @@ use App\Models\Category;
 use App\Models\Listing;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -22,8 +24,9 @@ class ListingTest extends TestCase
         return Category::create(['name' => 'Tools', 'slug' => 'tools']);
     }
 
-    public function test_owner_can_create_a_listing_and_it_starts_pending_approval(): void
+    public function test_owner_can_create_a_listing_and_it_is_published_immediately(): void
     {
+        Storage::fake('public');
         $owner = User::factory()->owner()->create();
         $category = $this->makeCategory();
 
@@ -35,6 +38,11 @@ class ListingTest extends TestCase
             ->set('price_per_day', 450)
             ->set('security_deposit', 1000)
             ->set('location', 'Nasugbu')
+            ->set('latitude', 14.07)
+            ->set('longitude', 120.63)
+            ->set('available_from', now()->toDateString())
+            ->set('available_until', now()->addMonth()->toDateString())
+            ->set('photos', [UploadedFile::fake()->createWithContent('washer.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII='))])
             ->set('max_rental_duration_days', 7)
             ->call('save')
             ->assertHasNoErrors();
@@ -42,7 +50,7 @@ class ListingTest extends TestCase
         $listing = Listing::firstWhere('name', 'Pressure Washer');
 
         $this->assertNotNull($listing);
-        $this->assertSame(ListingStatus::PendingApproval, $listing->status);
+        $this->assertSame(ListingStatus::Published, $listing->status);
         $this->assertSame($owner->id, $listing->owner_id);
     }
 
@@ -227,7 +235,12 @@ class ListingTest extends TestCase
             'location' => 'Manila',
             'max_rental_duration_days' => 7,
             'status' => ListingStatus::Published,
+            'latitude' => 14.07,
+            'longitude' => 120.63,
+            'available_from' => now()->toDateString(),
+            'available_until' => now()->addMonth()->toDateString(),
         ]);
+        $listing->images()->create(['path' => 'listings/camera.jpg', 'sort_order' => 0]);
 
         Livewire::actingAs($owner)
             ->test(OwnerListingsIndex::class)
@@ -239,7 +252,67 @@ class ListingTest extends TestCase
             ->test(OwnerListingsIndex::class)
             ->call('reactivate', $listing->id);
 
-        $this->assertSame(ListingStatus::PendingApproval, $listing->fresh()->status);
+        $this->assertSame(ListingStatus::Published, $listing->fresh()->status);
+    }
+
+    public function test_owner_can_set_availability_without_changing_approval_status(): void
+    {
+        $owner = User::factory()->owner()->create();
+        $category = $this->makeCategory();
+
+        foreach (ListingStatus::cases() as $status) {
+            $listing = Listing::create([
+                'owner_id' => $owner->id,
+                'category_id' => $category->id,
+                'name' => 'Availability test item',
+                'description' => 'An item with independently managed availability.',
+                'condition' => 'good',
+                'price_per_day' => 100,
+                'location' => 'Manila',
+                'max_rental_duration_days' => 7,
+                'status' => $status,
+                'is_available' => true,
+            ]);
+
+            $component = Livewire::actingAs($owner)->test(OwnerListingsIndex::class);
+            $component->call('setAvailability', $listing->id, false)->assertHasNoErrors();
+
+            $this->assertFalse($listing->fresh()->is_available);
+            $this->assertSame($status, $listing->fresh()->status);
+
+            $component->call('setAvailability', $listing->id, true)->assertHasNoErrors();
+            // An explicit choice is safe to repeat without toggling the item back off.
+            $component->call('setAvailability', $listing->id, true)->assertHasNoErrors();
+
+            $this->assertTrue($listing->fresh()->is_available);
+            $this->assertSame($status, $listing->fresh()->status);
+        }
+    }
+
+    public function test_owner_cannot_change_another_owners_availability(): void
+    {
+        $owner = User::factory()->owner()->create();
+        $otherOwner = User::factory()->owner()->create();
+        $category = $this->makeCategory();
+        $listing = Listing::create([
+            'owner_id' => $owner->id,
+            'category_id' => $category->id,
+            'name' => 'Private owner item',
+            'description' => 'Belongs to another owner.',
+            'condition' => 'good',
+            'price_per_day' => 100,
+            'location' => 'Manila',
+            'max_rental_duration_days' => 7,
+            'status' => ListingStatus::Published,
+            'is_available' => true,
+        ]);
+
+        Livewire::actingAs($otherOwner)
+            ->test(OwnerListingsIndex::class)
+            ->call('setAvailability', $listing->id, false)
+            ->assertForbidden();
+
+        $this->assertTrue($listing->fresh()->is_available);
     }
 
     public function test_owner_cannot_deactivate_another_owners_listing(): void

@@ -96,7 +96,11 @@ class MapRequirementsTest extends TestCase
     #[DataProvider('zeroCoordinates')]
     public function test_owner_edit_preserves_stored_zero_coordinates(float $lat, float $lng): void
     {
-        $listing = $this->listing(['latitude' => $lat, 'longitude' => $lng]);
+        $listing = $this->listing([
+            'latitude' => $lat, 'longitude' => $lng,
+            'available_from' => today(), 'available_until' => today()->addMonth(),
+        ]);
+        $listing->images()->create(['path' => 'listings/map-tool.jpg', 'sort_order' => 0]);
 
         Livewire::actingAs($this->owner)->test(Form::class, ['listing' => $listing])
             ->assertSet('latitude', $lat)->assertSet('longitude', $lng)
@@ -105,6 +109,8 @@ class MapRequirementsTest extends TestCase
         $listing->refresh();
         $this->assertSame($lat, (float) $listing->latitude);
         $this->assertSame($lng, (float) $listing->longitude);
+        $this->assertSame(today()->toDateString(), $listing->available_from->toDateString());
+        $this->assertCount(1, $listing->images);
     }
 
     public static function missingCoordinates(): array

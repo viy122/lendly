@@ -1,43 +1,11 @@
-<div>
-    <x-page-header title="Messages" subtitle="Conversations with owners and renters about your listings and rentals." maxWidth="max-w-3xl" />
+<div wire:poll.5s.visible>
+    <x-page-header title="Messages" subtitle="Conversations with owners and renters about your listings and rentals." />
 
-    <div class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-        @if ($threads->isEmpty())
-            <x-empty-state title="No conversations yet" message="Messages you send or receive about a listing or rental request will show up here." />
-        @else
-            <div class="space-y-3">
-                @foreach ($threads as $thread)
-                    <a
-                        href="{{ $thread['url'] }}"
-                        wire:navigate
-                        wire:key="thread-{{ $thread['key'] }}"
-                        class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-300 hover:shadow-sm {{ $thread['unreadCount'] > 0 ? 'bg-blue-50/50' : '' }}"
-                    >
-                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
-                            {{ Str::of($thread['otherParty']->name)->substr(0, 1)->upper() }}
-                        </span>
-
-                        <div class="min-w-0 flex-1">
-                            <div class="flex items-center justify-between gap-2">
-                                <p class="truncate text-sm font-semibold text-slate-800">{{ $thread['otherParty']->name }}</p>
-                                @if ($thread['lastMessage'])
-                                    <span class="shrink-0 text-xs text-slate-400">{{ $thread['lastMessage']->created_at->diffForHumans() }}</span>
-                                @endif
-                            </div>
-                            <p class="truncate text-xs text-slate-500">{{ $thread['listing']->name }}</p>
-                            @if ($thread['lastMessage'])
-                                <p class="mt-1 truncate text-sm text-slate-600">{{ $thread['lastMessage']->body }}</p>
-                            @endif
-                        </div>
-
-                        @if ($thread['unreadCount'] > 0)
-                            <span class="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-rose-600 px-1.5 text-xs font-semibold text-white">
-                                {{ $thread['unreadCount'] }}
-                            </span>
-                        @endif
-                    </a>
-                @endforeach
-            </div>
-        @endif
-    </div>
+    <x-messages.shell :threads="$threads" :search="$search">
+        <div class="flex flex-1 flex-col items-center justify-center bg-slate-50/50 p-8 text-center">
+            <span class="grid h-20 w-20 place-items-center rounded-3xl bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-600"><x-icon name="chat" class="h-9 w-9" aria-hidden="true" /></span>
+            <h2 class="mt-5 text-xl font-bold text-slate-900">Your conversations</h2>
+            <p class="mt-2 max-w-xs text-sm leading-6 text-slate-500">Select a chat to ask about an item or keep your rental plans moving.</p>
+        </div>
+    </x-messages.shell>
 </div>

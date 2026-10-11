@@ -62,13 +62,76 @@ class EmailVerificationTest extends TestCase
         $this->assertFalse($user->fresh()->hasVerifiedEmail());
     }
 
-    public function test_unverified_user_is_redirected_away_from_the_dashboard(): void
+    public function test_member_must_verify_before_accessing_account_pages(): void
     {
         $user = User::factory()->renter()->unverified()->create();
 
-        $response = $this->actingAs($user)->get('/dashboard');
+        $this->actingAs($user)->get('/verify-email')
+            ->assertOk()
+            ->assertDontSee('Verify later');
 
-        $response->assertRedirect('/verify-email');
+        foreach (['/dashboard', '/owner/listings', '/owner/listings/create', '/owner/rental-requests', '/owner/rentals', '/renter/rental-requests', '/renter/rentals', '/messages', '/notifications'] as $path) {
+            $this->get($path)->assertRedirect('/verify-email');
+        }
+
+        $this->get('/profile')->assertOk();
+        $this->assertNull($user->fresh()->email_verified_at);
+        $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_unverified_member_can_save_profile_data(): void
+    {
+        $user = User::factory()->unverified()->create();
+
+        Volt::actingAs($user)->test('profile.update-profile-information-form')
+            ->set('phone', '09171234567')
+            ->set('address', '123 Rizal St, Manila')
+            ->call('updateProfileInformation')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'phone' => '09171234567',
+            'address' => '123 Rizal St, Manila',
+            'email_verified_at' => null,
+        ]);
+    }
+
+    public function test_unverified_member_can_resend_verification(): void
+    {
+        Notification::fake();
+        $user = User::factory()->unverified()->create();
+
+        $this->actingAs($user)->get('/dashboard')->assertRedirect('/verify-email');
+
+        Volt::test('pages.auth.verify-email')
+            ->call('sendVerification')
+            ->assertHasNoErrors()
+            ->assertSee('A new verification link has been sent');
+
+        Notification::assertSentTo($user, VerifyEmail::class);
+        $this->assertFalse($user->fresh()->hasVerifiedEmail());
+    }
+
+    public function test_verified_member_does_not_see_verification_reminder(): void
+    {
+        $this->actingAs(User::factory()->create())->get('/dashboard')
+            ->assertOk()->assertDontSee('Your email is still unverified.');
+    }
+
+    public function test_admin_still_needs_email_verification(): void
+    {
+        $user = User::factory()->admin()->unverified()->create();
+
+        $this->actingAs($user)->get('/admin/dashboard')->assertRedirect('/verify-email');
+        $this->get('/verify-email')->assertDontSee('Verify later');
+    }
+
+    public function test_guest_cannot_access_account_pages(): void
+    {
+        foreach (['/dashboard', '/owner/listings', '/renter/rental-requests', '/messages', '/notifications', '/verify-email'] as $path) {
+            $this->get($path)->assertRedirect('/login');
+        }
     }
 
     public function test_verification_email_can_be_resent_but_is_rate_limited_across_both_forms(): void

@@ -133,7 +133,8 @@ class PasswordConfirmationTest extends TestCase
             ->set('form.password', 'wrong-password');
         $login->call('login');
         $login->call('login');
-        $login->set('form.password', 'password')->call('login')->assertHasNoErrors();
+        $login->set('form.password', 'password')->call('login')->assertHasNoErrors()
+            ->call('chooseInterface', 'renter')->assertHasNoErrors();
         $this->assertAuthenticatedAs($user);
     }
 }

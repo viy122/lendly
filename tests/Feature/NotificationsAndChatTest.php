@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\ListingStatus;
+use App\Enums\RentalRequestStatus;
 use App\Livewire\Messages\Show as MessagesShow;
 use App\Livewire\Owner\RentalRequests\Index as OwnerRentalRequestsIndex;
 use App\Livewire\RentalRequests\Create;
@@ -41,58 +42,85 @@ class NotificationsAndChatTest extends TestCase
         ]);
     }
 
-    public function test_owner_is_notified_when_a_rental_request_is_submitted(): void
+    private function assertStatusNotification(User $user, string $type, string $status, string $url): array
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
-        $listing = $this->publishedListing($owner);
+        $notifications = $user->fresh()->notifications->where('data.type', $type);
+        $this->assertCount(1, $notifications);
 
-        Livewire::actingAs($renter)
-            ->test(Create::class, ['listing' => $listing])
-            ->set('start_date', now()->addDays(3)->toDateString())
-            ->set('end_date', now()->addDays(5)->toDateString())
-            ->set('accept_terms', true)
-            ->call('submit');
+        $notification = $notifications->first();
+        $this->assertNull($notification->read_at);
+        $this->assertStringContainsString($status, $notification->data['title']);
+        $this->assertStringContainsString('Pressure Washer', $notification->data['message']);
+        $this->assertSame($url, $notification->data['url']);
 
-        $this->assertSame(1, $owner->fresh()->notifications()->count());
-        $this->assertSame('rental_request_submitted', $owner->fresh()->notifications()->first()->data['type']);
+        return $notification->data;
     }
 
-    public function test_renter_is_notified_when_request_is_approved_or_rejected(): void
+    public function test_both_parties_are_notified_when_a_rental_request_is_pending(): void
     {
         $owner = User::factory()->owner()->create();
         $renter = User::factory()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         Livewire::actingAs($renter)
-            ->test(Create::class, ['listing' => $listing])
+            ->test(Create::class, ['listing' => $listing])->set('accept_terms', true)
             ->set('start_date', now()->addDays(3)->toDateString())
             ->set('end_date', now()->addDays(5)->toDateString())
-            ->set('accept_terms', true)
+            ->call('submit');
+
+        $this->assertSame(RentalRequestStatus::Requested, RentalRequest::first()->status);
+        $this->assertSame(1, $owner->notifications()->count());
+        $this->assertSame(1, $renter->notifications()->count());
+        $ownerData = $this->assertStatusNotification($owner, 'rental_request_submitted', 'New rental request', route('owner.rental-requests.index'));
+        $renterData = $this->assertStatusNotification($renter, 'rental_request_submitted', 'pending', route('renter.rental-requests.index'));
+        $this->assertStringContainsString('pending', $ownerData['message']);
+        $this->assertStringContainsString($renter->name, $ownerData['message']);
+        $this->assertStringContainsString('pending', $renterData['message']);
+    }
+
+    public function test_both_parties_are_notified_when_request_is_approved(): void
+    {
+        $owner = User::factory()->owner()->create();
+        $renter = User::factory()->renter()->create();
+        $listing = $this->publishedListing($owner);
+
+        Livewire::actingAs($renter)
+            ->test(Create::class, ['listing' => $listing])->set('accept_terms', true)
+            ->set('start_date', now()->addDays(3)->toDateString())
+            ->set('end_date', now()->addDays(5)->toDateString())
             ->call('submit');
 
         $request = RentalRequest::first();
 
         Livewire::actingAs($owner)
             ->test(OwnerRentalRequestsIndex::class)
-            ->set('accept_terms', true)
-            ->call('approve', $request->id);
+            ->call('approve', $request->id)
+            ->assertHasNoErrors();
 
-        $renterNotifications = $renter->fresh()->notifications;
-        $this->assertTrue($renterNotifications->pluck('data.type')->contains('request_approved'));
+        $this->assertSame(RentalRequestStatus::Approved, $request->fresh()->status);
+        $this->assertNull($request->fresh()->rental);
+        $ownerData = $this->assertStatusNotification($owner, 'request_approved', 'approved', route('owner.rental-requests.agreement', $request));
+        $renterData = $this->assertStatusNotification($renter, 'request_approved', 'approved', route('renter.rental-requests.agreement', $request));
+        $this->assertStringContainsString($renter->name, $ownerData['message']);
+        $this->assertStringContainsString('review and accept the rental agreement', $renterData['message']);
+
+        Livewire::actingAs($owner)->test(OwnerRentalRequestsIndex::class)
+            ->call('approve', $request->id)->assertForbidden();
+
+        $this->assertSame(2, $owner->notifications()->count());
+        $this->assertSame(2, $renter->notifications()->count());
     }
 
-    public function test_renter_is_notified_when_request_is_rejected(): void
+    public function test_both_parties_are_notified_when_request_is_declined(): void
     {
         $owner = User::factory()->owner()->create();
         $renter = User::factory()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         Livewire::actingAs($renter)
-            ->test(Create::class, ['listing' => $listing])
+            ->test(Create::class, ['listing' => $listing])->set('accept_terms', true)
             ->set('start_date', now()->addDays(3)->toDateString())
             ->set('end_date', now()->addDays(5)->toDateString())
-            ->set('accept_terms', true)
             ->call('submit');
 
         $request = RentalRequest::first();
@@ -101,9 +129,81 @@ class NotificationsAndChatTest extends TestCase
             ->test(OwnerRentalRequestsIndex::class)
             ->call('startRejecting', $request->id)
             ->set('rejection_reason', 'Not available after all.')
-            ->call('confirmReject');
+            ->call('confirmReject')
+            ->assertHasNoErrors();
 
-        $this->assertTrue($renter->fresh()->notifications->pluck('data.type')->contains('request_rejected'));
+        $this->assertSame(RentalRequestStatus::Rejected, $request->fresh()->status);
+        foreach ([$owner, $renter] as $user) {
+            $interface = $user->id === $owner->id ? 'owner' : 'renter';
+            $data = $this->assertStatusNotification($user, 'request_rejected', 'declined', route($interface.'.rental-requests.index'));
+            $this->assertStringContainsString('Not available after all.', $data['message']);
+        }
+
+        Livewire::actingAs($owner)->test(OwnerRentalRequestsIndex::class)
+            ->call('startRejecting', $request->id)
+            ->set('rejection_reason', 'Another reason.')
+            ->call('confirmReject')->assertForbidden();
+
+        $this->assertSame(2, $owner->notifications()->count());
+        $this->assertSame(2, $renter->notifications()->count());
+    }
+
+    public function test_automatic_overlap_decline_notifies_both_parties_and_leaves_other_requests_pending(): void
+    {
+        $owner = User::factory()->owner()->create();
+        $listing = $this->publishedListing($owner);
+        $renters = User::factory()->renter()->count(3)->create();
+        $requests = [];
+
+        foreach ($renters as $index => $renter) {
+            $start = $index === 2 ? 8 : 3;
+            Livewire::actingAs($renter)->test(Create::class, ['listing' => $listing])->set('accept_terms', true)
+                ->set('start_date', now()->addDays($start)->toDateString())
+                ->set('end_date', now()->addDays($start + 2)->toDateString())
+                ->call('submit')->assertHasNoErrors();
+            $requests[] = RentalRequest::where('renter_id', $renter->id)->firstOrFail();
+        }
+
+        Livewire::actingAs($owner)->test(OwnerRentalRequestsIndex::class)
+            ->call('approve', $requests[0]->id)->assertHasNoErrors();
+
+        $this->assertSame(RentalRequestStatus::Approved, $requests[0]->fresh()->status);
+        $this->assertSame(RentalRequestStatus::Rejected, $requests[1]->fresh()->status);
+        $this->assertSame(RentalRequestStatus::Requested, $requests[2]->fresh()->status);
+        $ownerData = $this->assertStatusNotification($owner, 'request_rejected', 'automatically declined', route('owner.rental-requests.index'));
+        $renterData = $this->assertStatusNotification($renters[1], 'request_rejected', 'declined', route('renter.rental-requests.index'));
+        $this->assertStringContainsString($renters[1]->name, $ownerData['message']);
+        $this->assertStringContainsString('These dates were booked by another renter.', $ownerData['message']);
+        $this->assertStringContainsString('These dates were booked by another renter.', $renterData['message']);
+        $this->assertSame(5, $owner->notifications()->count());
+        $this->assertSame(2, $renters[0]->notifications()->count());
+        $this->assertSame(2, $renters[1]->notifications()->count());
+        $this->assertSame(1, $renters[2]->notifications()->count());
+    }
+
+    public function test_invalid_or_unauthorized_decisions_do_not_send_status_notifications(): void
+    {
+        $owner = User::factory()->owner()->create();
+        $stranger = User::factory()->owner()->create();
+        $renter = User::factory()->renter()->create();
+        $listing = $this->publishedListing($owner);
+
+        Livewire::actingAs($renter)->test(Create::class, ['listing' => $listing])->set('accept_terms', true)
+            ->call('submit')->assertHasNoErrors();
+        $request = RentalRequest::firstOrFail();
+
+        Livewire::actingAs($owner)->test(OwnerRentalRequestsIndex::class)
+            ->call('startRejecting', $request->id)->call('confirmReject')->assertHasErrors(['rejection_reason']);
+        Livewire::actingAs($stranger)->test(OwnerRentalRequestsIndex::class)
+            ->call('approve', $request->id)->assertForbidden();
+        Livewire::actingAs($stranger)->test(OwnerRentalRequestsIndex::class)
+            ->call('startRejecting', $request->id)->set('rejection_reason', 'Unavailable')
+            ->call('confirmReject')->assertForbidden();
+
+        $this->assertSame(RentalRequestStatus::Requested, $request->fresh()->status);
+        $this->assertSame(1, $owner->notifications()->count());
+        $this->assertSame(1, $renter->notifications()->count());
+        $this->assertSame(0, $stranger->notifications()->count());
     }
 
     public function test_both_parties_notified_when_pickup_confirmed_by_both(): void
@@ -143,6 +243,9 @@ class NotificationsAndChatTest extends TestCase
             'status' => 'paid',
             'paid_at' => now(),
         ]);
+
+        // Pickup confirmation requires a paid booking, as enforced by the UI and service.
+        $rental->update(['status' => 'paid', 'paid_at' => now()]);
 
         RentalLifecycle::confirmPickup($rental, $renter);
         // Owner gets a "renter confirmed pickup" notice only — one party

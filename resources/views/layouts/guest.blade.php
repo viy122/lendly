@@ -5,25 +5,84 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'Lendly') }}</title>
+        <title>{{ config('app.name', 'Lendly') }} — {{ request()->routeIs('register') ? 'Create your account' : 'Welcome back' }}</title>
+        <link rel="icon" type="image/png" href="{{ asset('images/lendly-icon.png') }}">
 
-        <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700,800&display=swap" rel="stylesheet" />
 
-        <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans text-slate-900 antialiased">
-        <div class="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 pt-6 sm:pt-0">
-            <a href="/" wire:navigate class="flex items-center gap-2">
-                <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-lg font-bold text-white">L</span>
-                <span class="text-2xl font-bold tracking-tight text-slate-900">Lendly</span>
-            </a>
+    <body class="bg-[#f8fbff] font-sans text-slate-950 antialiased">
+        <main class="relative min-h-screen overflow-hidden lg:grid lg:grid-cols-[1.02fr_0.98fr]">
+            <section class="relative hidden min-h-screen overflow-hidden bg-[linear-gradient(145deg,#061634_0%,#0a2d67_54%,#126fd9_100%)] px-10 py-9 text-white lg:flex lg:flex-col xl:px-16">
+                <div class="pointer-events-none absolute -bottom-52 -right-36 h-[40rem] w-[40rem] rounded-full bg-[radial-gradient(circle,rgba(125,211,252,0.55)_0%,rgba(37,99,235,0.34)_42%,transparent_72%)] blur-3xl"></div>
+                <div class="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,rgba(255,255,255,0.04),transparent_38%,rgba(56,189,248,0.08))]"></div>
+                <div class="pointer-events-none absolute -left-4 -top-8 h-44 w-80 rounded-full bg-[radial-gradient(ellipse,rgba(255,255,255,0.96)_0%,rgba(186,230,253,0.68)_38%,rgba(59,130,246,0.18)_64%,transparent_76%)] blur-lg"></div>
+                <div class="pointer-events-none absolute left-[12%] top-[24%] h-24 w-24 rounded-full border border-blue-300/20"></div>
 
-            <div class="mt-6 w-full rounded-xl border border-slate-200 bg-white px-6 py-8 shadow-sm sm:max-w-md">
-                {{ $slot }}
-            </div>
-        </div>
+                <a href="/" wire:navigate class="relative z-10 inline-flex w-fit items-center transition duration-300 hover:-translate-y-0.5 hover:scale-[1.03]" aria-label="Return to Lendly home">
+                    <img src="{{ asset('images/lendlylogo_transparent.png') }}" alt="Lendly" class="h-24 w-auto object-contain drop-shadow-[0_8px_18px_rgba(7,26,61,0.28)]" />
+                </a>
+
+                <div class="relative z-10 my-auto grid items-center gap-8 xl:grid-cols-[0.9fr_1.1fr] xl:gap-10">
+                    <div>
+                        <p class="inline-flex whitespace-nowrap items-center gap-2 rounded-full border border-blue-300/25 bg-white/10 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-sky-200 backdrop-blur">
+                            <span class="h-2 w-2 rounded-full bg-sky-300 shadow-[0_0_12px_rgba(125,211,252,0.9)]"></span>
+                            Your neighborhood marketplace
+                        </p>
+                        <h1 class="mt-6 text-4xl font-extrabold leading-[1.03] tracking-[-0.045em] xl:text-5xl">
+                            Borrow what you need.
+                            <span class="mt-2 block text-sky-300">Share what you have.</span>
+                        </h1>
+                        <p class="mt-5 max-w-md text-sm leading-6 text-blue-100/75 xl:text-base xl:leading-7">Useful things are already nearby. Lendly helps your community rent smarter, save more, and own less.</p>
+
+                        <div class="mt-7 space-y-3 text-sm font-medium text-blue-50/90">
+                            <div class="flex items-center gap-3"><span class="grid h-7 w-7 place-items-center rounded-full bg-emerald-400/15 text-emerald-300 ring-1 ring-emerald-300/20">✓</span> Find items close to home</div>
+                            <div class="flex items-center gap-3"><span class="grid h-7 w-7 place-items-center rounded-full bg-emerald-400/15 text-emerald-300 ring-1 ring-emerald-300/20">✓</span> Make extra income from idle gear</div>
+                            <div class="flex items-center gap-3"><span class="grid h-7 w-7 place-items-center rounded-full bg-emerald-400/15 text-emerald-300 ring-1 ring-emerald-300/20">✓</span> Rent with a connected community</div>
+                        </div>
+                    </div>
+
+                    <div class="relative mx-auto hidden w-full max-w-[23rem] xl:block">
+                        <div class="absolute -inset-5 rounded-[2.5rem] bg-blue-400/20 blur-2xl"></div>
+                        <div class="relative aspect-square overflow-hidden rounded-[2rem] border-[8px] border-white/90 bg-cover bg-center shadow-[0_30px_70px_rgba(0,0,0,0.35)]" style="background-image: url('{{ asset('images/rental-hero-square.png') }}')">
+                            <div class="absolute inset-0 bg-gradient-to-t from-blue-950/55 via-transparent to-white/5"></div>
+                            <div class="absolute bottom-5 left-5 right-5">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-sky-200">Popular nearby</p>
+                                <p class="mt-1 text-lg font-bold">Borrow more. Own less.</p>
+                            </div>
+                        </div>
+                        <div class="animate-float-slow absolute -left-8 top-8 rounded-2xl border border-white/20 bg-white/90 px-3 py-2.5 text-slate-900 shadow-xl backdrop-blur">
+                            <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-blue-600">Nearby</p>
+                            <p class="mt-0.5 text-xs font-semibold">Ready when you are</p>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="relative z-10 text-xs text-blue-200/55">© {{ date('Y') }} Lendly · Rent smarter, together.</p>
+            </section>
+
+            <section class="relative flex min-h-screen items-center justify-center px-4 py-8 sm:px-8 lg:px-10 xl:px-16">
+                <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_100%,rgba(59,130,246,0.16),transparent_36%),radial-gradient(circle_at_12%_8%,rgba(186,230,253,0.35),transparent_27%)]"></div>
+
+                <div class="relative z-10 w-full {{ request()->routeIs('register') ? 'max-w-2xl' : 'max-w-md' }}">
+                    <div class="mb-7 flex items-center justify-between lg:hidden">
+                        <a href="/" wire:navigate class="inline-flex items-center transition duration-300 hover:scale-[1.03]" aria-label="Return to Lendly home">
+                            <img src="{{ asset('images/lendlylogo_transparent.png') }}" alt="Lendly" class="h-20 w-auto object-contain drop-shadow-[0_4px_10px_rgba(30,64,175,0.16)]" />
+                        </a>
+                        <a href="/" wire:navigate class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 transition hover:text-blue-700">
+                            <span aria-hidden="true">←</span> Back home
+                        </a>
+                    </div>
+
+                    <div class="rounded-[2rem] border border-white bg-white/90 p-6 shadow-[0_28px_80px_rgba(15,45,95,0.13)] backdrop-blur-xl sm:p-8 xl:p-10">
+                        {{ $slot }}
+                    </div>
+
+                    <p class="mt-6 text-center text-xs text-slate-400 lg:hidden">© {{ date('Y') }} Lendly · Rent smarter, together.</p>
+                </div>
+            </section>
+        </main>
     </body>
 </html>

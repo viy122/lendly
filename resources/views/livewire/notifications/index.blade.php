@@ -1,11 +1,11 @@
 <div>
-    <x-page-header title="Notifications" subtitle="Updates about your requests, rentals, and disputes." maxWidth="max-w-3xl">
-        <x-slot name="actions">
-            <button type="button" wire:click="markAllAsRead" class="text-sm font-medium text-white hover:text-blue-100">Mark all read</button>
-        </x-slot>
-    </x-page-header>
+    <x-page-header title="Notifications" subtitle="Updates about your requests, rentals, and disputes." maxWidth="max-w-3xl" />
 
     <div class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+        <div class="mb-4 flex justify-end">
+            <button type="button" wire:click="markAllAsRead" class="text-sm font-medium text-blue-600 hover:text-blue-800">Mark all read</button>
+        </div>
+
         @if ($notifications->isEmpty())
             <x-empty-state title="You're all caught up" message="Notifications about your requests and rentals will appear here." />
         @else

@@ -8,12 +8,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EnsureUserHasRole
 {
-    /**
-     * 'renter' and 'owner' both just mean "any non-admin member" now (see
-     * User::isRenter()/isOwner()) — routed through those methods rather than
-     * a strict enum comparison so this middleware stays in sync with them
-     * automatically.
-     */
+    /** Members use the same account, with one selected interface per session. */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
         $user = $request->user();
@@ -28,6 +23,10 @@ class EnsureUserHasRole
         });
 
         abort_unless($allowed, 403, 'You are not authorized to access this page.');
+
+        if (! $user->isAdmin() && $request->session()->has('active_interface')) {
+            abort_unless(in_array($user->activeInterface(), $roles, true), 403, 'Log in to the matching interface to access this page.');
+        }
 
         return $next($request);
     }

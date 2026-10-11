@@ -3,7 +3,10 @@
 namespace App\Models;
 
 use App\Enums\ConditionRecordType;
+use App\Enums\DisputeResolution;
+use App\Enums\DisputeStatus;
 use App\Enums\FulfillmentMethod;
+use App\Enums\RentalRequestStatus;
 use App\Enums\RentalStatus;
 use App\Enums\ReviewType;
 use Illuminate\Database\Eloquent\Builder;
@@ -39,6 +42,7 @@ class Rental extends Model
         'return_confirmed_by_owner_at',
         'return_confirmed_by_renter_at',
         'completed_at',
+        'archived_at',
         'days_overdue',
         'late_fee',
         'cancelled_at',
@@ -66,6 +70,7 @@ class Rental extends Model
             'return_confirmed_by_owner_at' => 'datetime',
             'return_confirmed_by_renter_at' => 'datetime',
             'completed_at' => 'datetime',
+            'archived_at' => 'datetime',
             'cancelled_at' => 'datetime',
         ];
     }
@@ -73,6 +78,28 @@ class Rental extends Model
     public function rentalRequest(): BelongsTo
     {
         return $this->belongsTo(RentalRequest::class);
+    }
+
+    public function adminActions(): HasMany
+    {
+        return $this->hasMany(RentalAdminAction::class);
+    }
+
+    public function exchangeSchedules(): HasMany
+    {
+        return $this->hasMany(RentalExchangeSchedule::class);
+    }
+
+    public function exchangeSchedule(): HasOne
+    {
+        return $this->hasOne(RentalExchangeSchedule::class)->latestOfMany();
+    }
+
+    public function canArrangeExchange(): bool
+    {
+        return in_array($this->status, [RentalStatus::PaymentPending, RentalStatus::Paid], true)
+            && $this->pickup_confirmed_by_owner_at === null
+            && $this->pickup_confirmed_by_renter_at === null;
     }
 
     public function listing(): BelongsTo
@@ -93,6 +120,21 @@ class Rental extends Model
     public function payment(): HasOne
     {
         return $this->hasOne(Payment::class);
+    }
+
+    public function paymentSubmissions(): HasMany
+    {
+        return $this->hasMany(PaymentSubmission::class)->orderByDesc('id');
+    }
+
+    public function hasAcceptedAgreement(): bool
+    {
+        $request = $this->rentalRequest;
+
+        return $request?->status === RentalRequestStatus::Approved
+            && $request->renter_terms_accepted_at !== null
+            && $request->owner_terms_accepted_at !== null
+            && ! empty($request->agreement_terms);
     }
 
     public function securityDeposit(): HasOne
@@ -196,6 +238,34 @@ class Rental extends Model
     }
 
     /**
+     * Net rental income retained by the owner. Commission is paid separately
+     * by the renter; deposits and uncollected late fees are not rental income.
+     * A damage-dispute refund concerns the deposit, not the rental fee.
+     */
+    public function ownerEarnings(): float
+    {
+        if ($this->paid_at === null || ($this->payment !== null && $this->payment->status !== 'paid')) {
+            return 0.0;
+        }
+
+        $hasRentalRefund = $this->disputes->contains(fn (Dispute $dispute) => $dispute->damage_report_id === null
+            && $dispute->status === DisputeStatus::Resolved
+            && $dispute->resolution === DisputeResolution::FullRefund
+        );
+
+        if ($hasRentalRefund) {
+            return 0.0;
+        }
+
+        $rentalFee = max(0, (float) $this->rental_fee);
+        $retained = $this->isCancelled()
+            ? min($rentalFee, max(0, (float) $this->cancellation_fee))
+            : $rentalFee;
+
+        return round($retained, 2);
+    }
+
+    /**
      * "Due Soon" is a derived display state, not a stored status — an
      * active rental due back within the next 2 days that hasn't tipped
      * into Overdue yet (see markOverdueRentals(), which is what actually
@@ -235,7 +305,9 @@ class Rental extends Model
     }
 
     /**
-     * Either confirmation means physical handover may already have happened.
+     * Either party's pickup/delivery confirmation records hand-over.
+     * The status can remain Paid while the other confirmation is pending,
+     * so cancellation must also check the recorded transfer timestamps.
      */
     public function isCancellableByRenter(): bool
     {

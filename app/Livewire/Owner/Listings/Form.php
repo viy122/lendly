@@ -2,17 +2,19 @@
 
 namespace App\Livewire\Owner\Listings;
 
-use App\Enums\ListingCondition;
 use App\Enums\ListingStatus;
 use App\Models\Category;
 use App\Models\Listing;
 use App\Models\ListingImage;
+use App\Services\ListingPublication;
 use App\Services\MarketInsight;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
@@ -66,6 +68,13 @@ class Form extends Component
 
     public bool $is_available = true;
 
+    public string $available_from = '';
+
+    public string $available_until = '';
+
+    #[Locked]
+    public array $removedImageIds = [];
+
     /** @var array<int, TemporaryUploadedFile> */
     public array $photos = [];
 
@@ -96,6 +105,8 @@ class Form extends Component
             $this->rental_rules = (string) $listing->rental_rules;
             $this->max_rental_duration_days = $listing->max_rental_duration_days;
             $this->is_available = $listing->is_available;
+            $this->available_from = $listing->available_from?->toDateString() ?? '';
+            $this->available_until = $listing->available_until?->toDateString() ?? '';
         }
     }
 
@@ -133,10 +144,10 @@ class Form extends Component
 
     public function removeExistingImage(int $imageId): void
     {
-        $image = ListingImage::where('listing_id', $this->listing?->id)->findOrFail($imageId);
-
-        Storage::disk('public')->delete($image->path);
-        $image->delete();
+        abort_unless($this->listing?->exists, 404);
+        $this->authorize('update', $this->listing);
+        abort_unless($this->listing->images()->whereKey($imageId)->exists(), 404);
+        $this->removedImageIds = array_values(array_unique([...$this->removedImageIds, $imageId]));
     }
 
     public function removePendingPhoto(int $index): void
@@ -147,39 +158,22 @@ class Form extends Component
 
     public function existingPhotoCount(): int
     {
-        return $this->listing?->images()->count() ?? 0;
+        return $this->listing?->images()->whereNotIn('id', $this->removedImageIds)->count() ?? 0;
     }
 
     public function save(): void
     {
+        if ($this->listing?->exists) {
+            $this->listing = Listing::findOrFail($this->listing->id);
+            $this->authorize('update', $this->listing);
+        }
+
         $validated = $this->validate([
-            'category_id' => ['required', 'exists:categories,id'],
-            'subcategory_id' => ['nullable', 'exists:categories,id'],
-            'name' => ['required', 'string', 'max:255'],
-            'brand' => ['nullable', 'string', 'max:255'],
-            'model' => ['nullable', 'string', 'max:255'],
-            'description' => ['required', 'string', 'max:5000'],
-            'condition' => ['required', Rule::enum(ListingCondition::class)],
-            'purchase_year' => ['nullable', 'integer', 'min:1970', 'max:'.date('Y')],
-            'estimated_original_price' => ['nullable', 'numeric', 'min:0'],
-            'price_per_day' => ['required', 'numeric', 'gt:0'],
-            'price_per_hour' => ['nullable', 'numeric', 'gt:0'],
-            'price_per_week' => ['nullable', 'numeric', 'gt:0'],
-            'security_deposit' => ['required', 'numeric', 'min:0'],
-            'location' => ['required', 'string', 'max:255'],
-            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
-            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
-            'pickup_available' => ['boolean'],
-            'delivery_available' => ['boolean'],
-            'rental_rules' => ['nullable', 'string', 'max:2000'],
-            'max_rental_duration_days' => ['required', 'integer', 'min:1', 'max:365'],
-            'is_available' => ['boolean'],
-            'photos.*' => ['nullable', 'image', 'max:4096'],
-        ], [
-            'price_per_day.gt' => 'Rental price must be greater than ₱0.',
-            'category_id.required' => 'Category is required.',
-            'location.required' => 'Location is required.',
-        ]);
+            ...ListingPublication::rules(),
+            'photos' => ['array', 'min:'.($this->existingPhotoCount() > 0 ? 0 : 1)],
+            'photos.*' => ['required', 'image', 'max:4096'],
+        ], ListingPublication::messages());
+        unset($validated['photos']);
 
         if (! $this->pickup_available && ! $this->delivery_available) {
             $this->addError('pickup_available', 'Select at least one option: pickup or delivery.');
@@ -188,31 +182,57 @@ class Form extends Component
         }
 
         $validated['owner_id'] = auth()->id();
-        $validated['status'] = ListingStatus::PendingApproval;
         $validated['rejection_reason'] = null;
 
         $isUpdate = (bool) $this->listing?->exists;
 
-        if ($isUpdate) {
-            $this->listing->update($validated);
-            $listing = $this->listing;
-        } else {
-            $listing = Listing::create($validated);
-        }
+        $storedPaths = [];
+        $removedPaths = [];
+        try {
+            DB::transaction(function () use ($validated, $isUpdate, &$storedPaths, &$removedPaths) {
+                $listing = $isUpdate ? Listing::lockForUpdate()->findOrFail($this->listing->id) : new Listing;
+                if ($isUpdate) {
+                    $this->authorize('update', $listing);
+                    if ($listing->reservingRequests()
+                        ->where(fn ($query) => $query->whereDate('start_date', '<', $this->available_from)
+                            ->orWhereDate('end_date', '>', $this->available_until))->exists()) {
+                        throw ValidationException::withMessages([
+                            'available_until' => 'Your availability window must include existing approved bookings.',
+                        ]);
+                    }
+                }
+                if ($listing->images()->whereNotIn('id', $this->removedImageIds)->count() + count($this->photos) < 1) {
+                    throw ValidationException::withMessages(['photos' => 'Add at least one photo of your item.']);
+                }
+                $validated['status'] = $listing->status === ListingStatus::Inactive
+                    ? ListingStatus::Inactive : ListingStatus::Published;
+                $listing->fill($validated)->save();
 
-        foreach ($this->photos as $photo) {
-            $path = $photo->store('listings', 'public');
-
-            ListingImage::create([
-                'listing_id' => $listing->id,
-                'path' => $path,
-                'sort_order' => $listing->images()->count(),
-            ]);
+                $removedPaths = $listing->images()->whereIn('id', $this->removedImageIds)->pluck('path')->all();
+                $listing->images()->whereIn('id', $this->removedImageIds)->delete();
+                $sortOrder = ($listing->images()->max('sort_order') ?? -1) + 1;
+                foreach ($this->photos as $photo) {
+                    $path = $photo->store('listings', 'public');
+                    if (! $path) {
+                        throw ValidationException::withMessages(['photos' => 'The photo could not be saved. Please try again.']);
+                    }
+                    $storedPaths[] = $path;
+                    ListingImage::create([
+                        'listing_id' => $listing->id,
+                        'path' => $path,
+                        'sort_order' => $sortOrder++,
+                    ]);
+                }
+            });
+        } catch (\Throwable $exception) {
+            Storage::disk('public')->delete($storedPaths);
+            throw $exception;
         }
+        Storage::disk('public')->delete($removedPaths);
 
         session()->flash('status', $isUpdate
-            ? 'Listing updated and resubmitted for approval.'
-            : 'Listing submitted for approval.');
+            ? 'Listing updated.'
+            : 'Listing published.');
 
         $this->redirect(route('owner.listings.index'), navigate: true);
     }

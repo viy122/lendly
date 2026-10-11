@@ -23,19 +23,19 @@ class Bell extends Component
 
     public function markAsRead(string $notificationId): void
     {
-        auth()->user()->notifications()->where('id', $notificationId)->first()?->markAsRead();
+        auth()->user()->notificationsForActiveInterface()->where('id', $notificationId)->first()?->markAsRead();
     }
 
     public function markAllAsRead(): void
     {
-        auth()->user()->unreadNotifications->markAsRead();
+        auth()->user()->notificationsForActiveInterface()->whereNull('read_at')->get()->markAsRead();
     }
 
     public function render(): View
     {
         return view('livewire.notifications.bell', [
-            'notifications' => auth()->user()->notifications()->latest()->take(8)->get(),
-            'unreadCount' => auth()->user()->unreadNotifications()->count(),
+            'notifications' => auth()->user()->notificationsForActiveInterface()->latest()->take(8)->get(),
+            'unreadCount' => auth()->user()->notificationsForActiveInterface()->whereNull('read_at')->count(),
         ]);
     }
 }

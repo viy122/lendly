@@ -3,14 +3,17 @@
 namespace App\Livewire\Owner\RentalRequests;
 
 use App\Enums\FulfillmentMethod;
+use App\Enums\NotificationType;
 use App\Enums\RentalRequestStatus;
 use App\Models\Listing;
-use App\Models\Rental;
 use App\Models\RentalRequest;
 use App\Models\User;
+use App\Notifications\TalaNotification;
+use App\Services\RentalAgreement;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -19,6 +22,7 @@ class Index extends Component
 {
     use WithPagination;
 
+    #[Url]
     public string $filter = 'requested';
 
     public ?int $rejecting = null;
@@ -26,8 +30,6 @@ class Index extends Component
     public string $rejection_reason = '';
 
     public ?int $approving = null;
-
-    public bool $accept_terms = false;
 
     public function updatingFilter(): void
     {
@@ -37,73 +39,86 @@ class Index extends Component
     public function startApproving(int $rentalRequestId): void
     {
         $this->approving = $rentalRequestId;
-        $this->accept_terms = false;
     }
 
     public function approve(int $rentalRequestId): void
     {
-        $this->validate([
-            'accept_terms' => ['accepted'],
-        ], [
-            'accept_terms.accepted' => 'You must accept the rental terms and agreement to approve this request.',
-        ]);
-
         $snapshot = RentalRequest::with('listing')->findOrFail($rentalRequestId);
         $this->authorize('moderate', $snapshot);
-
         $approved = DB::transaction(function () use ($snapshot, $rentalRequestId) {
             $participants = User::whereIn('id', [$snapshot->listing->owner_id, $snapshot->renter_id])->orderBy('id')->lockForUpdate()->get();
             abort_unless($participants->count() === 2 && $participants->every(fn (User $user) => ! $user->isSuspended()), 403);
-            $listing = Listing::whereKey($snapshot->listing_id)->lockForUpdate()->first();
-            if (! $listing || ! $listing->isPublished() || ! $listing->is_available) {
-                $this->addError('approve', 'This listing is no longer available.');
+            Listing::withTrashed()->whereKey($snapshot->listing_id)->lockForUpdate()->firstOrFail();
+            $rentalRequest = RentalRequest::with('listing')->lockForUpdate()->findOrFail($rentalRequestId);
 
-                return false;
-            }
-            $rentalRequest = RentalRequest::whereKey($rentalRequestId)->lockForUpdate()->firstOrFail();
             $this->authorize('moderate', $rentalRequest);
-            abort_unless($rentalRequest->isPending(), 403);
-            abort_unless($rentalRequest->renter_terms_accepted_at !== null, 403, 'The renter must accept the terms first.');
 
-            if (($rentalRequest->fulfillment_method === FulfillmentMethod::Pickup && ! $listing->pickup_available)
-                || ($rentalRequest->fulfillment_method === FulfillmentMethod::Delivery && ! $listing->delivery_available)
-                || $rentalRequest->rental_days > $listing->max_rental_duration_days) {
+            abort_unless($rentalRequest->isPending(), 403);
+
+            if ($rentalRequest->listing->trashed() || ! $rentalRequest->listing->isPublished()
+                || ! $rentalRequest->listing->is_available
+                || ! $rentalRequest->listing->includesAvailableDates($rentalRequest->start_date, $rentalRequest->end_date)) {
+                $this->addError('approve', 'This item is unavailable for the requested dates. Update the listing or decline the request.');
+
+                return;
+            }
+
+            if (($rentalRequest->fulfillment_method === FulfillmentMethod::Pickup && ! $rentalRequest->listing->pickup_available)
+                || ($rentalRequest->fulfillment_method === FulfillmentMethod::Delivery && ! $rentalRequest->listing->delivery_available)
+                || $rentalRequest->rental_days > $rentalRequest->listing->max_rental_duration_days) {
                 $this->addError('approve', 'The requested fulfillment option or duration is no longer available. Ask the renter to submit an updated request.');
 
                 return false;
             }
 
-            if ($rentalRequest->start_date->lt(today()) || $listing->hasApprovedOverlap($rentalRequest->start_date, $rentalRequest->end_date, excludingRequestId: $rentalRequest->id)) {
-                $this->addError('approve', 'These dates are no longer available for approval.');
+            if ($rentalRequest->start_date->lt(today()) || $rentalRequest->listing->hasApprovedOverlap($rentalRequest->start_date, $rentalRequest->end_date, excludingRequestId: $rentalRequest->id)) {
+                $this->addError('approve', 'These dates were already approved for another renter.');
+
+                return;
+            }
+
+            $rentalRequest->update([
+                'status' => RentalRequestStatus::Approved,
+                'renter_terms_accepted_at' => null,
+                'owner_terms_accepted_at' => null,
+                'agreement_terms' => RentalAgreement::termsFor($rentalRequest),
+            ]);
+
+            // A save callback can approve another request before this update reaches storage.
+            if ($rentalRequest->listing->hasApprovedOverlap($rentalRequest->start_date, $rentalRequest->end_date, excludingRequestId: $rentalRequest->id)) {
+                $rentalRequest->update([
+                    'status' => RentalRequestStatus::Rejected,
+                    'rejection_reason' => 'These dates were booked by another renter.',
+                    'renter_terms_accepted_at' => null,
+                    'owner_terms_accepted_at' => null,
+                    'agreement_terms' => null,
+                ]);
+                $this->addError('approve', 'These dates were already approved for another renter.');
 
                 return false;
             }
 
-            $rental = Rental::create([
-                'rental_request_id' => $rentalRequest->id,
-                'listing_id' => $rentalRequest->listing_id,
-                'owner_id' => $rentalRequest->listing->owner_id,
-                'renter_id' => $rentalRequest->renter_id,
-                'start_date' => $rentalRequest->start_date,
-                'end_date' => $rentalRequest->end_date,
-                'rental_days' => $rentalRequest->rental_days,
-                'fulfillment_method' => $rentalRequest->fulfillment_method,
-                'rental_fee' => $rentalRequest->rental_fee,
-                'commission_rate' => $rentalRequest->commission_rate,
-                'commission_amount' => $rentalRequest->commission_amount,
-                'security_deposit' => $rentalRequest->security_deposit,
-                'total_amount' => $rentalRequest->total_amount,
-            ]);
-            $rentalRequest->update([
-                'status' => RentalRequestStatus::Approved,
-                'owner_terms_accepted_at' => now(),
-            ]);
-            $rentalRequest->notifyStatus($rental);
+            $rentalRequest->renter->notify(new TalaNotification(
+                NotificationType::RequestApproved->value,
+                'Request approved',
+                "Your request for \"{$rentalRequest->listing->name}\" was approved. Both parties must review and accept the rental agreement before the booking is finalized.",
+                route('renter.rental-requests.agreement', $rentalRequest),
+            ));
 
+            $rentalRequest->listing->owner->notify(new TalaNotification(
+                NotificationType::RequestApproved->value,
+                'Request approved',
+                "You approved {$rentalRequest->renter->name}'s request for \"{$rentalRequest->listing->name}\". Both parties must review and accept the rental agreement before the booking is finalized.",
+                route('owner.rental-requests.agreement', $rentalRequest),
+            ));
+
+            // Approving one request confirms the dates, so any other pending
+            // request for the same listing that overlaps is no longer viable.
             $overlapping = RentalRequest::overlapping($rentalRequest->listing_id, $rentalRequest->start_date, $rentalRequest->end_date)
                 ->where('status', RentalRequestStatus::Requested)
                 ->whereKeyNot($rentalRequest->id)
-                ->lockForUpdate()->get();
+                ->lockForUpdate()
+                ->get();
 
             foreach ($overlapping as $other) {
                 $other->update([
@@ -111,14 +126,26 @@ class Index extends Component
                     'rejection_reason' => 'These dates were booked by another renter.',
                 ]);
 
-                $other->notifyStatus();
+                $other->renter->notify(new TalaNotification(
+                    NotificationType::RequestRejected->value,
+                    'Request declined',
+                    "Your request for \"{$rentalRequest->listing->name}\" was declined: {$other->rejection_reason}",
+                    route('renter.rental-requests.index'),
+                ));
+                $rentalRequest->listing->owner->notify(new TalaNotification(
+                    NotificationType::RequestRejected->value,
+                    'Request automatically declined',
+                    "{$other->renter->name}'s request for \"{$rentalRequest->listing->name}\" was automatically declined: {$other->rejection_reason}",
+                    route('owner.rental-requests.index'),
+                ));
             }
 
             return true;
         }, 3);
 
         if ($approved) {
-            $this->reset('approving', 'accept_terms');
+            $this->reset('approving');
+            $this->redirect(route('owner.rental-requests.agreement', $rentalRequestId), navigate: true);
         }
     }
 
@@ -134,14 +161,29 @@ class Index extends Component
 
         DB::transaction(function () {
             $rentalRequest = RentalRequest::with('listing')->lockForUpdate()->findOrFail($this->rejecting);
+
             $this->authorize('moderate', $rentalRequest);
+
             abort_unless($rentalRequest->isPending(), 403);
+
             $rentalRequest->update([
                 'status' => RentalRequestStatus::Rejected,
                 'rejection_reason' => $this->rejection_reason,
             ]);
-            $rentalRequest->notifyStatus();
-        });
+
+            $rentalRequest->renter->notify(new TalaNotification(
+                NotificationType::RequestRejected->value,
+                'Request declined',
+                "Your request for \"{$rentalRequest->listing->name}\" was declined: {$this->rejection_reason}",
+                route('renter.rental-requests.index'),
+            ));
+            $rentalRequest->listing->owner->notify(new TalaNotification(
+                NotificationType::RequestRejected->value,
+                'Request declined',
+                "You declined {$rentalRequest->renter->name}'s request for \"{$rentalRequest->listing->name}\": {$this->rejection_reason}",
+                route('owner.rental-requests.index'),
+            ));
+        }, 3);
 
         $this->rejecting = null;
         $this->rejection_reason = '';
@@ -152,8 +194,9 @@ class Index extends Component
         $rentalRequests = RentalRequest::query()
             ->whereHas('listing', fn ($query) => $query->where('owner_id', auth()->id()))
             ->when($this->filter !== 'all', fn ($query) => $query->where('status', $this->filter))
-            ->with(['listing.images', 'renter'])
+            ->with(['listing.images', 'renter', 'rental'])
             ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->paginate(10);
 
         return view('livewire.owner.rental-requests.index', ['rentalRequests' => $rentalRequests]);

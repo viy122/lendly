@@ -57,7 +57,7 @@ class ListingShow extends Component
     private function authorizeConversation(): void
     {
         $user = $this->member();
-        abort_unless(in_array($user->id, [$this->conversation->owner_id, $this->conversation->renter_id], true), 403);
+        $this->authorize('converse', $this->conversation);
     }
 
     public function send(): void

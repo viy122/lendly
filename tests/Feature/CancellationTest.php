@@ -11,8 +11,12 @@ use App\Models\Rental;
 use App\Models\RentalRequest;
 use App\Models\SecurityDeposit;
 use App\Models\User;
+use App\Services\RentalLifecycle;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class CancellationTest extends TestCase
@@ -171,6 +175,105 @@ class CancellationTest extends TestCase
         $this->assertSame(RentalStatus::Active, $rental->fresh()->status);
     }
 
+    public static function handOverConfirmations(): array
+    {
+        return [
+            'owner pickup' => ['owner', 'pickup'],
+            'renter pickup' => ['renter', 'pickup'],
+            'owner delivery' => ['owner', 'delivery'],
+            'renter delivery' => ['renter', 'delivery'],
+        ];
+    }
+
+    #[DataProvider('handOverConfirmations')]
+    public function test_first_hand_over_confirmation_blocks_cancellation_from_an_open_form(string $party, string $method): void
+    {
+        $owner = User::factory()->create();
+        $renter = User::factory()->create();
+        $listing = $this->listingFor($owner);
+        $rental = $this->rentalWithRequest($owner, $renter, $listing, RentalStatus::Paid, now()->addDay());
+        $rental->update(['fulfillment_method' => $method]);
+        SecurityDeposit::create(['rental_id' => $rental->id, 'amount' => 500]);
+
+        $page = Livewire::actingAs($renter)
+            ->test(RenterRentalShow::class, ['rental' => $rental])
+            ->set('showCancelForm', true)
+            ->assertSee('Confirm cancellation');
+
+        RentalLifecycle::confirmPickup($rental, $party === 'owner' ? $owner : $renter);
+        Notification::fake();
+
+        $page->call('$refresh')
+            ->assertDontSee('Cancel this booking')
+            ->assertDontSee('Confirm cancellation');
+        $this->assertNull($page->instance()->cancellationPreview());
+        $this->assertFalse($renter->can('cancel', $rental->fresh()));
+
+        // Calling the action directly must fail even if a form was already open.
+        $page->set('cancellation_reason', 'Too late')
+            ->call('cancelRental')
+            ->assertForbidden();
+
+        $rental->refresh();
+        $this->assertSame(RentalStatus::Paid, $rental->status);
+        $this->assertFalse($rental->bothConfirmedPickup());
+        $this->assertNull($rental->cancelled_at);
+        $this->assertNull($rental->cancellation_reason);
+        $this->assertEquals(0, (float) $rental->cancellation_fee);
+        $this->assertSame(RentalRequestStatus::Approved, $rental->rentalRequest->status);
+        $this->assertSame('held', $rental->securityDeposit->status->value);
+        Notification::assertNothingSent();
+    }
+
+    public function test_cancellation_service_rechecks_hand_over_when_given_a_stale_booking(): void
+    {
+        $owner = User::factory()->create();
+        $renter = User::factory()->create();
+        $listing = $this->listingFor($owner);
+        $rental = $this->rentalWithRequest($owner, $renter, $listing, RentalStatus::Paid, now()->addDay());
+        SecurityDeposit::create(['rental_id' => $rental->id, 'amount' => 500]);
+        $this->actingAs($renter);
+
+        RentalLifecycle::confirmPickup($rental->fresh(), $owner);
+        $this->assertTrue($rental->isCancellableByRenter());
+        Notification::fake();
+
+        try {
+            RentalLifecycle::cancel($rental, 'Stale cancellation');
+            $this->fail('Cancellation must check the persisted hand-over inside the transaction.');
+        } catch (AuthorizationException $exception) {
+            $this->assertSame(RentalStatus::Paid, $rental->fresh()->status);
+            $this->assertSame(RentalRequestStatus::Approved, $rental->rentalRequest->fresh()->status);
+            $this->assertSame('held', $rental->securityDeposit->fresh()->status->value);
+            $this->assertNull($rental->fresh()->cancelled_at);
+            Notification::assertNothingSent();
+        }
+    }
+
+    public function test_pre_hand_over_cancellation_uses_the_saved_agreement_policy(): void
+    {
+        $this->travelTo(now()->startOfDay());
+        $owner = User::factory()->create();
+        $renter = User::factory()->create();
+        $listing = $this->listingFor($owner);
+        $rental = $this->rentalWithRequest($owner, $renter, $listing, RentalStatus::Paid, now()->addDays(3));
+        $rental->rentalRequest->update(['agreement_terms' => [
+            'cancellation_window_hours' => 96,
+            'cancellation_fee_percentage' => 15,
+        ]]);
+        SecurityDeposit::create(['rental_id' => $rental->id, 'amount' => 500]);
+
+        $page = Livewire::actingAs($renter)->test(RenterRentalShow::class, ['rental' => $rental]);
+        $this->assertSame(150.0, $page->instance()->cancellationPreview()['fee']);
+        $page->set('cancellation_reason', 'Change of plans')->call('cancelRental')->assertHasNoErrors();
+
+        $rental->refresh();
+        $this->assertSame(RentalStatus::Cancelled, $rental->status);
+        $this->assertEquals(150, (float) $rental->cancellation_fee);
+        $this->assertSame(RentalRequestStatus::Cancelled, $rental->rentalRequest->status);
+        $this->assertSame('refunded', $rental->securityDeposit->status->value);
+    }
+
     public function test_only_the_renter_can_cancel_not_the_owner_or_a_stranger(): void
     {
         $owner = User::factory()->create();
@@ -184,7 +287,7 @@ class CancellationTest extends TestCase
         $this->assertFalse($stranger->can('cancel', $rental));
     }
 
-    public function test_cancellation_reason_is_required(): void
+    public function test_cancellation_reason_is_optional(): void
     {
         $owner = User::factory()->create();
         $renter = User::factory()->create();
@@ -195,8 +298,10 @@ class CancellationTest extends TestCase
             ->test(RenterRentalShow::class, ['rental' => $rental])
             ->set('cancellation_reason', '')
             ->call('cancelRental')
-            ->assertHasErrors(['cancellation_reason']);
+            ->assertHasNoErrors()
+            ->assertSee('No reason provided.');
 
-        $this->assertSame(RentalStatus::PaymentPending, $rental->fresh()->status);
+        $this->assertSame(RentalStatus::Cancelled, $rental->fresh()->status);
+        $this->assertNull($rental->fresh()->cancellation_reason);
     }
 }

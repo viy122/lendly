@@ -14,7 +14,7 @@ class Index extends Component
 {
     use WithPagination;
 
-    public string $filter = 'pending_approval';
+    public string $filter = 'published';
 
     public ?int $rejecting = null;
 
