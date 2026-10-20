@@ -6,6 +6,7 @@ use App\Enums\NotificationType;
 use App\Enums\RentalStatus;
 use App\Models\Listing;
 use App\Models\OfflinePaymentSetting;
+use App\Models\OwnerPaymentSetting;
 use App\Models\Payment;
 use App\Models\PaymentSubmission;
 use App\Models\Rental;
@@ -21,6 +22,46 @@ use Throwable;
 
 class RentalPayments
 {
+    public static function destinationFor(Rental $rental, User $renter): ?array
+    {
+        return DB::transaction(function () use ($rental, $renter) {
+            $rental = Rental::lockForUpdate()->findOrFail($rental->id);
+            $renter = User::withTrashed()->find($renter->id);
+            if (! self::activeMember($renter) || $renter->id !== $rental->renter_id) {
+                return null;
+            }
+            if ($rental->payment_destination !== null) {
+                return $rental->payment_destination['source'] === 'platform' && ! OfflinePaymentSetting::current()?->enabled
+                    ? null : $rental->payment_destination;
+            }
+            if (! Gate::forUser($renter)->allows('pay', $rental)) {
+                return null;
+            }
+
+            // Settings replacement locks this same row before checking whether an old QR is referenced.
+            $settings = OwnerPaymentSetting::where('user_id', $rental->owner_id)->lockForUpdate()->first();
+            $owner = User::withTrashed()->find($rental->owner_id);
+            if (self::activeMember($owner) && $settings?->enabled
+                && in_array($settings->provider, ['maya', 'gcash'], true)
+                && trim($settings->account_name) !== '' && self::storedFile($settings->qr_path)) {
+                $destination = [
+                    'source' => 'owner_wallet', 'method' => $settings->provider, 'payee_user_id' => $owner->id,
+                    'account_name' => $settings->account_name, 'instructions' => $settings->instructions ?? '',
+                    'qr_path' => $settings->qr_path,
+                ];
+            } else {
+                $platform = OfflinePaymentSetting::current();
+                if (! $platform?->enabled || trim($platform->instructions ?? '') === '') {
+                    return null;
+                }
+                $destination = ['source' => 'platform', 'method' => $platform->method, 'instructions' => $platform->instructions];
+            }
+            $rental->forceFill(['payment_destination' => $destination])->save();
+
+            return $destination;
+        });
+    }
+
     public static function submit(Rental $rental, User $renter, string $reference, UploadedFile $proof): PaymentSubmission
     {
         $path = null;
@@ -28,8 +69,10 @@ class RentalPayments
             return DB::transaction(function () use ($rental, $renter, $reference, $proof, &$path) {
                 $rental = Rental::lockForUpdate()->findOrFail($rental->id);
                 Gate::forUser($renter)->authorize('pay', $rental);
-                $settings = OfflinePaymentSetting::current();
-                if (! $settings?->enabled || trim($settings->instructions ?? '') === '') {
+                $destination = self::destinationFor($rental, $renter);
+                $platform = OfflinePaymentSetting::current();
+                if (! $destination || ($destination['source'] === 'platform' && ! $platform?->enabled)
+                    || ($destination['source'] === 'owner_wallet' && ! self::storedFile($destination['qr_path'] ?? null))) {
                     throw ValidationException::withMessages(['payment_proof' => 'Payment instructions are not available yet. Please contact support.']);
                 }
                 $reference = strtoupper(trim($reference));
@@ -45,15 +88,23 @@ class RentalPayments
                 if (! $path || ! Storage::disk('local')->exists($path) || Storage::disk('local')->size($path) === 0) {
                     throw ValidationException::withMessages(['payment_proof' => 'Unable to store payment proof. Please try again.']);
                 }
-                $submission = $rental->paymentSubmissions()->create([
-                    'submitted_by' => $renter->id, 'method' => $settings->method,
-                    'instructions' => $settings->instructions, 'external_reference' => $reference,
+                $submission = $rental->paymentSubmissions()->make([
+                    'submitted_by' => $renter->id, 'method' => $destination['method'],
+                    'instructions' => $destination['instructions'], 'external_reference' => $reference,
                     'amount' => $rental->total_amount, 'proof_path' => $path, 'status' => 'pending',
                 ]);
+                $submission->forceFill(['payment_destination' => $destination])->save();
                 foreach (User::where('role', 'admin')->whereNotNull('email_verified_at')->get() as $admin) {
                     if (Gate::forUser($admin)->allows('viewAny', Rental::class)) {
                         $admin->notify(new TalaNotification(NotificationType::PaymentSubmitted->value, 'Payment proof awaiting verification',
                             'Review payment proof for booking #'.$rental->id.'.', route('admin.rentals.show', $rental)));
+                    }
+                }
+                if ($destination['source'] === 'owner_wallet') {
+                    $recipient = User::find($destination['payee_user_id']);
+                    if (self::activeMember($recipient)) {
+                        $recipient->notify(new TalaNotification(NotificationType::PaymentSubmitted->value, 'Payment proof awaiting receipt confirmation',
+                            'Check your wallet for the full payment for booking #'.$rental->id.'.', route('owner.rentals.show', $rental)));
                     }
                 }
 
@@ -65,6 +116,29 @@ class RentalPayments
             }
             throw $exception;
         }
+    }
+
+    public static function confirmOwnerReceipt(Rental $rental, User $owner, int $submissionId, bool $fundsReceived): void
+    {
+        DB::transaction(function () use ($rental, $owner, $submissionId, $fundsReceived) {
+            $owner = User::withTrashed()->whereKey($owner->id)->lockForUpdate()->first();
+            $rental = Rental::lockForUpdate()->findOrFail($rental->id);
+            $submission = $rental->paymentSubmissions()->lockForUpdate()->find($submissionId);
+            abort_unless($submission, 404);
+            $destination = $submission->payment_destination;
+            abort_unless(self::activeMember($owner) && ($destination['source'] ?? null) === 'owner_wallet'
+                && ($destination['payee_user_id'] ?? null) === $owner->id, 403);
+            abort_unless($submission->status === 'pending' && $rental->isPaymentPending()
+                && $rental->paid_at === null && $rental->hasAcceptedAgreement()
+                && ! $rental->payment()->exists() && ! $rental->securityDeposit()->exists(), 403);
+            validator(['funds_received' => $fundsReceived], ['funds_received' => ['accepted']])->validate();
+            if ($submission->amount !== $rental->total_amount || ! self::storedFile($submission->proof_path)) {
+                throw ValidationException::withMessages(['funds_received' => 'The full booking amount and stored payment proof are required before acknowledging receipt.']);
+            }
+            if ($submission->recipient_confirmed_at === null) {
+                $submission->forceFill(['recipient_confirmed_at' => now()])->save();
+            }
+        });
     }
 
     /** Called inside the audited administrator transaction. */
@@ -80,6 +154,9 @@ class RentalPayments
             abort_unless($submission->status === 'pending', 403, 'This submission has already been reviewed.');
             if ($approve) {
                 validator(['funds_received' => $fundsReceived], ['funds_received' => ['accepted']])->validate();
+                if (($submission->payment_destination['source'] ?? null) === 'owner_wallet' && $submission->recipient_confirmed_at === null) {
+                    throw ValidationException::withMessages(['reason' => 'The wallet recipient must confirm receipt of the full amount before payment can be verified.']);
+                }
                 if (! Storage::disk('local')->exists($submission->proof_path)) {
                     throw ValidationException::withMessages(['reason' => 'The uploaded proof is missing. Request new proof before verifying payment.']);
                 }
@@ -101,5 +178,15 @@ class RentalPayments
                 'review_notes' => trim($notes), 'reviewed_at' => now(),
             ]);
         });
+    }
+
+    private static function activeMember(?User $user): bool
+    {
+        return $user && ! $user->isAdmin() && ! $user->isSuspended() && ! $user->trashed() && $user->hasVerifiedEmail();
+    }
+
+    private static function storedFile(?string $path): bool
+    {
+        return $path && Storage::disk('local')->exists($path) && Storage::disk('local')->size($path) > 0;
     }
 }

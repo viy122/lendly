@@ -57,6 +57,9 @@
                             <p class="mt-1 text-sm text-slate-500">Paid {{ $rental->payment->paid_at?->format('M d, Y g:i A') ?? 'Not recorded' }}</p>
                             <p class="mt-2 text-sm">Owner: {{ $rental->owner->name }} · Renter: {{ $rental->renter->name }}</p>
                             <p class="mt-2 font-semibold">Payment total: ₱{{ number_format($rental->payment->amount, 2) }}</p>
+                            @if (($rental->payment_destination['source'] ?? null) === 'owner_wallet')
+                                <p class="mt-3 text-sm leading-6 text-slate-600">You received the full booking amount in your e-wallet, including the platform fee and refundable security deposit. You hold the deposit and arrange any refund manually after return and inspection. Remit the platform fee manually; it is not automatically deducted from your wallet.</p>
+                            @endif
                         </x-rental-panel>
                     @else
                         <p class="text-sm text-slate-500">No receipt is available for this payment.</p>
@@ -112,9 +115,42 @@
                 </section>
 
                 @if ($rental->isPaymentPending())
-                    <div class="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-800" role="status">
-                        Waiting for the renter’s offline payment to be verified. Hand-over is available after an admin confirms receipt of the full booking amount.
-                    </div>
+                    @if (($rental->payment_destination['source'] ?? null) === 'owner_wallet')
+                        <x-rental-panel title="Payment receipt acknowledgement" icon="calculator" subtitle="Check your e-wallet balance and transaction history before confirming receipt.">
+                            @forelse ($rental->paymentSubmissions->where('status', 'pending')->filter(fn ($submission) => ($submission->payment_destination['source'] ?? null) === 'owner_wallet') as $submission)
+                                <div class="mt-4 space-y-4 border-t border-slate-100 pt-4 text-sm" wire:key="owner-payment-{{ $submission->id }}">
+                                    <x-payment-destination :destination="$submission->payment_destination" :rental="$rental" :show-qr="false" />
+                                    <dl class="space-y-2">
+                                        <div class="flex flex-wrap justify-between gap-2"><dt class="text-slate-500">Full amount submitted</dt><dd class="font-semibold text-slate-900">₱{{ number_format($submission->amount, 2) }}</dd></div>
+                                        <div><dt class="text-slate-500">Transfer reference</dt><dd class="break-all font-medium text-slate-800">{{ $submission->external_reference }}</dd></div>
+                                    </dl>
+                                    <a href="{{ route('payment-proofs.show', $submission) }}" class="inline-flex min-h-11 items-center rounded-lg font-semibold text-blue-700 hover:underline focus:outline-none focus:ring-4 focus:ring-blue-100">Download submitted proof</a>
+
+                                    @if ($submission->recipient_confirmed_at)
+                                        <p role="status" class="rounded-xl bg-amber-50 p-4 leading-6 text-amber-800">Receipt acknowledged on {{ $submission->recipient_confirmed_at->setTimezone('Asia/Manila')->format('M d, Y \a\t g:i A') }} (Philippine time). Final admin review is still required before this booking is paid and hand-over is available.</p>
+                                    @elseif ((int) ($submission->payment_destination['payee_user_id'] ?? 0) === auth()->id())
+                                        <form wire:submit="confirmPaymentReceipt({{ $submission->id }})" class="space-y-3" wire:confirm="Confirm that the full booking amount has arrived in your e-wallet? Final admin review will still be required.">
+                                            <label class="flex items-start gap-3 leading-6 text-slate-700">
+                                                <input type="checkbox" wire:model="owner_funds_received" class="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                                                <span>I checked my e-wallet and received the full ₱{{ number_format($submission->amount, 2) }} for this booking.</span>
+                                            </label>
+                                            <x-input-error :messages="$errors->get('owner_funds_received')" />
+                                            <x-input-error :messages="$errors->get('funds_received')" />
+                                            <x-input-error :messages="$errors->get('payment')" />
+                                            <p class="text-slate-500">This acknowledges receipt only. Final admin review is still required before the booking is paid or ready for hand-over.</p>
+                                            <x-primary-button wire:loading.attr="disabled" wire:target="confirmPaymentReceipt">Confirm funds received</x-primary-button>
+                                        </form>
+                                    @endif
+                                </div>
+                            @empty
+                                <p role="status" class="mt-4 rounded-xl bg-amber-50 p-4 text-sm leading-6 text-amber-800">Waiting for the renter to submit payment proof. Acknowledge receipt only after the full booking amount reaches your e-wallet. Final admin review follows your acknowledgement.</p>
+                            @endforelse
+                        </x-rental-panel>
+                    @else
+                        <div class="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-800" role="status">
+                            Waiting for the renter’s offline payment to be verified. Hand-over is available after an admin confirms receipt of the full booking amount.
+                        </div>
+                    @endif
                 @endif
 
                 @if ($rental->isOverdue())

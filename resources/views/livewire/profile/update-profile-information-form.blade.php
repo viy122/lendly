@@ -163,6 +163,19 @@ new class extends Component
                 <p class="mt-2 break-all text-sm text-slate-500">{{ auth()->user()->email }}</p>
                 <p class="mt-3 flex items-center gap-2 text-xs text-slate-500"><x-icon name="user-circle" class="h-4 w-4 shrink-0" aria-hidden="true" /> Member since {{ auth()->user()->created_at->format('M Y') }}</p>
                 <span class="mt-4 inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold {{ auth()->user()->hasVerifiedEmail() ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700' }}">{{ auth()->user()->hasVerifiedEmail() ? 'Email verified' : 'Email not verified' }}</span>
+                @unless (auth()->user()->isAdmin())
+                    <div class="mt-3">
+                        @if (auth()->user()->hasVerifiedIdentity())
+                            <span class="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">Identity verified</span>
+                        @elseif (auth()->user()->hasTestedIdentity())
+                            <span class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">Test identity check completed</span>
+                        @else
+                            <p class="text-xs font-medium text-slate-600">Identity not verified</p>
+                        @endif
+                        <a href="{{ route('identity.verify') }}" wire:navigate class="mt-2 inline-flex min-h-10 items-center rounded-lg text-sm font-semibold text-blue-700 underline underline-offset-4 focus:outline-none focus:ring-4 focus:ring-blue-100">{{ auth()->user()->hasVerifiedIdentity() ? 'View identity verification' : 'Verify your identity' }}</a>
+                        <p class="mt-1 text-xs leading-5 text-slate-500">One identity check covers renting and listing items.</p>
+                    </div>
+                @endunless
             </div>
         </div>
 

@@ -2,6 +2,7 @@ import './bootstrap';
 import './map';
 import './calendar';
 import './admin-rental-detail';
+import './identity-verification';
 import { evaluatePasswordStrength } from './password-strength';
 
 document.addEventListener('alpine:init', () => {

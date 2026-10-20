@@ -105,6 +105,9 @@
                         @if ($rental->payment->method)
                             <p class="mt-2 text-xs text-slate-500">Verified {{ \App\Models\OfflinePaymentSetting::methodLabel($rental->payment->method) }} · Reference: {{ $rental->payment->external_reference }}</p>
                         @endif
+                        @if (($rental->payment_destination['source'] ?? null) === 'owner_wallet')
+                            <p class="mt-3 text-xs leading-5 text-slate-500">The owner received the full booking amount and holds the security deposit. Any deposit refund is arranged manually with the owner after return and inspection.</p>
+                        @endif
                     </x-rental-panel>
                 @endif
             </aside>
@@ -159,12 +162,26 @@
                             </div>
                         </dl>
 
-                        @if ($rental->paymentSubmissions->contains('status', 'pending'))
-                            <p role="status" class="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-800">Your payment proof is awaiting verification. Please do not pay again. Hand-over becomes available after an admin verifies receipt of the full booking amount.</p>
-                        @elseif ($paymentSettings?->enabled && auth()->user()->can('pay', $rental))
-                            <p class="mt-4 font-semibold text-slate-800">{{ \App\Models\OfflinePaymentSetting::methodLabel($paymentSettings->method) }}</p>
-                            <p class="mt-2 whitespace-pre-line text-sm text-slate-600">{{ $paymentSettings->instructions }}</p>
-                            <p class="mt-3 text-sm text-slate-500">Pay the full total above using these instructions. Upload the transfer confirmation or official cash receipt. Proof submission does not mark this booking paid.</p>
+                        @php $pendingPayment = $rental->paymentSubmissions->firstWhere('status', 'pending'); @endphp
+                        @if ($pendingPayment)
+                            <div role="status" class="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
+                                @if (($pendingPayment->payment_destination['source'] ?? null) === 'owner_wallet')
+                                    @if ($pendingPayment->recipient_confirmed_at)
+                                        The owner has acknowledged receipt. Your payment proof is awaiting final admin review. Please do not pay again. Hand-over becomes available after admin approval.
+                                    @else
+                                        Your payment proof is awaiting the owner's receipt acknowledgement, followed by final admin review. Please do not pay again. Hand-over becomes available after admin approval.
+                                    @endif
+                                @else
+                                    Your payment proof is awaiting verification. Please do not pay again. Hand-over becomes available after an admin verifies receipt of the full booking amount.
+                                @endif
+                            </div>
+                        @elseif ($paymentDestination && auth()->user()->can('pay', $rental))
+                            <x-payment-destination :destination="$paymentDestination" :rental="$rental" />
+                            @if (($paymentDestination['source'] ?? null) === 'owner_wallet')
+                                <p class="mt-3 text-sm leading-6 text-slate-600">Open your e-wallet app and scan or import this QR. Confirm the recipient account name and the full total above before paying. Complete the payment in your e-wallet, then upload its transfer confirmation below. The owner acknowledges receipt before final admin review. Submitting proof does not mark this booking paid.</p>
+                            @else
+                                <p class="mt-3 text-sm text-slate-500">Pay the full total above using these instructions. Upload the transfer confirmation or official cash receipt. Proof submission does not mark this booking paid.</p>
+                            @endif
                             <form wire:submit="submitPaymentProof" class="mt-4 space-y-3">
                                 <div><x-input-label for="payment-reference" value="Transfer or receipt reference" /><x-text-input id="payment-reference" wire:model="payment_reference" maxlength="100" class="mt-1 w-full" /><x-input-error :messages="$errors->get('payment_reference')" /></div>
                                 <div><x-input-label for="payment-proof" value="Payment proof (JPG, PNG or PDF, up to 5 MB)" /><input id="payment-proof" type="file" wire:model="payment_proof" accept="image/jpeg,image/png,application/pdf" class="mt-2 block w-full text-sm" /><x-input-error :messages="$errors->get('payment_proof')" /></div>

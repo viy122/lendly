@@ -7,7 +7,7 @@
             <x-stat-card label="Active listings" :value="$activeListingsCount" hint="{{ $pendingListingsCount }} pending approval" icon="list" accent="blue" />
             <x-stat-card label="Active rentals" :value="$activeRentalsCount" hint="{{ $overdueRentalsCount }} overdue" icon="archive" accent="emerald" />
             <x-stat-card label="Completed rentals" :value="$completedRentalsCount" icon="archive" accent="emerald" />
-            <x-stat-card label="Platform revenue" :value="'₱' . number_format($platformRevenue, 2)" hint="₱{{ number_format($transactionValue, 0) }} total transacted" icon="archive" accent="indigo" />
+            <x-stat-card label="Accrued platform fees" :value="'₱' . number_format($platformRevenue, 2)" hint="Earned fees; owner-wallet remittances are handled manually" icon="archive" accent="indigo" />
             <x-stat-card label="Open disputes" :value="$openDisputesCount" icon="scale" accent="rose" />
         </div>
 
@@ -19,7 +19,7 @@
                     </span>
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-wide text-blue-600">Trend</p>
-                        <h2 class="text-base font-bold text-slate-900">Platform revenue, last 6 months</h2>
+                        <h2 class="text-base font-bold text-slate-900">Accrued platform fees, last 6 months</h2>
                     </div>
                 </div>
                 <div class="mt-5">

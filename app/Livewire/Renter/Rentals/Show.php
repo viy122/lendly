@@ -206,7 +206,14 @@ class Show extends Component
             'paymentSubmissions',
         ]);
 
-        return view('livewire.renter.rentals.show', ['paymentSettings' => OfflinePaymentSetting::current()]);
+        $paymentDestination = $this->rental->isPaymentPending()
+            ? RentalPayments::destinationFor($this->rental, auth()->user())
+            : $this->rental->payment_destination;
+
+        return view('livewire.renter.rentals.show', [
+            'paymentSettings' => OfflinePaymentSetting::current(),
+            'paymentDestination' => $paymentDestination,
+        ]);
     }
 
     public function refreshRental(): void

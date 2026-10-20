@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\OwnerPaymentQrController;
 use App\Http\Controllers\PaymentProofController;
 use App\Livewire\Admin\DamageReports\Index as AdminDamageReportsIndex;
 use App\Livewire\Admin\Dashboard as AdminDashboard;
@@ -8,6 +9,7 @@ use App\Livewire\Admin\Listings\Index as AdminListingsIndex;
 use App\Livewire\Admin\Payments\Settings as AdminPaymentSettings;
 use App\Livewire\Admin\Rentals\Index as AdminRentalsIndex;
 use App\Livewire\Admin\Rentals\Show as AdminRentalShow;
+use App\Livewire\Identity\Verify as VerifyIdentity;
 use App\Livewire\Listings\Browse as ListingsBrowse;
 use App\Livewire\Listings\Map as ListingsMap;
 use App\Livewire\Listings\Show as ListingsShow;
@@ -19,11 +21,13 @@ use App\Livewire\Messages\Show as MessagesShow;
 use App\Livewire\Notifications\Index as NotificationsIndex;
 use App\Livewire\Owner\Listings\Form as OwnerListingForm;
 use App\Livewire\Owner\Listings\Index as OwnerListingsIndex;
+use App\Livewire\Owner\Payments\Settings as OwnerPaymentSettings;
 use App\Livewire\Owner\RentalRequests\Index as OwnerRentalRequestsIndex;
 use App\Livewire\Owner\Rentals\Index as OwnerRentalsIndex;
 use App\Livewire\Owner\Rentals\Show as OwnerRentalsShow;
 use App\Livewire\RentalRequests\Agreement as RentalRequestAgreement;
 use App\Livewire\RentalRequests\Create as RentalRequestCreate;
+use App\Livewire\Renter\Cart\Index;
 use App\Livewire\Renter\RentalRequests\Index as RenterRentalRequestsIndex;
 use App\Livewire\Renter\Rentals\Index as RenterRentalsIndex;
 use App\Livewire\Renter\Rentals\Show as RenterRentalsShow;
@@ -41,6 +45,8 @@ Route::view('profile', 'profile')
     ->name('profile');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('rentals/{rental}/payment-qr', [OwnerPaymentQrController::class, 'booking'])->name('rentals.payment-qr');
+    Route::get('identity/verify', VerifyIdentity::class)->name('identity.verify');
     Route::get('payment-proofs/{submission}', PaymentProofController::class)->name('payment-proofs.show');
     Route::get('notifications', NotificationsIndex::class)->name('notifications.index');
     Route::get('messages', MessagesIndex::class)->name('messages.index');
@@ -57,6 +63,7 @@ Route::get('listings/{listing}', ListingsShow::class)->name('listings.show');
 Route::get('users/{user}', PublicUserShow::class)->name('users.show');
 
 Route::middleware(['auth', 'verified', 'role:renter'])->prefix('renter')->name('renter.')->group(function () {
+    Route::get('cart', Index::class)->name('cart.index');
     Route::get('dashboard', MemberDashboard::class)->name('dashboard');
     Route::get('listings/{listing}/request', RentalRequestCreate::class)->name('rental-requests.create');
     Route::get('rental-requests', RenterRentalRequestsIndex::class)->name('rental-requests.index');
@@ -67,6 +74,8 @@ Route::middleware(['auth', 'verified', 'role:renter'])->prefix('renter')->name('
 });
 
 Route::middleware(['auth', 'verified', 'role:owner'])->prefix('owner')->name('owner.')->group(function () {
+    Route::get('payments', OwnerPaymentSettings::class)->name('payments.settings');
+    Route::get('payments/qr', [OwnerPaymentQrController::class, 'current'])->name('payments.qr');
     Route::get('dashboard', MemberDashboard::class)->name('dashboard');
     Route::get('listings', OwnerListingsIndex::class)->name('listings.index');
     Route::get('listings/create', OwnerListingForm::class)->name('listings.create');

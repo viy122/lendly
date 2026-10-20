@@ -27,7 +27,7 @@ class Show extends Component
     public function render(): View
     {
         // Keep contact details and private transaction data out of the public view.
-        $user = User::select(['id', 'name', 'avatar_path', 'role', 'status', 'email_verified_at', 'created_at'])->findOrFail($this->userId);
+        $user = User::select(['id', 'name', 'avatar_path', 'role', 'status', 'email_verified_at', 'identity_verified_at', 'identity_verification_environment', 'created_at'])->findOrFail($this->userId);
         abort_if($user->isAdmin() || $user->isSuspended() || ! $user->hasVerifiedEmail(), 404);
         $receivedReviews = $user->receivedReviews();
         $summary = (clone $receivedReviews)->selectRaw('type, COUNT(*) as total, AVG(rating) as average')

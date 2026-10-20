@@ -19,6 +19,7 @@
 
     <form wire:submit="submit" class="mt-6 space-y-6">
         <x-input-error :messages="$errors->get('listing')" role="alert" />
+        <x-input-error :messages="$errors->get('cart')" role="alert" />
 
         <section class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 class="text-sm font-semibold text-slate-700">Rental period</h2>
@@ -83,7 +84,7 @@
             </dl>
         </section>
 
-        <p class="text-sm text-slate-600">If the owner approves, both of you will review and accept the rental agreement before the booking is finalized.</p>
+        <p class="text-sm text-slate-600">Save these dates to your cart or send a request directly. Adding to your cart does not reserve the item or notify the owner. If the owner approves a request, both of you will review and accept the rental agreement before the booking is finalized.</p>
 
         <div>
             <label for="accept_terms" class="flex items-start gap-3 text-sm text-slate-700">
@@ -97,7 +98,8 @@
             @if ($modal)
                 <x-secondary-button x-on:click="$dispatch('close-rental-request')">Cancel</x-secondary-button>
             @endif
-            <x-primary-button wire:loading.attr="disabled" wire:target="submit" class="disabled:cursor-wait disabled:opacity-60">Send rental request</x-primary-button>
+            <x-secondary-button type="button" wire:click="addToCart" wire:loading.attr="disabled" wire:target="addToCart,submit" class="disabled:cursor-wait disabled:opacity-60">Add to cart</x-secondary-button>
+            <x-primary-button wire:loading.attr="disabled" wire:target="submit,addToCart" class="disabled:cursor-wait disabled:opacity-60">Send rental request</x-primary-button>
         </div>
     </form>
 </div>

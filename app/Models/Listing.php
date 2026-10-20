@@ -213,16 +213,17 @@ class Listing extends Model
      */
     public function hasApprovedOverlap($startDate, $endDate, ?int $excludingRequestId = null): bool
     {
+        // Current reads see holds committed while checkout waited for the listing lock.
         return $this->reservingRequests()
             ->overlapping($this->id, $startDate, $endDate)
             ->when($excludingRequestId, fn ($query) => $query->whereKeyNot($excludingRequestId))
-            ->exists()
+            ->lockForUpdate()->first(['rental_requests.id']) !== null
             || $this->rentals()
                 ->whereIn('status', [RentalStatus::PaymentPending, RentalStatus::Paid, RentalStatus::Active, RentalStatus::Overdue])
                 ->whereDate('start_date', '<=', $endDate)
                 ->whereDate('end_date', '>=', $startDate)
                 ->when($excludingRequestId, fn ($query) => $query->where('rental_request_id', '!=', $excludingRequestId))
-                ->exists();
+                ->lockForUpdate()->first(['rentals.id']) !== null;
     }
 
     public function availabilityLabel($date = null): string

@@ -70,6 +70,7 @@ new #[Layout('layouts.guest')] class extends Component
 }; ?>
 
 <div x-data="{ showPassword: false, showConfirmation: false }">
+    <x-registration-progress :step="1" />
     <div class="mb-7">
         <span class="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.15em] text-blue-700 ring-1 ring-blue-100">
             <span class="h-1.5 w-1.5 rounded-full bg-blue-600"></span>
@@ -77,6 +78,7 @@ new #[Layout('layouts.guest')] class extends Component
         </span>
         <h1 class="mt-4 text-3xl font-extrabold tracking-[-0.04em] text-[#071a3d] sm:text-4xl">Create your free account.</h1>
         <p class="mt-3 text-sm leading-6 text-slate-500">One account lets you rent what you need and earn from the useful things you already own.</p>
+        <p class="mt-2 text-sm leading-6 text-slate-500">Create your account, confirm your email, then continue to the National ID QR image and live selfie step. No ID image is requested before email confirmation.</p>
     </div>
 
     <form wire:submit="register" class="space-y-5">
@@ -87,8 +89,9 @@ new #[Layout('layouts.guest')] class extends Component
                     <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400 transition group-focus-within:text-blue-600">
                         <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="6.5" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 16c.45-3 2.28-4.5 5.5-4.5s5.05 1.5 5.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                     </span>
-                    <input wire:model="name" id="name" type="text" name="name" required autofocus autocomplete="name" placeholder="Juan Dela Cruz" class="block w-full rounded-2xl border-slate-200 bg-slate-50/80 py-3.5 pl-12 pr-4 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+                    <input wire:model="name" id="name" type="text" name="name" required autofocus autocomplete="name" aria-describedby="registration-name-help" placeholder="Juan Dela Cruz" class="block w-full rounded-2xl border-slate-200 bg-slate-50/80 py-3.5 pl-12 pr-4 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100" />
                 </div>
+                <p id="registration-name-help" class="mt-2 text-xs leading-5 text-slate-500">Use your full name as it appears on your National ID, including your middle name and suffix if any.</p>
                 <x-input-error :messages="$errors->get('name')" class="mt-2" />
             </div>
 

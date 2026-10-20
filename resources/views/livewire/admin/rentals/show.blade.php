@@ -171,6 +171,13 @@
                                             <p class="font-semibold">Submission #{{ $submission->id }} · {{ ucfirst($submission->status) }} · {{ \App\Models\OfflinePaymentSetting::methodLabel($submission->method) }}</p>
                                             <p>Expected payment: ₱{{ number_format($submission->amount, 2) }} · Reference: {{ $submission->external_reference }}</p>
                                             <p class="whitespace-pre-line text-slate-500">Payment instructions used: {{ $submission->instructions }}</p>
+                                            @if (($submission->payment_destination['source'] ?? null) === 'owner_wallet')
+                                                <div class="rounded-xl border border-blue-100 bg-blue-50 p-3 text-blue-900">
+                                                    <p>Payment destination: owner's {{ \App\Models\OfflinePaymentSetting::methodLabel($submission->method) }} account, {{ $submission->payment_destination['account_name'] }}.</p>
+                                                    <p class="mt-1">{{ $submission->recipient_confirmed_at ? 'Owner acknowledged receipt on '.$submission->recipient_confirmed_at->setTimezone('Asia/Manila')->format('M d, Y · g:i A').' (Philippine time).' : 'Waiting for the owner to acknowledge receipt of the full amount.' }}</p>
+                                                    <p class="mt-1 text-xs">The owner holds these funds. Platform-fee remittance and deposit refunds are handled manually.</p>
+                                                </div>
+                                            @endif
                                             <a href="{{ route('payment-proofs.show', $submission) }}" class="inline-flex min-h-10 items-center font-semibold text-blue-700">Download private payment proof</a>
                                             @if ($submission->reviewed_at)
                                                 <p class="text-slate-500">Reviewed by {{ $submission->reviewer->name }} · {{ $submission->reviewed_at->format('M d, Y · g:i A') }}</p>
@@ -182,12 +189,16 @@
                                                 </textarea>
                                                 <x-input-error :messages="$errors->get('reason')" />
                                                 @can('adminVerifyPayment', $rental)
+                                                    @if (($submission->payment_destination['source'] ?? null) === 'owner_wallet' && ! $submission->recipient_confirmed_at)
+                                                        <p class="text-amber-700">Owner receipt confirmation is required before payment approval.</p>
+                                                    @else
                                                     <label class="flex items-start gap-2">
                                                         <input type="checkbox" wire:model="funds_received" class="mt-1 rounded border-slate-300">
                                                         <span>I matched this reference and proof to the collection records and confirmed the full ₱{{ number_format($rental->total_amount, 2) }} was received, including the platform fee and security deposit.</span>
                                                     </label>
                                                     <x-input-error :messages="$errors->get('funds_received')" />
                                                     <button type="button" wire:click="verifyPayment({{ $submission->id }})" wire:confirm="Confirm receipt of the full amount and mark this booking paid?" wire:loading.attr="disabled" class="rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white">Verify received payment</button>
+                                                    @endif
                                                 @else
                                                     <p class="text-amber-700">This booking is not eligible for payment completion. If funds were received, arrange their return before rejecting this proof.</p>
                                                 @endcan
@@ -211,7 +222,7 @@
                         @if ($rental->rentalRequest?->agreement_terms)
                             <x-rental-panel title="Accepted agreement" icon="clipboard-list">
                                 <div class="mt-4">
-                                    <x-rental-agreement :terms="$rental->rentalRequest->agreement_terms" />
+                                    <x-rental-agreement :terms="$rental->rentalRequest->agreement_terms" :rental-request="$rental->rentalRequest" />
                                 </div>
                             </x-rental-panel>
                         @else

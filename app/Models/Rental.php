@@ -21,6 +21,8 @@ class Rental extends Model
         'status' => 'payment_pending',
     ];
 
+    protected $hidden = ['payment_destination'];
+
     protected $fillable = [
         'rental_request_id',
         'listing_id',
@@ -53,6 +55,7 @@ class Rental extends Model
     protected function casts(): array
     {
         return [
+            'payment_destination' => 'array',
             'start_date' => 'date',
             'end_date' => 'date',
             'fulfillment_method' => FulfillmentMethod::class,

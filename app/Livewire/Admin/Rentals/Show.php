@@ -88,7 +88,7 @@ class Show extends Component
         $this->authorize('manage', $rental);
         RentalLifecycle::synchronizeRentalStatus($rental);
         $rental->refresh()->load([
-            'listing.images', 'owner', 'renter', 'rentalRequest', 'payment', 'securityDeposit',
+            'listing.images', 'owner', 'renter', 'rentalRequest.listing.owner', 'rentalRequest.renter', 'payment', 'securityDeposit',
             'exchangeSchedule.proposer', 'conditionRecords.photos', 'conditionRecords.recordedBy',
             'damageReport.photos', 'disputes.raisedBy', 'disputes.resolvedBy', 'reviews',
             'paymentSubmissions.reviewer',

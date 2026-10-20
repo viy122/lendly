@@ -195,8 +195,8 @@ class Index extends Component
             ->whereHas('listing', fn ($query) => $query->where('owner_id', auth()->id()))
             ->when($this->filter !== 'all', fn ($query) => $query->where('status', $this->filter))
             ->with(['listing.images', 'renter', 'rental'])
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
+            ->orderBy('created_at', $this->filter === 'requested' ? 'asc' : 'desc')
+            ->orderBy('id', $this->filter === 'requested' ? 'asc' : 'desc')
             ->paginate(10);
 
         return view('livewire.owner.rental-requests.index', ['rentalRequests' => $rentalRequests]);

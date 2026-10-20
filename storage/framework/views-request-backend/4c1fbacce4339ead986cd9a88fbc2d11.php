@@ -1,0 +1,2 @@
+<a <?php echo e($attributes->merge(['class' => 'block w-full px-4 py-2 text-start text-sm leading-5 text-slate-700 transition duration-150 ease-in-out hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:outline-none'])); ?>><?php echo e($slot); ?></a>
+<?php /**PATH C:\laragon\www\lendly\resources\views/components/dropdown-link.blade.php ENDPATH**/ ?>

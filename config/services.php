@@ -2,6 +2,15 @@
 
 return [
 
+    'identity' => [
+        'base_url' => env('IDENTITY_BASE_URL'),
+        'client_id' => env('IDENTITY_CLIENT_ID'),
+        'client_secret' => env('IDENTITY_CLIENT_SECRET'),
+        'public_key' => env('IDENTITY_PUBLIC_KEY'),
+        'sdk_url' => env('IDENTITY_SDK_URL', 'https://hackathon-everify-face-liveness.e.gov.ph/js/everify-liveness-sdk.min.js'),
+        'environment' => env('IDENTITY_ENVIRONMENT', 'sandbox'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services

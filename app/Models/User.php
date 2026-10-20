@@ -32,6 +32,21 @@ class User extends Authenticatable implements MustVerifyEmail
 
     protected static function booted(): void
     {
+        static::updated(function (User $user) {
+            if ($user->wasChanged(['name', 'email']) || ($user->wasChanged('status') && $user->isSuspended())) {
+                $clearedIdentity = [
+                    'identity_verified_at' => null,
+                    'identity_reference' => null,
+                    'identity_verification_environment' => null,
+                ];
+                // Clear persisted verification even when this profile was loaded before another request verified it.
+                $user->newQuery()->whereKey($user->id)->update($clearedIdentity);
+                $user->forceFill($clearedIdentity);
+                IdentityVerificationAttempt::where('user_id', $user->id)
+                    ->whereIn('status', ['pending', 'processing'])->update(['status' => 'cancelled']);
+            }
+        });
+
         static::deleting(function (User $user) {
             if ($user->isForceDeleting()) {
                 return;
@@ -39,6 +54,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
             $email = $user->email;
             $avatar = $user->avatar_path;
+            $user->cartItems()->delete();
             $user->forceFill([
                 'name' => 'Deleted account',
                 'email' => 'deleted-'.Str::uuid().'@example.invalid',
@@ -48,10 +64,20 @@ class User extends Authenticatable implements MustVerifyEmail
                 'avatar_path' => null,
                 'remember_token' => null,
                 'email_verified_at' => null,
+                'identity_verified_at' => null,
+                'identity_reference' => null,
+                'identity_verification_environment' => null,
                 'status' => UserStatus::Suspended,
                 'suspended_at' => now(),
                 'suspension_reason' => null,
             ])->save();
+
+            if ($wallet = OwnerPaymentSetting::currentFor($user->id)) {
+                $wallet->delete();
+                if ($wallet->qr_path) {
+                    OwnerPaymentSetting::deleteUnreferencedQr($wallet->qr_path);
+                }
+            }
 
             // Keep shared transaction evidence while removing listings from the marketplace.
             $user->listings()->update([
@@ -116,6 +142,9 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $hidden = [
         'password',
         'remember_token',
+        'identity_verified_at',
+        'identity_reference',
+        'identity_verification_environment',
     ];
 
     /**
@@ -127,6 +156,8 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return [
             'email_verified_at' => 'datetime',
+            'identity_verified_at' => 'datetime',
+            'identity_reference' => 'encrypted',
             'suspended_at' => 'datetime',
             'password' => 'hashed',
             'role' => UserRole::class,
@@ -160,6 +191,18 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isSuspended(): bool
     {
         return $this->status === UserStatus::Suspended;
+    }
+
+    public function hasVerifiedIdentity(): bool
+    {
+        return $this->identity_verified_at !== null && $this->identity_verification_environment === 'production'
+            && $this->hasVerifiedEmail() && ! $this->isAdmin() && ! $this->isSuspended() && ! $this->trashed();
+    }
+
+    public function hasTestedIdentity(): bool
+    {
+        return $this->identity_verified_at !== null && $this->identity_verification_environment === 'sandbox'
+            && $this->hasVerifiedEmail() && ! $this->isAdmin() && ! $this->isSuspended() && ! $this->trashed();
     }
 
     public function closeAccount(): void
@@ -223,6 +266,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function rentalRequests(): HasMany
     {
         return $this->hasMany(RentalRequest::class, 'renter_id');
+    }
+
+    public function cartItems(): HasMany
+    {
+        return $this->hasMany(CartItem::class);
     }
 
     public function rentalsAsRenter(): HasMany

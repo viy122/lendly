@@ -19,6 +19,9 @@
         </div>
 
         <div class="mt-6">
+            @if ($filter === 'requested')
+                <p class="mb-4 text-sm text-slate-600"><strong>Review queue:</strong> Oldest first. You choose which request to approve. Approving reserves its dates and declines overlapping requests.</p>
+            @endif
             @if ($rentalRequests->isEmpty())
                 <x-empty-state title="Nothing here" message="No rental requests match this filter right now." />
             @else
@@ -40,6 +43,7 @@
                                         @if ($request->listing->trashed())
                                             <p class="mt-1 text-xs text-slate-500">Listing removed</p>
                                         @endif
+                                        <p class="mt-1 text-xs text-slate-500">Submitted {{ $request->created_at->timezone('Asia/Manila')->format('M d, Y · g:i A') }} (PHT)</p>
                                         <p class="mt-1 text-sm text-slate-500">
                                             {{ $request->start_date->format('M d, Y') }} &ndash; {{ $request->end_date->format('M d, Y') }}
                                             ({{ $request->rental_days }} day{{ $request->rental_days === 1 ? '' : 's' }})
