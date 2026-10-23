@@ -50,6 +50,9 @@ new class extends Component
     </header>
 
     <form wire:submit="updatePassword" class="space-y-6 p-6 sm:p-7">
+        @if (auth()->user()->google_id)
+            <p class="rounded-xl bg-blue-50 p-4 text-sm leading-6 text-blue-800">If you only sign in with Google and have not set a Lendly password, sign out and choose <strong>Forgot password?</strong> on the login page first. Set your password using the code sent to your Gmail, then return here.</p>
+        @endif
         <div class="account-profile-fields account-profile-password-fields">
             <div class="account-profile-current-password">
                 <x-input-label for="update_password_current_password" :value="__('Current Password')" />

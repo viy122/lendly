@@ -45,6 +45,7 @@
                         <p class="text-xs font-bold uppercase tracking-wider text-blue-700">One check, both interfaces</p>
                         <h2 class="mt-2 text-2xl font-bold tracking-tight text-slate-900">Build trust with your community.</h2>
                         <p class="mt-3 text-sm leading-6 text-slate-600">Use your own Philippine National ID. Your ID details must match your account name.</p>
+                        <p class="mt-2 text-sm leading-6 text-slate-600"><a href="{{ route('profile') }}" wire:navigate class="font-semibold text-blue-700 underline">Review your account name</a> before continuing. Use your full legal name from your National ID, including your middle name and suffix. Your Google display name may need to be corrected.</p>
                         @if ($environment === 'sandbox')
                             <p class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-800"><strong>Test verification.</strong> Completing this check does not give your public profile a verified identity badge.</p>
                         @endif

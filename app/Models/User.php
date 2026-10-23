@@ -39,6 +39,9 @@ class User extends Authenticatable implements MustVerifyEmail
                     'identity_reference' => null,
                     'identity_verification_environment' => null,
                 ];
+                if ($user->wasChanged('email')) {
+                    $clearedIdentity['google_id'] = null;
+                }
                 // Clear persisted verification even when this profile was loaded before another request verified it.
                 $user->newQuery()->whereKey($user->id)->update($clearedIdentity);
                 $user->forceFill($clearedIdentity);
@@ -68,6 +71,7 @@ class User extends Authenticatable implements MustVerifyEmail
                 'identity_reference' => null,
                 'identity_verification_environment' => null,
                 'status' => UserStatus::Suspended,
+                'google_id' => null,
                 'suspended_at' => now(),
                 'suspension_reason' => null,
             ])->save();
@@ -140,6 +144,7 @@ class User extends Authenticatable implements MustVerifyEmail
      * @var list<string>
      */
     protected $hidden = [
+        'google_id',
         'password',
         'remember_token',
         'identity_verified_at',

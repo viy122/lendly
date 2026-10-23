@@ -81,6 +81,8 @@ new #[Layout('layouts.guest')] class extends Component
         <p class="mt-2 text-sm leading-6 text-slate-500">Create your account, confirm your email, then continue to the National ID QR image and live selfie step. No ID image is requested before email confirmation.</p>
     </div>
 
+    <x-google-sign-in :href="route('auth.google.redirect', ['interface' => 'renter'])" />
+
     <form wire:submit="register" class="space-y-5">
         <div class="grid gap-5 sm:grid-cols-2">
             <div>

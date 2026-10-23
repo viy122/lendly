@@ -14,11 +14,16 @@ new #[Layout('layouts.guest')] class extends Component
     #[Locked]
     public bool $showInterfacePicker = false;
 
+    #[Locked]
+    public bool $googleSignIn = false;
+
     /**
      * Handle an incoming authentication request.
      */
     public function login(): void
     {
+        $this->googleSignIn = false;
+        $this->resetErrorBag('google');
         $this->form->email = trim($this->form->email);
         $this->showInterfacePicker = false;
         $this->validate();
@@ -44,6 +49,17 @@ new #[Layout('layouts.guest')] class extends Component
         abort_unless($this->showInterfacePicker && in_array($interface, ['renter', 'owner'], true), 403);
 
         $this->showInterfacePicker = false;
+        if ($this->googleSignIn) {
+            $this->googleSignIn = false;
+            if (! $this->googleAvailable()) {
+                $this->addError('google', 'Google sign-in is currently unavailable. Please use your email and password.');
+
+                return;
+            }
+            $this->redirect(route('auth.google.redirect', ['interface' => $interface]));
+
+            return;
+        }
         $this->validate();
         $this->form->authenticate();
         Session::regenerate();
@@ -64,6 +80,29 @@ new #[Layout('layouts.guest')] class extends Component
     public function cancelInterfaceSelection(): void
     {
         $this->showInterfacePicker = false;
+        $this->googleSignIn = false;
+    }
+
+    public function startGoogleSignIn(): void
+    {
+        $this->resetErrorBag();
+        $this->googleSignIn = false;
+        $this->showInterfacePicker = false;
+        if (! $this->googleAvailable()) {
+            $this->addError('google', 'Google sign-in is currently unavailable. Please use your email and password.');
+
+            return;
+        }
+        $this->googleSignIn = true;
+        $this->showInterfacePicker = true;
+        $this->dispatch('hide-login-password');
+    }
+
+    private function googleAvailable(): bool
+    {
+        return filled(config('services.google.client_id'))
+            && filled(config('services.google.client_secret'))
+            && filled(config('services.google.redirect'));
     }
 }; ?>
 
@@ -78,6 +117,8 @@ new #[Layout('layouts.guest')] class extends Component
     </div>
 
     <x-auth-session-status class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700" :status="session('status')" />
+
+    <x-google-sign-in wire:click="startGoogleSignIn" wire:loading.attr="disabled" />
 
     <form wire:submit="login" class="space-y-5">
         <div>
