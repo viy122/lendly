@@ -147,6 +147,9 @@ new class extends Component
             <x-sidebar-link :href="route('admin.listings.index')" :active="request()->routeIs('admin.listings.*')" icon="list" wire:navigate>
                 {{ __('Listings') }}
             </x-sidebar-link>
+            <x-sidebar-link :href="route('admin.identity-submissions.index')" :active="request()->routeIs('admin.identity-submissions.*')" icon="user-circle" wire:navigate>
+                {{ __('ID Reviews') }}
+            </x-sidebar-link>
             <x-sidebar-link :href="route('admin.rentals.index')" :active="request()->routeIs('admin.rentals.*')" icon="archive" wire:navigate>
                 {{ __('Transactions') }}
             </x-sidebar-link>

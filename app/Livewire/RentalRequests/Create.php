@@ -4,9 +4,11 @@ namespace App\Livewire\RentalRequests;
 
 use App\Enums\FulfillmentMethod;
 use App\Models\Listing;
+use App\Models\RentalWaitlistEntry;
 use App\Services\RentalCart;
+use App\Services\RentalPeriod;
 use App\Services\RentalRequestSubmission;
-use Carbon\Carbon;
+use App\Services\RentalWaitlist;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -30,6 +32,12 @@ class Create extends Component
 
     public string $end_date = '';
 
+    public string $rental_unit = 'day';
+
+    public string $start_time = '09:00';
+
+    public string $end_time = '10:00';
+
     public string $fulfillment_method = '';
 
     public function mount(Listing $listing, bool $modal = false): void
@@ -43,27 +51,50 @@ class Create extends Component
         $this->modal = $modal;
         $this->start_date = max(now()->addDay()->toDateString(), $listing->available_from?->toDateString() ?? '');
         $this->end_date = $this->start_date;
+        $this->rental_unit = $listing->allows_daily_rentals ? 'day' : 'hour';
 
         $this->fulfillment_method = $listing->pickup_available
             ? FulfillmentMethod::Pickup->value
             : FulfillmentMethod::Delivery->value;
+        if ($entryId = request()->integer('waitlist')) {
+            $entry = RentalWaitlistEntry::where('user_id', auth()->id())->where('listing_id', $listing->id)->find($entryId);
+            if ($entry) {
+                $this->fill($entry->details);
+            }
+        }
+    }
+
+    public function rentalHours(): int
+    {
+        try {
+            return RentalPeriod::attributes($this->listing, $this->details())['rental_hours'] ?? 0;
+        } catch (ValidationException) {
+            return 0;
+        }
+    }
+
+    public function joinWaitlist(): void
+    {
+        $this->authorizeRenter();
+        RentalWaitlist::join(auth()->user(), $this->listing->id, $this->details());
+        session()->flash('status', 'Joined the waitlist for your exact dates. We will notify you when they are available. No payment or reservation has been made.');
+        $this->redirect(route('renter.cart.index'), navigate: true);
     }
 
     public function rentalDays(): int
     {
-        if (! $this->start_date || ! $this->end_date) {
+        try {
+            return RentalPeriod::attributes($this->listing, $this->details())['rental_days'];
+        } catch (ValidationException) {
             return 0;
         }
-
-        $start = Carbon::parse($this->start_date);
-        $end = Carbon::parse($this->end_date);
-
-        return $end->greaterThanOrEqualTo($start) ? $start->diffInDays($end) + 1 : 0;
     }
 
     public function rentalFee(): float
     {
-        return round((float) $this->listing->price_per_day * $this->rentalDays(), 2);
+        return $this->rental_unit === 'hour'
+            ? round((float) $this->listing->price_per_hour * $this->rentalHours(), 2)
+            : round((float) $this->listing->price_per_day * $this->rentalDays(), 2);
     }
 
     public function commissionRate(): float
@@ -114,7 +145,7 @@ class Create extends Component
 
     private function details(): array
     {
-        return $this->only(['start_date', 'end_date', 'fulfillment_method']);
+        return $this->only(['start_date', 'end_date', 'fulfillment_method', 'rental_unit', 'start_time', 'end_time']);
     }
 
     private function refreshPresentedTerms(): void

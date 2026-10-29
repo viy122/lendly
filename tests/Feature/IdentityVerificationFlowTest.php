@@ -6,9 +6,6 @@ use App\Livewire\Identity\Verify;
 use App\Models\IdentityVerificationAttempt;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
-use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -24,15 +21,15 @@ class IdentityVerificationFlowTest extends TestCase
         $this->actingAs(User::factory()->admin()->create())->get('/identity/verify')->assertForbidden();
     }
 
-    public function test_both_member_interfaces_have_the_same_honest_unavailable_flow(): void
+    public function test_both_member_interfaces_share_the_manual_id_review_form(): void
     {
         config(['services.identity.client_id' => null]);
         $member = User::factory()->create();
 
         foreach (['owner', 'renter'] as $interface) {
             $this->actingAs($member)->withSession(['active_interface' => $interface])->get('/identity/verify')
-                ->assertOk()->assertSee('Verify your identity')
-                ->assertSee('Automatic identity verification is not available yet')
+                ->assertOk()->assertSee('Submit your ID for review.')
+                ->assertSee('Privacy and consent')->assertSee('National ID front')
                 ->assertDontSee('Identity verified');
         }
 
@@ -44,10 +41,10 @@ class IdentityVerificationFlowTest extends TestCase
     {
         $member = User::factory()->create();
 
-        Livewire::actingAs($member)->test(Verify::class)->call('startVerification')
+        Livewire::actingAs($member)->test(Verify::class)->call('submit')
             ->assertHasErrors('consent');
 
-        $this->assertDatabaseCount('identity_verification_attempts', 0);
+        $this->assertDatabaseCount('identity_submissions', 0);
     }
 
     public function test_name_changes_clear_identity_verification_and_cancel_pending_attempts(): void
@@ -108,106 +105,5 @@ class IdentityVerificationFlowTest extends TestCase
         $member->forceFill(['identity_verification_environment' => 'production'])->save();
         $this->get(route('users.show', $member))->assertOk()->assertSee('Identity verified')
             ->assertDontSee('SECRET-REFERENCE');
-    }
-
-    public function test_livewire_completion_uses_the_server_result_and_clears_submitted_details(): void
-    {
-        $this->configureProvider();
-        Http::preventStrayRequests();
-        Http::fake([
-            '*/api/auth' => Http::response(['data' => ['access_token' => 'test-token']]),
-            '*/api/query/qr' => Http::response([
-                'data' => ['code' => 'AAA001', 'reference' => 'test-reference', 'first_name' => 'Maria',
-                    'middle_name' => '', 'last_name' => 'Reyes', 'suffix' => '', 'birth_date' => '1990-01-02'],
-                'meta' => ['result_grade' => 1],
-            ]),
-        ]);
-        $member = User::factory()->create(['name' => 'Maria Reyes']);
-        $component = Livewire::actingAs($member)->test(Verify::class)
-            ->assertDontSee('test-secret')->assertDontSee('test-client')
-            ->set('first_name', 'Maria')->set('last_name', 'Reyes')->set('birth_date', '1990-01-02')
-            ->set('qr_value', 'synthetic-qr')->set('consent', true)->call('startVerification')
-            ->assertHasNoErrors();
-        $attemptId = $component->get('attemptId');
-
-        $component->call('completeVerification', $attemptId, (string) Str::uuid())
-            ->assertHasNoErrors()->assertDispatched('identity-verified')->assertSee('Identity verified')
-            ->assertSet('qr_value', '')->assertSet('birth_date', '')->assertSet('first_name', '')
-            ->assertSet('attemptId', null)->assertSet('consent', false);
-
-        $this->assertTrue($member->fresh()->hasVerifiedIdentity());
-        Http::assertSentCount(2);
-    }
-
-    public function test_an_unstarted_completion_cannot_grant_verification(): void
-    {
-        Http::preventStrayRequests();
-        $member = User::factory()->create();
-
-        Livewire::actingAs($member)->test(Verify::class)->set('consent', true)
-            ->call('completeVerification', (string) Str::uuid(), (string) Str::uuid())->assertForbidden();
-
-        $this->assertFalse($member->fresh()->hasVerifiedIdentity());
-        Http::assertNothingSent();
-    }
-
-    public function test_a_sandbox_verified_member_can_open_the_production_verification_form(): void
-    {
-        $this->configureProvider();
-        $member = User::factory()->create();
-        $member->forceFill(['identity_verified_at' => now(), 'identity_verification_environment' => 'sandbox'])->save();
-
-        $this->actingAs($member)->get('/identity/verify')->assertOk()
-            ->assertSee('Continue to live selfie')->assertDontSee('Your test identity check is complete.');
-    }
-
-    public function test_cancelling_an_old_attempt_does_not_cancel_a_newer_attempt(): void
-    {
-        $this->configureProvider();
-        $member = User::factory()->create(['name' => 'Maria Reyes']);
-        $component = Livewire::actingAs($member)->test(Verify::class)
-            ->set('first_name', 'Maria')->set('last_name', 'Reyes')->set('birth_date', '1990-01-02')
-            ->set('qr_value', 'synthetic-qr')->set('consent', true)->call('startVerification');
-        $oldId = $component->get('attemptId');
-        $component->call('startVerification');
-        $newId = $component->get('attemptId');
-
-        $component->call('cancelVerification', $oldId)->assertHasNoErrors()->assertSet('attemptId', $newId);
-        $this->assertDatabaseHas('identity_verification_attempts', ['id' => $newId, 'status' => 'pending']);
-
-        $component->call('cancelVerification', $newId)->assertSet('attemptId', null);
-        $this->assertDatabaseHas('identity_verification_attempts', ['id' => $newId, 'status' => 'cancelled']);
-    }
-
-    public function test_the_client_cannot_replace_the_server_bound_attempt_id(): void
-    {
-        $member = User::factory()->create();
-        $this->expectException(CannotUpdateLockedPropertyException::class);
-
-        Livewire::actingAs($member)->test(Verify::class)->set('attemptId', (string) Str::uuid());
-    }
-
-    public function test_a_member_cannot_cancel_another_members_attempt(): void
-    {
-        $member = User::factory()->create();
-        $other = User::factory()->create();
-        $attempt = IdentityVerificationAttempt::create([
-            'user_id' => $other->id, 'status' => 'pending', 'input_hash' => str_repeat('a', 64),
-            'expires_at' => now()->addMinutes(10),
-        ]);
-
-        Livewire::actingAs($member)->test(Verify::class)->call('cancelVerification', $attempt->id)
-            ->assertHasNoErrors();
-
-        $this->assertSame('pending', $attempt->fresh()->status);
-    }
-
-    private function configureProvider(): void
-    {
-        config(['services.identity' => [
-            'base_url' => 'https://identity.example.test', 'client_id' => 'test-client',
-            'client_secret' => 'test-secret', 'public_key' => 'test-public',
-            'sdk_url' => 'https://sdk.example.test/liveness.js', 'environment' => 'production',
-        ]]);
     }
 }

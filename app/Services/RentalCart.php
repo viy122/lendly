@@ -15,7 +15,7 @@ class RentalCart
         $renter = self::member($renter);
 
         return DB::transaction(function () use ($renter, $listingId, $details) {
-            $quote = RentalRequestSubmission::preview($renter, $listingId, $details);
+            $quote = RentalRequestSubmission::preview($renter, $listingId, $details, forRequest: false, allowOverlap: true);
             $item = CartItem::where('user_id', $renter->id)->where('listing_id', $listingId)->lockForUpdate()->first();
             if (! $item && CartItem::where('user_id', $renter->id)->lockForUpdate()->get()->count() >= 50) {
                 throw ValidationException::withMessages(['cart' => 'Your cart can hold up to 50 items. Remove an item before adding another.']);
@@ -34,7 +34,7 @@ class RentalCart
         abort_unless($item, 404);
 
         return DB::transaction(function () use ($renter, $item, $details) {
-            $quote = RentalRequestSubmission::preview($renter, $item->listing_id, $details);
+            $quote = RentalRequestSubmission::preview($renter, $item->listing_id, $details, forRequest: false, allowOverlap: true);
             $current = CartItem::where('user_id', $renter->id)->lockForUpdate()->find($item->id);
             abort_unless($current, 404);
             $current->fill(self::draft($quote))->save();
@@ -57,6 +57,9 @@ class RentalCart
     public static function checkout(User $renter, array $selectedIds, bool $accepted, ?array $reviewed = null): array
     {
         $renter = self::member($renter);
+        if (! $renter->hasVerifiedIdentity()) {
+            throw ValidationException::withMessages(['identity' => 'Complete your ID review before sending rental requests.']);
+        }
         $selectedIds = self::selection($selectedIds);
         $result = DB::transaction(function () use ($renter, $selectedIds, $accepted, $reviewed) {
             $drafts = CartItem::where('user_id', $renter->id)->whereIn('id', $selectedIds)->get();
@@ -68,6 +71,9 @@ class RentalCart
             $participantIds = $owners->values()->push($renter->id)->unique()->sort()->values()->all();
             User::withTrashed()->whereIn('id', $participantIds)->orderBy('id')->lockForUpdate()->get();
             $renter = self::member($renter, lock: true);
+            if (! $renter->hasVerifiedIdentity()) {
+                throw ValidationException::withMessages(['identity' => 'Complete your ID review before sending rental requests.']);
+            }
             $listings = Listing::withTrashed()->whereIn('id', $listingIds)->orderBy('id')->lockForUpdate()->get();
             $items = CartItem::where('user_id', $renter->id)->whereIn('id', $selectedIds)->orderBy('id')->lockForUpdate()->get();
             if ($items->count() !== count($selectedIds) || $items->pluck('listing_id')->sort()->values()->all() !== $listingIds
@@ -167,13 +173,12 @@ class RentalCart
 
     private static function draft(array $quote): array
     {
-        return array_intersect_key($quote['attributes'], array_flip(['start_date', 'end_date', 'fulfillment_method']))
+        return array_intersect_key($quote['attributes'], array_flip(['start_date', 'end_date', 'fulfillment_method', 'rental_unit', 'rental_hours', 'starts_at', 'ends_at']))
             + ['terms' => $quote['terms']];
     }
 
     private static function details(CartItem $item): array
     {
-        return ['start_date' => $item->start_date->toDateString(), 'end_date' => $item->end_date->toDateString(),
-            'fulfillment_method' => $item->fulfillment_method];
+        return RentalPeriod::details($item);
     }
 }

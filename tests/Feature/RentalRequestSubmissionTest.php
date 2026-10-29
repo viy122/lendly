@@ -26,14 +26,15 @@ class RentalRequestSubmissionTest extends TestCase
     public function test_preview_uses_current_server_charges_without_creating_request_or_notices(): void
     {
         $listing = $this->listing();
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         CommissionSetting::current()->update(['commission_rate' => 12.5]);
         $details = $this->details() + ['renter_id' => $listing->owner_id, 'rental_fee' => 1, 'total_amount' => 1, 'commission_rate' => 0, 'status' => 'approved'];
 
         $preview = RentalRequestSubmission::preview($renter, $listing->id, $details);
 
         $this->assertTrue($preview['listing']->is($listing));
-        $this->assertSame(['price_per_day' => '125.25', 'security_deposit' => '250.50', 'rental_rules' => 'Keep it clean', 'commission_rate' => '12.50'], $preview['terms']);
+        $this->assertSame(['price_per_day' => '125.25', 'price_per_hour' => null, 'allows_daily_rentals' => true,
+            'min_rental_duration_hours' => 1, 'max_rental_duration_hours' => 24, 'available_time_from' => '00:00', 'available_time_until' => '23:59', 'security_deposit' => '250.50', 'rental_rules' => 'Keep it clean', 'commission_rate' => '12.50'], $preview['terms']);
         $this->assertSame($renter->id, $preview['attributes']['renter_id']);
         $this->assertSame($listing->id, $preview['attributes']['listing_id']);
         $this->assertSame(3, $preview['attributes']['rental_days']);
@@ -47,7 +48,7 @@ class RentalRequestSubmissionTest extends TestCase
     public function test_submit_creates_pending_request_and_both_notices_without_accepting_booking_agreement(): void
     {
         $listing = $this->listing();
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
 
         $request = RentalRequestSubmission::submit($renter, $listing->id, $this->details(), RentalRequestSubmission::termsFor($listing), true);
 
@@ -65,7 +66,7 @@ class RentalRequestSubmissionTest extends TestCase
     public function test_request_form_can_save_cart_draft_without_review_acceptance_or_notifications(): void
     {
         $listing = $this->listing();
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
 
         Livewire::actingAs($renter)->test(Create::class, ['listing' => $listing])
             ->set('start_date', $this->details()['start_date'])->set('end_date', $this->details()['end_date'])
@@ -87,7 +88,7 @@ class RentalRequestSubmissionTest extends TestCase
             $listing->update([$field => $value]);
         }
 
-        $this->rejects(fn () => RentalRequestSubmission::submit(User::factory()->create(), $listing->id, $this->details(), $terms, true), 'accept_terms');
+        $this->rejects(fn () => RentalRequestSubmission::submit(User::factory()->identityVerified()->create(), $listing->id, $this->details(), $terms, true), 'accept_terms');
 
         $this->assertDatabaseCount('rental_requests', 0);
         $this->assertDatabaseCount('notifications', 0);
@@ -101,7 +102,7 @@ class RentalRequestSubmissionTest extends TestCase
     public function test_submit_requires_explicit_acceptance_but_preview_does_not(): void
     {
         $listing = $this->listing();
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         $preview = RentalRequestSubmission::preview($renter, $listing->id, $this->details());
 
         $this->rejects(fn () => RentalRequestSubmission::submit($renter, $listing->id, $this->details(), $preview['terms'], false), 'accept_terms');
@@ -112,7 +113,7 @@ class RentalRequestSubmissionTest extends TestCase
     public function test_submit_accepts_reviewed_terms_in_database_key_order_without_coercing_values(): void
     {
         $listing = $this->listing();
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         $terms = RentalRequestSubmission::termsFor($listing);
         ksort($terms);
 
@@ -128,7 +129,7 @@ class RentalRequestSubmissionTest extends TestCase
     public function test_preview_and_submit_share_date_duration_and_handover_validation(array $changes, string $field): void
     {
         $listing = $this->listing();
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         $details = array_replace($this->details(), $changes);
 
         $this->rejects(fn () => RentalRequestSubmission::preview($renter, $listing->id, $details), $field);
@@ -152,14 +153,14 @@ class RentalRequestSubmissionTest extends TestCase
     public function test_current_availability_window_and_approved_overlap_are_rechecked(): void
     {
         $listing = $this->listing();
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         $listing->update(['available_until' => now()->addDays(4)]);
         $this->rejects(fn () => RentalRequestSubmission::preview($renter, $listing->id, $this->details()), 'end_date');
         $listing->update(['available_until' => null]);
         $request = RentalRequestSubmission::submit($renter, $listing->id, $this->details(), RentalRequestSubmission::termsFor($listing), true);
         $request->update(['status' => RentalRequestStatus::Approved]);
 
-        $this->rejects(fn () => RentalRequestSubmission::preview(User::factory()->create(), $listing->id, $this->details()), 'start_date');
+        $this->rejects(fn () => RentalRequestSubmission::preview(User::factory()->identityVerified()->create(), $listing->id, $this->details()), 'start_date');
 
         $this->assertDatabaseCount('rental_requests', 1);
     }
@@ -169,15 +170,15 @@ class RentalRequestSubmissionTest extends TestCase
         $listing = $this->listing();
         $listing->update(['is_available' => false]);
 
-        $this->rejects(fn () => RentalRequestSubmission::preview(User::factory()->create(), $listing->id, $this->details()), 'listing');
+        $this->rejects(fn () => RentalRequestSubmission::preview(User::factory()->identityVerified()->create(), $listing->id, $this->details()), 'listing');
     }
 
     public function test_fresh_account_and_ownership_checks_reject_unauthorized_requests(): void
     {
         $listing = $this->listing();
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         $renter->fresh()->update(['status' => 'suspended']);
-        foreach ([$listing->owner, $renter, User::factory()->admin()->create(), User::factory()->unverified()->create()] as $actor) {
+        foreach ([$listing->owner, $renter, User::factory()->admin()->create(), User::factory()->identityVerified()->unverified()->create()] as $actor) {
             try {
                 RentalRequestSubmission::preview($actor, $listing->id, $this->details());
                 $this->fail('Unauthorized account must not obtain an actionable quote.');
@@ -187,7 +188,7 @@ class RentalRequestSubmissionTest extends TestCase
         }
         $listing->owner->delete();
         try {
-            RentalRequestSubmission::preview(User::factory()->create(), $listing->id, $this->details());
+            RentalRequestSubmission::preview(User::factory()->identityVerified()->create(), $listing->id, $this->details());
             $this->fail('Deleted owners must not receive requests.');
         } catch (HttpException $exception) {
             $this->assertSame(403, $exception->getStatusCode());
@@ -198,7 +199,7 @@ class RentalRequestSubmissionTest extends TestCase
     public function test_second_notification_failure_rolls_back_request_and_first_notification(): void
     {
         $listing = $this->listing();
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         Event::listen(NotificationSending::class, function (NotificationSending $event) use ($renter) {
             if ($event->notifiable->is($renter)) {
                 throw new \RuntimeException('Notice storage failed');
@@ -222,7 +223,7 @@ class RentalRequestSubmissionTest extends TestCase
         $category = Category::firstOrCreate(['slug' => 'submission-tools'], ['name' => 'Tools']);
 
         return Listing::create([
-            'owner_id' => User::factory()->create()->id, 'category_id' => $category->id,
+            'owner_id' => User::factory()->identityVerified()->create()->id, 'category_id' => $category->id,
             'name' => 'Rental tool', 'description' => 'Tool', 'condition' => 'good', 'location' => 'Manila',
             'price_per_day' => 125.25, 'security_deposit' => 250.50, 'rental_rules' => 'Keep it clean',
             'max_rental_duration_days' => 10, 'status' => 'published', 'is_available' => true,

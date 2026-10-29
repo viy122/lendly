@@ -33,7 +33,7 @@
                         <tr>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-indigo-700">Item</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-indigo-700">Category</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-indigo-700">Price/day</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-indigo-700">Rental rate</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-indigo-700">Status</th>
                             <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-indigo-700">Actions</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-indigo-700">Availability</th>
@@ -53,7 +53,7 @@
                                     </div>
                                 </td>
                                 <td class="px-4 py-3"><x-category-badge :category="$listing->category" /></td>
-                                <td class="whitespace-nowrap px-4 py-3 text-slate-500">₱{{ number_format($listing->price_per_day, 2) }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 text-slate-500">₱{{ number_format($listing->allows_daily_rentals ? $listing->price_per_day : $listing->price_per_hour, 2) }}</td>
                                 <td class="whitespace-nowrap px-4 py-3">
                                     <x-badge :color="$listing->status->badgeColor()">{{ $listing->status->label() }}</x-badge>
                                 </td>

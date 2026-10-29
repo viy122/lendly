@@ -89,8 +89,8 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_fr23_owner_cannot_submit_a_review_attributed_to_the_renter(): void
     {
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $rental = $this->booking($owner, $renter, 'completed');
 
         Livewire::actingAs($owner)->test(RenterRental::class, ['rental' => $rental])
@@ -100,8 +100,8 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_fr11_unavailable_listing_cannot_receive_a_request_from_an_open_form(): void
     {
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $listing = $this->listing($owner);
         $form = Livewire::actingAs($renter)->test(Requests::class, ['listing' => $listing])
             ->set('start_date', now()->addDays(3)->toDateString())
@@ -115,8 +115,8 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_nfr01_interrupted_final_acceptance_does_not_finalize_terms_without_a_booking(): void
     {
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $request = $this->request($renter, $this->listing($owner));
         Livewire::actingAs($owner)->test(Approvals::class)->call('approve', $request->id);
         RentalAgreement::accept($request, $owner);
@@ -139,8 +139,8 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_nfr03_interrupted_payment_does_not_leave_a_paid_record_with_an_unpaid_booking(): void
     {
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $rental = $this->booking($owner, $renter);
         SecurityDeposit::creating(fn () => throw new \RuntimeException('Audit: deposit storage unavailable'));
 
@@ -159,7 +159,7 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_nfr19_zero_latitude_still_filters_by_distance(): void
     {
-        $owner = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
         $this->listing($owner, ['name' => 'Nearby', 'latitude' => 0, 'longitude' => 120]);
         $this->listing($owner, ['name' => 'Far away', 'latitude' => 1, 'longitude' => 120]);
 
@@ -172,8 +172,8 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_nfr03_two_payment_actions_loaded_before_either_finishes_record_only_one_payment(): void
     {
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $rental = $this->booking($owner, $renter);
         Storage::fake('local');
         OfflinePaymentSetting::create(['method' => 'bank_transfer', 'instructions' => 'Test payment instructions', 'enabled' => true]);
@@ -195,10 +195,10 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_nfr01_interleaved_approvals_cannot_book_the_same_dates_twice(): void
     {
-        $owner = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
         $listing = $this->listing($owner);
-        $first = $this->request(User::factory()->create(), $listing);
-        $second = $this->request(User::factory()->create(), $listing);
+        $first = $this->request(User::factory()->identityVerified()->create(), $listing);
+        $second = $this->request(User::factory()->identityVerified()->create(), $listing);
         $this->actingAs($owner);
         $interleaved = false;
 
@@ -227,8 +227,8 @@ class RentalRequirementsFixTest extends TestCase
     public function test_fr40_booking_confirmation_notifies_both_parties(): void
     {
         Notification::fake();
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $request = $this->request($renter, $this->listing($owner));
 
         Livewire::actingAs($owner)->test(Approvals::class)->call('approve', $request->id);
@@ -241,10 +241,10 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_fr14_approval_rejects_pending_requests_that_touch_the_booked_end_date(): void
     {
-        $owner = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
         $listing = $this->listing($owner);
-        $first = $this->request(User::factory()->create(), $listing);
-        $second = $this->request(User::factory()->create(), $listing);
+        $first = $this->request(User::factory()->identityVerified()->create(), $listing);
+        $second = $this->request(User::factory()->identityVerified()->create(), $listing);
         $second->update(['start_date' => $first->end_date, 'end_date' => $first->end_date->copy()->addDays(2)]);
 
         Livewire::actingAs($owner)->test(Approvals::class)->call('approve', $first->id);
@@ -258,9 +258,9 @@ class RentalRequirementsFixTest extends TestCase
     public function test_fr11_approval_rechecks_current_fulfillment_and_duration_limits(): void
     {
         foreach ([['pickup_available' => false], ['max_rental_duration_days' => 2]] as $changedOptions) {
-            $owner = User::factory()->create();
+            $owner = User::factory()->identityVerified()->create();
             $listing = $this->listing($owner);
-            $request = $this->request(User::factory()->create(), $listing);
+            $request = $this->request(User::factory()->identityVerified()->create(), $listing);
             $listing->update($changedOptions);
 
             Livewire::actingAs($owner)->test(Approvals::class)
@@ -273,8 +273,8 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_fr14_open_form_requires_accepting_the_new_price_after_a_listing_change(): void
     {
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $listing = $this->listing($owner);
         $form = Livewire::actingAs($renter)->test(Requests::class, ['listing' => $listing])
             ->set('start_date', today()->addDays(3)->toDateString())
@@ -290,8 +290,8 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_fr22_condition_first_damage_cannot_be_settled_before_return_closure(): void
     {
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $rental = $this->booking($owner, $renter, 'active');
         SecurityDeposit::create(['rental_id' => $rental->id, 'amount' => 500]);
         Livewire::actingAs($owner)->test(Show::class, ['rental' => $rental])
@@ -311,8 +311,8 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_fr22_overdue_job_cannot_reopen_a_rental_completed_after_it_was_loaded(): void
     {
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $rental = $this->booking($owner, $renter, 'active');
         $rental->update(['end_date' => today()->subDays(2)]);
         SecurityDeposit::create(['rental_id' => $rental->id, 'amount' => 500]);
@@ -338,8 +338,8 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_fr22_completion_preserves_an_already_settled_legacy_damage_claim(): void
     {
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $rental = $this->booking($owner, $renter, 'active');
         SecurityDeposit::create(['rental_id' => $rental->id, 'amount' => 500]);
         Livewire::actingAs($owner)->test(Show::class, ['rental' => $rental])
@@ -360,8 +360,8 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_fr34_expired_pending_request_can_be_cancelled_and_does_not_trap_account_closure(): void
     {
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $request = $this->request($renter, $this->listing($owner));
         $request->update(['start_date' => today()->subDays(4), 'end_date' => today()->subDays(2)]);
 
@@ -375,8 +375,8 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_fr42_future_paid_reservation_is_visible_without_blocking_today(): void
     {
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $rental = $this->booking($owner, $renter);
         $this->completeOfflinePayment($rental);
 
@@ -388,8 +388,8 @@ class RentalRequirementsFixTest extends TestCase
     public function test_fr36_pending_request_cancellation_notifies_the_owner_and_renter(): void
     {
         Notification::fake();
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $request = $this->request($renter, $this->listing($owner));
 
         Livewire::actingAs($renter)->test(Index::class)->call('cancel', $request->id);
@@ -402,8 +402,8 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_fr34_request_page_cannot_cancel_a_booking_after_either_handover_confirmation(): void
     {
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $rental = $this->booking($owner, $renter, 'paid');
         RentalLifecycle::confirmPickup($rental, $owner);
 
@@ -416,8 +416,8 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_fr36_cancelling_a_paid_booking_releases_dates_and_notifies_both_parties(): void
     {
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $rental = $this->booking($owner, $renter);
         $this->completeOfflinePayment($rental);
         Notification::fake();
@@ -437,8 +437,8 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_fr19_overdue_details_show_current_days_and_fees_before_the_daily_job(): void
     {
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $rental = $this->booking($owner, $renter, 'active');
         $rental->update(['end_date' => today()->subDays(2)->toDateString()]);
 
@@ -450,9 +450,9 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_fr19_admin_overdue_filter_and_dashboard_use_the_current_status(): void
     {
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
-        $admin = User::factory()->create(['role' => 'admin']);
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
+        $admin = User::factory()->identityVerified()->create(['role' => 'admin']);
         $rental = $this->booking($owner, $renter, 'active');
         $rental->update(['end_date' => today()->subDay()]);
 
@@ -467,8 +467,8 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_fr17_owner_receipt_includes_the_payment_reference(): void
     {
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $rental = $this->booking($owner, $renter);
         $this->completeOfflinePayment($rental);
 
@@ -478,8 +478,8 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_fr42_paid_booking_displays_reserved_status(): void
     {
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $rental = $this->booking($owner, $renter);
         $dates = ['start_date' => now()->toDateString(), 'end_date' => now()->addDays(2)->toDateString()];
         $rental->update($dates);
@@ -491,8 +491,8 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_fr34_cancellation_is_blocked_after_owner_marks_the_item_handed_over(): void
     {
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $rental = $this->booking($owner, $renter, 'paid');
         RentalLifecycle::confirmPickup($rental, $owner);
 
@@ -504,8 +504,8 @@ class RentalRequirementsFixTest extends TestCase
     public function test_fr45_closed_rental_prompts_both_parties_on_their_rental_pages(): void
     {
         Notification::fake();
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $rental = $this->booking($owner, $renter, 'returned');
         SecurityDeposit::create(['rental_id' => $rental->id, 'amount' => $rental->security_deposit]);
         RentalLifecycle::completeInspection($rental);
@@ -518,8 +518,8 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_fr24_deleting_one_account_preserves_the_other_partys_transaction_history(): void
     {
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $rental = $this->booking($owner, $renter, 'completed');
         $rentalId = $rental->id;
         $this->actingAs($renter);
@@ -531,8 +531,8 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_fr19_past_due_active_rental_displays_overdue_without_waiting_for_the_daily_job(): void
     {
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $rental = $this->booking($owner, $renter, 'active');
         $rental->update(['end_date' => now()->subDay()->toDateString()]);
 
@@ -541,8 +541,8 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_fr24_removing_a_listing_does_not_break_the_renters_history_page(): void
     {
-        $owner = User::factory()->create();
-        $renter = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
+        $renter = User::factory()->identityVerified()->create();
         $rental = $this->booking($owner, $renter, 'completed');
         Livewire::actingAs($owner)->test(\App\Livewire\Owner\Listings\Index::class)
             ->call('delete', $rental->listing_id);
@@ -557,7 +557,7 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_fr51_manila_location_sorts_markers_nearest_first(): void
     {
-        $owner = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
         $this->listing($owner, ['name' => 'Tagaytay', 'latitude' => 14.0997, 'longitude' => 120.9425]);
         $this->listing($owner, ['name' => 'Manila']);
 
@@ -569,7 +569,7 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_nfr20_no_location_ignores_radius_and_allows_browsing(): void
     {
-        $owner = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
         $this->listing($owner);
         $this->listing($owner, ['name' => 'Tagaytay', 'latitude' => 14.0997]);
         $markers = Livewire::test(Map::class)->set('radiusKm', 5)->get('markers');
@@ -580,7 +580,7 @@ class RentalRequirementsFixTest extends TestCase
 
     public function test_fr52_map_and_browse_use_the_same_keyword_matches(): void
     {
-        $owner = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
         $this->listing($owner, ['name' => 'Found camera']);
         $this->listing($owner, ['name' => 'Ladder', 'description' => 'No match.']);
         $markers = Livewire::test(Map::class)->set('keyword', 'camera')->get('markers');
@@ -594,7 +594,7 @@ class RentalRequirementsFixTest extends TestCase
     public function test_fr06_owner_can_upload_multiple_listing_photos(): void
     {
         Storage::fake('public');
-        $owner = User::factory()->create();
+        $owner = User::factory()->identityVerified()->create();
         $category = Category::create(['name' => 'Photo tools', 'slug' => 'photo-tools']);
         Livewire::actingAs($owner)->test(Form::class)
             ->set('category_id', $category->id)->set('name', 'Photo audit listing')

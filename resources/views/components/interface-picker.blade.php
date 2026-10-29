@@ -17,7 +17,8 @@
         </div>
 
         <h2 id="interface-picker-title" class="text-2xl font-bold tracking-tight text-[#071a3d]">How would you like to use Lendly?</h2>
-        <p id="interface-picker-description" class="mt-2 text-sm leading-6 text-slate-500">Choose an interface to log in and continue.</p>
+        <p id="interface-picker-description" class="mt-2 text-sm leading-6 text-slate-500">Choose an interface to continue.</p>
+        <x-input-error :messages="$errors->get('interface')" class="mt-2" />
 
         <div class="mt-5 space-y-3">
             <button type="button" wire:click="chooseInterface('renter')" wire:loading.attr="disabled" class="group flex w-full items-center gap-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 text-left transition hover:border-blue-300 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-wait disabled:opacity-60">

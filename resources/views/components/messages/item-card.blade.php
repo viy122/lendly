@@ -13,7 +13,7 @@
         @endif
         <div class="min-w-0">
             <h2 class="break-words text-sm font-semibold text-slate-900">{{ $listing->name }}</h2>
-            <p class="mt-1 text-sm font-bold text-blue-600">₱{{ number_format($listing->price_per_day, 2) }} <span class="text-xs font-normal text-slate-500">/ day</span></p>
+            <p class="mt-1 text-sm font-bold text-blue-600">₱{{ number_format($listing->allows_daily_rentals ? $listing->price_per_day : $listing->price_per_hour, 2) }} <span class="text-xs font-normal text-slate-500">/ {{ $listing->allows_daily_rentals ? 'day' : 'hour' }}</span></p>
             <p class="mt-1 break-words text-xs text-slate-500">{{ $listing->location }}</p>
         </div>
     </div>

@@ -27,6 +27,6 @@
         @else
             </button>
         @endif
-        <p id="google-sign-in-note" class="mx-auto mt-3 max-w-sm text-center text-xs leading-5 text-slate-500">{{ $available ? 'Google confirms your Gmail address. National ID and live selfie verification is a separate step.' : 'Google sign-in will be available soon. You can continue with email.' }}</p>
+        <p id="google-sign-in-note" class="mx-auto mt-3 max-w-sm text-center text-xs leading-5 text-slate-500">{{ $available ? 'Use your personal Gmail or school or work Google account. National ID and selfie submission for administrator review is a separate step.' : 'Google sign-in will be available soon. You can continue with email.' }}</p>
         <div class="mt-6 flex items-center gap-4 text-xs text-slate-500"><span class="h-px flex-1 bg-slate-200" aria-hidden="true"></span><span>or continue with email</span><span class="h-px flex-1 bg-slate-200" aria-hidden="true"></span></div>
     </div>

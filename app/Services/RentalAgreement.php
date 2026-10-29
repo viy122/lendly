@@ -3,11 +3,13 @@
 namespace App\Services;
 
 use App\Enums\NotificationType;
+use App\Models\CommissionSetting;
 use App\Models\Listing;
 use App\Models\Rental;
 use App\Models\RentalRequest;
 use App\Models\User;
 use App\Notifications\TalaNotification;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -16,7 +18,17 @@ class RentalAgreement
 {
     public static function termsFor(RentalRequest $request): array
     {
+        $settings = CommissionSetting::current()->refresh();
+
         return [
+            'rental_unit' => $request->rental_unit ?? 'day',
+            'rental_hours' => $request->rental_hours,
+            'starts_at' => $request->starts_at?->toIso8601String(),
+            'ends_at' => $request->ends_at?->toIso8601String(),
+            'cancellation_requires_review' => true,
+            'cancellation_reference_at' => ($request->starts_at ?? Carbon::parse($request->start_date->toDateString().' '.$request->listing->available_time_from, 'Asia/Manila')->utc())->toIso8601String(),
+            'payment_window_hours' => $settings->payment_window_hours,
+            'processing_fee_refundable' => true,
             'item_name' => $request->listing->name,
             'rental_rules' => $request->listing->rental_rules,
             'start_date' => $request->start_date->toDateString(),
@@ -28,15 +40,15 @@ class RentalAgreement
             'commission_amount' => $request->commission_amount,
             'security_deposit' => $request->security_deposit,
             'total_amount' => $request->total_amount,
-            'cancellation_window_hours' => CancellationPolicy::CHARGEABLE_WINDOW_HOURS,
-            'cancellation_fee_percentage' => CancellationPolicy::FEE_PERCENTAGE * 100,
+            'cancellation_window_hours' => $settings->cancellation_window_hours,
+            'cancellation_fee_percentage' => (float) $settings->cancellation_fee_percentage,
             // Save the wording so later edits cannot change an accepted agreement.
             'clauses' => [
                 [
                     'title' => 'Scope and duration of the rental',
                     'paragraphs' => [
                         'This agreement concerns the temporary rental of the item identified above between the owner and the renter associated with this request. The owner retains ownership of the item. Neither payment of the rental fee nor payment of the security deposit transfers ownership, creates a purchase option, or permits the renter to sell, pledge, or dispose of the item.',
-                        'The agreed rental period includes both the start date and the end date shown in the rental particulars. The recorded item, dates, fulfillment method, charges, and item-specific rules form part of this agreement. Each party must review these details and raise any error before accepting. Owner approval of a request reserves the dates but does not finalize the booking until both parties accept.',
+                        'Daily rentals include both dates shown in the particulars. Hourly rentals use the exact start and return times shown in Philippine time, billed in whole hours. The recorded item, dates, fulfillment method, charges, and item-specific rules form part of this agreement. Each party must review these details and raise any error before accepting. Owner approval of a request reserves the dates but does not finalize the booking until both parties accept.',
                     ],
                 ],
                 [
@@ -77,22 +89,24 @@ class RentalAgreement
                 [
                     'title' => 'Payment verification and financial records',
                     'paragraphs' => [
-                        'Payment follows booking confirmation and must cover the rental fee, platform fee, and refundable security deposit shown above. The renter must follow the payment instructions published for the booking, provide the correct transaction reference, and submit genuine payment proof. A screenshot, uploaded receipt, or pending submission does not by itself mark the booking as paid.',
+                        'Payment follows both parties accepting this agreement and must cover the rental fee, processing/platform fee charged once, and refundable security deposit shown above. Submit payment proof within the saved payment window or before the rental start reference, whichever is earlier. Unpaid reservations expire without a fee; pending proof pauses expiry during review. The renter must follow the payment instructions published for the booking, provide the correct transaction reference, and submit genuine payment proof. A screenshot, uploaded receipt, or pending submission does not by itself mark the booking as paid.',
                         'An administrator must verify that the full amount was actually received before payment is confirmed and the paid booking is available for hand-over. If proof is rejected, the renter should review the stated reason and submit corrected proof where permitted. Payment, refund, deposit, and late-fee records show the recorded handling of the transaction; changing a status does not itself send money, initiate a refund, or confirm that an additional charge has been collected.',
                     ],
                 ],
                 [
                     'title' => 'Cancellation procedure and settlement',
                     'paragraphs' => [
-                        'The cancellation window and percentage stated above are the agreed booking cancellation policy. The window is measured against 00:00 UTC on the recorded rental start date, equivalent to 8:00 AM Philippine time on that date, rather than a separately arranged pickup or delivery time. The percentage applies to the rental fee only. A request cancelled before a booking exists does not generate a booking cancellation fee.',
-                        'After a booking is created, the renter must use the cancellation action while it remains available and before either party confirms hand-over. A message saying that the renter will not attend does not itself cancel the recorded booking. Cancellation releases the booked dates and records any applicable cancellation charge and deposit refund status. Any actual return of funds must be arranged through the payment collection process; this agreement does not promise an automatic transfer or a fixed refund processing time.',
+                        'The cancellation window and percentage stated above are saved for this booking. The reference time is the hourly start time, or the owner’s available-from time on the first daily rental date, in Philippine time. A pickup or delivery schedule confirmed by both parties replaces that reference. An unpacked booking may be cancelled freely before the chargeable window. Within the window or after packing, a reason and owner or administrator approval are required. A pending request keeps the dates reserved and pauses packing, courier updates and handover. The percentage applies once to the rental fee only. Pending rental requests and expired unpaid reservations have no cancellation fee.',
+                        'After a booking is created, the renter must use its cancellation action while available. Ordinary cancellation closes at Waiting for courier, Shipped, or either party’s handover confirmation. A message saying that the renter will not attend does not itself cancel the recorded booking. An approved cancellation releases booked dates and records any applicable rental-only cancellation charge. For a paid booking, the manual refund equals the total paid, including processing fee and deposit, less that cancellation charge. Any actual return of funds must be arranged through the payment collection process; this agreement does not promise an automatic transfer or a fixed refund processing time.',
                     ],
                 ],
                 [
                     'title' => 'Return, overdue charges and changes to dates',
                     'paragraphs' => [
                         'The renter must coordinate return before the agreed rental period ends and must not assume that silence, a chat message, or a changed listing extends the booking. If a delay becomes likely, the renter must inform the owner promptly and arrange the return. Any proposed change to the rental dates or charges must be resolved with the other party; the recorded booking remains the reference until an appropriate updated booking is recorded.',
-                        'For an active rental that continues beyond its end date, the late fee is the agreed daily rental rate multiplied by the number of calendar days overdue. Overdue days are counted using UTC calendar dates; each new UTC date begins at 8:00 AM Philippine time. The daily rate is the saved rental fee divided by the saved number of rental days, rounded to two decimal places; a later change to the listing price does not change that rate. Overdue charges stop accruing when the owner records the item as returned. The owner’s return confirmation and after-condition record allow inspection completion, separately from settlement of any outstanding claim or charge.',
+                        $request->rental_unit === 'hour'
+                            ? 'For an active hourly rental returned after its agreed return time, the late fee uses the agreed hourly rental rate for each started overdue hour. The agreed hourly rate is the saved rental fee divided by the saved rental hours. Philippine time is displayed above; timestamps are stored in UTC. Listing price changes do not change this rate. Overdue charges stop accruing when the owner records the item as returned. Inspection and settlement remain separate from that return confirmation.'
+                            : 'For an active rental that continues beyond its end date, the late fee is the agreed daily rental rate multiplied by the number of calendar days overdue. Overdue days are counted using UTC calendar dates; each new UTC date begins at 8:00 AM Philippine time. The daily rate is the saved rental fee divided by the saved number of rental days, rounded to two decimal places; a later change to the listing price does not change that rate. Overdue charges stop accruing when the owner records the item as returned. The owner’s return confirmation and after-condition record allow inspection completion, separately from settlement of any outstanding claim or charge.',
                     ],
                 ],
                 [
@@ -139,6 +153,9 @@ class RentalAgreement
             if ($request->rental) {
                 return $request->rental;
             }
+            if (! $participants->every(fn (User $participant) => $participant->hasVerifiedIdentity())) {
+                throw ValidationException::withMessages(['identity' => 'Both members must complete their ID review before starting a new booking.']);
+            }
 
             if ($request->agreement_terms === null) {
                 throw ValidationException::withMessages([
@@ -146,7 +163,7 @@ class RentalAgreement
                 ]);
             }
 
-            if ($request->start_date->lt(today()) || $request->listing->hasApprovedOverlap($request->start_date, $request->end_date, $request->id)) {
+            if ($request->start_date->lt(today()) || $request->starts_at?->lte(now()) || $request->listing->hasApprovedOverlap($request->start_date, $request->end_date, $request->id, $request->starts_at, $request->ends_at)) {
                 throw ValidationException::withMessages(['agreement' => 'These dates are no longer available. Cancel this request and submit new dates.']);
             }
 
@@ -167,11 +184,13 @@ class RentalAgreement
 
             $rental = Rental::create([
                 'rental_request_id' => $request->id,
+                'payment_due_at' => isset($request->agreement_terms['payment_window_hours'])
+                    ? now()->addHours($request->agreement_terms['payment_window_hours'])->min(Carbon::parse($request->agreement_terms['cancellation_reference_at'])) : null,
                 'listing_id' => $request->listing_id,
                 'owner_id' => $request->listing->owner_id,
                 'renter_id' => $request->renter_id,
                 ...$request->only([
-                    'start_date', 'end_date', 'rental_days', 'fulfillment_method',
+                    'start_date', 'end_date', 'rental_days', 'rental_unit', 'rental_hours', 'starts_at', 'ends_at', 'fulfillment_method',
                     'rental_fee', 'commission_rate', 'commission_amount',
                     'security_deposit', 'total_amount',
                 ]),

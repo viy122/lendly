@@ -166,7 +166,7 @@ new class extends Component
                 @unless (auth()->user()->isAdmin())
                     <div class="mt-3">
                         @if (auth()->user()->hasVerifiedIdentity())
-                            <span class="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">Identity verified</span>
+                            <span class="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">{{ auth()->user()->identity_verification_environment === 'manual' ? 'ID reviewed' : 'Identity verified' }}</span>
                         @elseif (auth()->user()->hasTestedIdentity())
                             <span class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">Test identity check completed</span>
                         @else

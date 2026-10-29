@@ -191,7 +191,7 @@ document.addEventListener('alpine:init', () => {
 
             items.forEach((item) => {
                 const marker = L.marker([item.lat, item.lng], {
-                    title: `${item.name} · ₱${item.price} per day`,
+                    title: `${item.name} · ₱${item.price} per ${item.priceUnit === 'hour' ? 'hour' : 'day'}`,
                     alt: item.name,
                     keyboard: true,
                 }).addTo(this.markerLayer);

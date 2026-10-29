@@ -151,8 +151,8 @@ class RentalLifecycleTest extends TestCase
 
     public function test_rental_becomes_active_only_after_both_parties_confirm_pickup(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $rental = $this->paidRental($owner, $renter);
 
         Livewire::actingAs($renter)
@@ -172,8 +172,8 @@ class RentalLifecycleTest extends TestCase
 
     public function test_cannot_confirm_pickup_twice_as_the_same_party(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $rental = $this->paidRental($owner, $renter);
 
         Livewire::actingAs($renter)
@@ -188,8 +188,8 @@ class RentalLifecycleTest extends TestCase
 
     public function test_cannot_confirm_return_before_pickup_is_confirmed(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $rental = $this->paidRental($owner, $renter);
 
         Livewire::actingAs($renter)
@@ -200,8 +200,8 @@ class RentalLifecycleTest extends TestCase
 
     public function test_rental_becomes_returned_after_the_owner_confirms_return(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $rental = $this->paidRental($owner, $renter);
 
         RentalLifecycle::confirmPickup($rental, $renter);
@@ -224,8 +224,8 @@ class RentalLifecycleTest extends TestCase
 
     public function test_recording_returned_condition_automatically_completes_the_rental_and_frees_the_deposit(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $rental = $this->paidRental($owner, $renter);
 
         RentalLifecycle::confirmPickup($rental, $renter);
@@ -254,8 +254,8 @@ class RentalLifecycleTest extends TestCase
 
     public function test_overdue_command_flags_active_rentals_past_end_date_with_correct_late_fee(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
 
         // 3-day rental (₱100/day = ₱300 total fee -> ₱100/day agreed rate) that ended 2 days ago.
         $rental = $this->createPaidRentalWithDates($owner, $renter, now()->subDays(5)->toDateString(), now()->subDays(2)->toDateString());
@@ -274,8 +274,8 @@ class RentalLifecycleTest extends TestCase
 
     public function test_overdue_command_does_not_touch_rentals_that_are_not_active(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
 
         $rental = $this->createPaidRentalWithDates($owner, $renter, now()->subDays(5)->toDateString(), now()->subDays(2)->toDateString());
 
@@ -288,8 +288,8 @@ class RentalLifecycleTest extends TestCase
 
     public function test_overdue_late_fee_grows_on_subsequent_runs(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
 
         $rental = $this->createPaidRentalWithDates($owner, $renter, now()->subDays(5)->toDateString(), now()->subDays(2)->toDateString());
 

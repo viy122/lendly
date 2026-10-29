@@ -8,6 +8,11 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI', rtrim(env('APP_URL', 'http://localhost:8000'), '/').'/auth/google/callback'),
     ],
 
+    'face_match' => [
+        'python' => env('FACE_MATCH_PYTHON', storage_path('app/private/face-runtime/'.(PHP_OS_FAMILY === 'Windows' ? 'Scripts/python.exe' : 'bin/python'))),
+        'models' => storage_path('app/private/face-models'),
+    ],
+
     'identity' => [
         'base_url' => env('IDENTITY_BASE_URL'),
         'client_id' => env('IDENTITY_CLIENT_ID'),

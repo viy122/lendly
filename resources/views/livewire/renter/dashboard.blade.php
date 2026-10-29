@@ -65,7 +65,7 @@
                                                     <span class="font-medium text-slate-800">{{ $request->listing->name }}</span>
                                                 </div>
                                             </td>
-                                            <td class="px-4 py-3 text-slate-500">{{ $request->start_date->format('M d') }} &ndash; {{ $request->end_date->format('M d, Y') }}</td>
+                                            <td class="px-4 py-3 text-slate-500"><x-rental-period :booking="$request" /></td>
                                             <td class="px-4 py-3">
                                                 <x-badge :color="$request->status->badgeColor()">{{ $request->status->label() }}</x-badge>
                                             </td>

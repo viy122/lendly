@@ -45,6 +45,14 @@ class UserFactory extends Factory
         ]);
     }
 
+    public function identityVerified(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'identity_verified_at' => now(),
+            'identity_verification_environment' => 'production',
+        ]);
+    }
+
     /**
      * Owner and Renter are unified into a single Member role — kept as two
      * factory method names (both producing the same state) purely so

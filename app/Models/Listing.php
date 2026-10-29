@@ -8,6 +8,7 @@ use App\Enums\ListingStatus;
 use App\Enums\RentalRequestStatus;
 use App\Enums\RentalStatus;
 use App\Enums\ReviewType;
+use App\Services\RentalPeriod;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -33,6 +34,11 @@ class Listing extends Model
         'delivery_available' => false,
         'security_deposit' => 0,
         'views_count' => 0,
+        'allows_daily_rentals' => true,
+        'min_rental_duration_hours' => 1,
+        'max_rental_duration_hours' => 24,
+        'available_time_from' => '00:00',
+        'available_time_until' => '23:59',
     ];
 
     protected $fillable = [
@@ -48,6 +54,7 @@ class Listing extends Model
         'estimated_original_price',
         'price_per_day',
         'price_per_hour',
+        'allows_daily_rentals', 'min_rental_duration_hours', 'max_rental_duration_hours', 'available_time_from', 'available_time_until',
         'price_per_week',
         'security_deposit',
         'location',
@@ -71,6 +78,7 @@ class Listing extends Model
             'condition' => ListingCondition::class,
             'status' => ListingStatus::class,
             'is_available' => 'boolean',
+            'allows_daily_rentals' => 'boolean', 'min_rental_duration_hours' => 'integer', 'max_rental_duration_hours' => 'integer',
             'available_from' => 'date',
             'available_until' => 'date',
             'pickup_available' => 'boolean',
@@ -211,19 +219,15 @@ class Listing extends Model
      * approval is what actually confirms the dates (see business-rule
      * discussion in Phase 4 rental request handling).
      */
-    public function hasApprovedOverlap($startDate, $endDate, ?int $excludingRequestId = null): bool
+    public function hasApprovedOverlap($startDate, $endDate, ?int $excludingRequestId = null, $startsAt = null, $endsAt = null): bool
     {
-        // Current reads see holds committed while checkout waited for the listing lock.
-        return $this->reservingRequests()
-            ->overlapping($this->id, $startDate, $endDate)
-            ->when($excludingRequestId, fn ($query) => $query->whereKeyNot($excludingRequestId))
-            ->lockForUpdate()->first(['rental_requests.id']) !== null
-            || $this->rentals()
-                ->whereIn('status', [RentalStatus::PaymentPending, RentalStatus::Paid, RentalStatus::Active, RentalStatus::Overdue])
-                ->whereDate('start_date', '<=', $endDate)
-                ->whereDate('end_date', '>=', $startDate)
-                ->when($excludingRequestId, fn ($query) => $query->where('rental_request_id', '!=', $excludingRequestId))
-                ->lockForUpdate()->first(['rentals.id']) !== null;
+        $requests = $this->reservingRequests()->when($excludingRequestId, fn ($query) => $query->whereKeyNot($excludingRequestId));
+        RentalPeriod::applyOverlap($requests, $startDate, $endDate, $startsAt, $endsAt);
+        $rentals = $this->rentals()->whereIn('status', [RentalStatus::PaymentPending, RentalStatus::Paid, RentalStatus::Active, RentalStatus::Overdue])
+            ->when($excludingRequestId, fn ($query) => $query->where('rental_request_id', '!=', $excludingRequestId));
+        RentalPeriod::applyOverlap($rentals, $startDate, $endDate, $startsAt, $endsAt);
+
+        return $requests->lockForUpdate()->first(['rental_requests.id']) !== null || $rentals->lockForUpdate()->first(['rentals.id']) !== null;
     }
 
     public function availabilityLabel($date = null): string

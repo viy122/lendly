@@ -4,6 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -63,7 +64,9 @@ class GoogleIdentityLifecycleTest extends TestCase
         $user = User::factory()->create();
         $user->forceFill(['google_id' => 'google-member'])->save();
 
-        $this->actingAs($user)->get(route('profile'))->assertOk()
+        $this->actingAs($user)->withSession([
+            'password_hash_web' => Auth::guard('web')->hashPasswordForCookie($user->getAuthPassword()),
+        ])->get(route('profile'))->assertOk()
             ->assertSee('If you only sign in with Google')
             ->assertSee('sign out')->assertSee('Forgot password');
     }
@@ -76,6 +79,6 @@ class GoogleIdentityLifecycleTest extends TestCase
             'sdk_url' => 'https://sdk.example.test/liveness.js', 'environment' => 'sandbox',
         ]]);
         $this->actingAs(User::factory()->create())->get(route('identity.verify'))->assertOk()
-            ->assertSee('Review your account name')->assertSee(route('profile'), false);
+            ->assertSee('Correct your name')->assertSee(route('profile'), false);
     }
 }

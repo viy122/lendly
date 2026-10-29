@@ -24,7 +24,7 @@
                                         <p class="mt-1 text-xs text-slate-500">Listing removed</p>
                                     @endif
                                     <p class="mt-1 text-sm text-slate-500">
-                                        {{ $rental->start_date->format('M d, Y') }} &ndash; {{ $rental->end_date->format('M d, Y') }}
+                                        <x-rental-period :booking="$rental" />
                                     </p>
                                     <p class="mt-1 text-xs text-slate-400">
                                         Owner: {{ $rental->owner->name }} &middot; Total ₱{{ number_format($rental->total_amount, 2) }}

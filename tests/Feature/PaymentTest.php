@@ -68,8 +68,8 @@ class PaymentTest extends TestCase
 
     public function test_approval_and_both_terms_acceptances_create_a_rental_awaiting_payment(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         $request = $this->approvedRentalRequest($owner, $renter, $listing);
@@ -85,8 +85,8 @@ class PaymentTest extends TestCase
 
     public function test_verified_offline_payment_creates_payment_and_deposit_records(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         $request = $this->approvedRentalRequest($owner, $renter, $listing);
@@ -110,8 +110,8 @@ class PaymentTest extends TestCase
 
     public function test_owner_receives_full_rental_fee_not_reduced_by_commission(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         $request = $this->approvedRentalRequest($owner, $renter, $listing);
@@ -135,8 +135,8 @@ class PaymentTest extends TestCase
 
     public function test_owner_cannot_pay_for_a_rental(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         $request = $this->approvedRentalRequest($owner, $renter, $listing);
@@ -152,9 +152,9 @@ class PaymentTest extends TestCase
 
     public function test_another_renter_cannot_view_or_pay_someone_elses_rental(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
-        $otherRenter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
+        $otherRenter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         $request = $this->approvedRentalRequest($owner, $renter, $listing);
@@ -167,8 +167,8 @@ class PaymentTest extends TestCase
 
     public function test_cannot_pay_a_rental_twice(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         $request = $this->approvedRentalRequest($owner, $renter, $listing);
@@ -187,8 +187,8 @@ class PaymentTest extends TestCase
     // FR-17: both parties get a real digital receipt after payment.
     public function test_both_parties_see_a_receipt_after_payment(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         $request = $this->approvedRentalRequest($owner, $renter, $listing);
@@ -218,8 +218,8 @@ class PaymentTest extends TestCase
      */
     public function test_owner_does_not_see_earnings_breakdown_before_payment(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         $request = $this->approvedRentalRequest($owner, $renter, $listing);

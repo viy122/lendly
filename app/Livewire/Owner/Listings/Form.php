@@ -48,6 +48,16 @@ class Form extends Component
 
     public ?float $price_per_hour = null;
 
+    public bool $allows_daily_rentals = true;
+
+    public int $min_rental_duration_hours = 1;
+
+    public int $max_rental_duration_hours = 24;
+
+    public string $available_time_from = '00:00';
+
+    public string $available_time_until = '23:59';
+
     public ?float $price_per_week = null;
 
     public float $security_deposit = 0;
@@ -93,6 +103,11 @@ class Form extends Component
             $this->condition = $listing->condition->value;
             $this->purchase_year = $listing->purchase_year;
             $this->estimated_original_price = $listing->estimated_original_price ? (float) $listing->estimated_original_price : null;
+            $this->allows_daily_rentals = $listing->allows_daily_rentals;
+            $this->min_rental_duration_hours = $listing->min_rental_duration_hours;
+            $this->max_rental_duration_hours = $listing->max_rental_duration_hours;
+            $this->available_time_from = $listing->available_time_from;
+            $this->available_time_until = $listing->available_time_until;
             $this->price_per_day = (float) $listing->price_per_day;
             $this->price_per_hour = $listing->price_per_hour ? (float) $listing->price_per_hour : null;
             $this->price_per_week = $listing->price_per_week ? (float) $listing->price_per_week : null;
@@ -163,6 +178,7 @@ class Form extends Component
 
     public function save(): void
     {
+        ListingPublication::ensureVerifiedOwner(auth()->id());
         if ($this->listing?->exists) {
             $this->listing = Listing::findOrFail($this->listing->id);
             $this->authorize('update', $this->listing);
@@ -181,6 +197,12 @@ class Form extends Component
             return;
         }
 
+        if (! $this->allows_daily_rentals && ! $this->price_per_hour) {
+            $this->addError('price_per_hour', 'Set an hourly rate or allow daily rentals.');
+
+            return;
+        }
+
         $validated['owner_id'] = auth()->id();
         $validated['rejection_reason'] = null;
 
@@ -190,6 +212,7 @@ class Form extends Component
         $removedPaths = [];
         try {
             DB::transaction(function () use ($validated, $isUpdate, &$storedPaths, &$removedPaths) {
+                ListingPublication::ensureVerifiedOwner(auth()->id());
                 $listing = $isUpdate ? Listing::lockForUpdate()->findOrFail($this->listing->id) : new Listing;
                 if ($isUpdate) {
                     $this->authorize('update', $listing);

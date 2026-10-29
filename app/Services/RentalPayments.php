@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\NotificationType;
+use App\Enums\RentalRequestStatus;
 use App\Enums\RentalStatus;
 use App\Models\Listing;
 use App\Models\OfflinePaymentSetting;
@@ -22,8 +23,45 @@ use Throwable;
 
 class RentalPayments
 {
+    public static function expireReservations(): int
+    {
+        $count = 0;
+        Rental::where('status', RentalStatus::PaymentPending)->whereNotNull('payment_due_at')->where('payment_due_at', '<=', now())
+            ->eachById(function (Rental $rental) use (&$count) {
+                $count += self::expireReservation($rental) ? 1 : 0;
+            });
+
+        return $count;
+    }
+
+    public static function expireReservation(Rental $rental): bool
+    {
+        return DB::transaction(function () use ($rental) {
+            Listing::withTrashed()->whereKey($rental->listing_id)->lockForUpdate()->firstOrFail();
+            $rental = Rental::lockForUpdate()->findOrFail($rental->id);
+            if (! $rental->isPaymentPending() || ! $rental->payment_due_at || $rental->payment_due_at->isFuture()
+                || $rental->paid_at || $rental->payment()->exists() || $rental->paymentSubmissions()->where('status', 'pending')->exists()) {
+                return false;
+            }
+            $data = ['cancelled_at' => now(), 'cancellation_reason' => 'The payment reservation expired.', 'cancellation_fee' => 0];
+            $rental->update($data + ['status' => RentalStatus::Cancelled, 'cancellation_refund_amount' => 0]);
+            $rental->rentalRequest?->update($data + ['status' => RentalRequestStatus::Cancelled]);
+            $rental->cancellationRequest()->where('status', 'pending')->update(['status' => 'rejected', 'review_notes' => 'The unpaid reservation expired without a fee.', 'reviewed_at' => now()]);
+            foreach ([$rental->owner, $rental->renter] as $party) {
+                if (! $party->trashed()) {
+                    $party->notify(new TalaNotification(NotificationType::RentalCancelled->value, 'Payment reservation expired', 'Booking #'.$rental->id.' expired without a fee because payment was not submitted by the deadline.',
+                        route(($party->id === $rental->owner_id ? 'owner' : 'renter').'.rentals.show', $rental)));
+                }
+            }
+
+            return true;
+        }, 3);
+    }
+
     public static function destinationFor(Rental $rental, User $renter): ?array
     {
+        self::expireReservation($rental);
+
         return DB::transaction(function () use ($rental, $renter) {
             $rental = Rental::lockForUpdate()->findOrFail($rental->id);
             $renter = User::withTrashed()->find($renter->id);
@@ -64,12 +102,15 @@ class RentalPayments
 
     public static function submit(Rental $rental, User $renter, string $reference, UploadedFile $proof): PaymentSubmission
     {
+        self::expireReservation($rental);
         $path = null;
         try {
             return DB::transaction(function () use ($rental, $renter, $reference, $proof, &$path) {
                 $rental = Rental::lockForUpdate()->findOrFail($rental->id);
                 Gate::forUser($renter)->authorize('pay', $rental);
                 $destination = self::destinationFor($rental, $renter);
+                $rental->refresh();
+                Gate::forUser($renter)->authorize('pay', $rental);
                 $platform = OfflinePaymentSetting::current();
                 if (! $destination || ($destination['source'] === 'platform' && ! $platform?->enabled)
                     || ($destination['source'] === 'owner_wallet' && ! self::storedFile($destination['qr_path'] ?? null))) {

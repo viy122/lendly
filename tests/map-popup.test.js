@@ -149,6 +149,14 @@ test('selecting either pin navigates directly to that listing detail', () => {
     assert.equal(pins[0].tooltip.children.some((child) => child.tagName === 'img'), false);
 });
 
+test('hourly map previews and accessible pin labels show the hourly rate', () => {
+    const { component, pins } = mapComponents();
+    component('listingsMap', [{ lat: 0, lng: 0, name: 'Camera', price: '50.00', priceUnit: 'hour', url: '/listings/7' }], null, null).init();
+    assert.equal(pins[0].tooltip.children.find((child) => child.className === 'listing-map-preview__price').textContent, '₱50.00 per hour');
+    assert.equal(pins[0].options.title, 'Camera · ₱50.00 per hour');
+    assert.match(pins[0].icon.attributes['aria-label'], /per hour/);
+});
+
 test('Enter and Space select the focused listing pin while other keys keep map navigation', () => {
     const { component, pins, navigated } = mapComponents();
     const map = component('listingsMap', [

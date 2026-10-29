@@ -7,11 +7,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CartItem extends Model
 {
-    protected $fillable = ['user_id', 'listing_id', 'start_date', 'end_date', 'fulfillment_method', 'terms'];
+    protected $fillable = ['user_id', 'listing_id', 'start_date', 'end_date', 'fulfillment_method', 'terms', 'rental_unit', 'rental_hours', 'starts_at', 'ends_at'];
 
     protected function casts(): array
     {
-        return ['start_date' => 'date', 'end_date' => 'date', 'terms' => 'array'];
+        return ['starts_at' => 'datetime', 'ends_at' => 'datetime', 'rental_hours' => 'integer', 'start_date' => 'date', 'end_date' => 'date', 'terms' => 'array'];
     }
 
     public function listing(): BelongsTo
@@ -26,7 +26,9 @@ class CartItem extends Model
 
     public function rentalFee(): float
     {
-        return round((float) $this->terms['price_per_day'] * $this->rentalDays(), 2);
+        return $this->rental_unit === 'hour'
+            ? round((float) $this->terms['price_per_hour'] * $this->rental_hours, 2)
+            : round((float) $this->terms['price_per_day'] * $this->rentalDays(), 2);
     }
 
     public function commissionAmount(): float

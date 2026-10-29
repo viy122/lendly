@@ -5,15 +5,20 @@ namespace Tests\Feature\Auth;
 use App\Models\User;
 use App\Support\AccountLockout;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\GoogleProvider;
+use Livewire\Volt\Volt;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -34,11 +39,11 @@ class GoogleAuthenticationTest extends TestCase
         });
     }
 
-    public function test_redirect_stores_interface_rotates_oauth_state_and_uses_google_account_picker(): void
+    public function test_redirect_clears_old_interface_and_rotates_state_before_google_account_selection(): void
     {
-        $this->withSession(['state' => 'prior-state', 'google_oauth_interface' => 'renter']);
+        $this->withSession(['state' => 'prior-state', 'google_oauth_interface' => 'renter', 'google_oauth_pending_user' => 123]);
         $response = $this->get(route('auth.google.redirect', ['interface' => 'owner']));
-        $response->assertRedirect()->assertSessionHas('google_oauth_interface', 'owner');
+        $response->assertRedirect()->assertSessionMissing('google_oauth_interface')->assertSessionMissing('google_oauth_pending_user');
         parse_str(parse_url($response->headers->get('Location'), PHP_URL_QUERY), $query);
         $this->assertNotSame('prior-state', $query['state']);
         $this->assertSame(session('state'), $query['state']);
@@ -49,25 +54,37 @@ class GoogleAuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_invalid_interface_is_rejected_and_default_interface_is_renter(): void
+    public function test_an_interface_query_cannot_choose_a_role_before_google_login(): void
     {
-        $this->get(route('auth.google.redirect', ['interface' => 'admin']))->assertForbidden();
-        $this->get(route('auth.google.redirect'))->assertRedirect()->assertSessionHas('google_oauth_interface', 'renter');
+        $this->get(route('auth.google.redirect', ['interface' => 'admin']))->assertRedirect()->assertSessionMissing('google_oauth_interface');
+        $this->get(route('auth.google.redirect'))->assertRedirect()->assertSessionMissing('google_oauth_interface');
         $this->assertGuest();
     }
 
-    public function test_new_verified_gmail_member_is_created_and_sent_to_identity_after_selected_interface(): void
+    public function test_registration_can_request_google_permissions_without_additional_scopes(): void
+    {
+        $response = $this->get(route('auth.google.redirect', ['prompt' => 'consent']))->assertRedirect();
+        parse_str(parse_url($response->headers->get('Location'), PHP_URL_QUERY), $query);
+
+        $this->assertSame('select_account consent', $query['prompt']);
+        $this->assertSame(['openid', 'profile', 'email'], explode(' ', $query['scope']));
+        $this->assertSame(session('state'), $query['state']);
+        $this->assertGuest();
+    }
+
+    public function test_new_google_member_chooses_an_interface_only_after_google_sign_in(): void
     {
         $state = $this->begin('owner');
         $session = session()->getId();
-        $this->withSession(['url.intended' => '/admin/dashboard']);
+        $this->withSession(['url.intended' => '/admin/dashboard', 'active_interface' => 'owner']);
         $this->profile();
 
-        $this->finishOAuth($state)->assertRedirect(route('identity.verify'))
-            ->assertSessionHas('active_interface', 'owner')->assertSessionMissing('url.intended')
+        $this->finishOAuth($state)->assertRedirect(url('/auth/google/interface'))
+            ->assertSessionMissing('active_interface')->assertSessionMissing('url.intended')
             ->assertSessionMissing('google_oauth_interface')->assertSessionMissing('state');
 
         $user = User::sole();
+        $this->assertSame($user->id, session('google_oauth_pending_user'));
         $this->assertAuthenticatedAs($user);
         $this->assertSame('google-123', $user->google_id);
         $this->assertSame('testmember@gmail.com', $user->email);
@@ -81,6 +98,12 @@ class GoogleAuthenticationTest extends TestCase
         $this->assertArrayNotHasKey('google_id', $user->toArray());
         $this->assertStringNotContainsString('synthetic-google-token', json_encode($user->getAttributes()));
         $this->assertDatabaseCount('notifications', 0);
+        $this->get('/auth/google/interface')->assertOk()->assertSee('How would you like to use Lendly?');
+        // Livewire's test harness bypasses session middleware after the full-page request.
+        $this->startSession();
+        Volt::test('pages.auth.google-interface')->call('chooseInterface', 'owner')
+            ->assertRedirect(route('identity.verify'))->assertSessionHas('active_interface', 'owner')
+            ->assertSessionMissing('google_oauth_pending_user');
     }
 
     public function test_verified_existing_gmail_alias_links_without_changing_profile_password_or_identity(): void
@@ -91,7 +114,9 @@ class GoogleAuthenticationTest extends TestCase
         $state = $this->begin('owner');
         $this->profile();
 
-        $this->finishOAuth($state)->assertRedirect(route('owner.dashboard'));
+        $this->finishOAuth($state)->assertRedirect(url('/auth/google/interface'));
+        Volt::test('pages.auth.google-interface')->call('chooseInterface', 'owner')
+            ->assertRedirect(route('owner.dashboard'));
 
         $this->assertAuthenticatedAs($user);
         $this->assertSame('google-123', $user->fresh()->google_id);
@@ -101,6 +126,101 @@ class GoogleAuthenticationTest extends TestCase
         $this->assertDatabaseCount('users', 1);
     }
 
+    public function test_verified_workspace_account_can_sign_up_and_sign_in_again(): void
+    {
+        $profile = ['email' => 'Student-123@University.example.edu', 'hd' => 'university.example.edu'];
+        $state = $this->begin();
+        $this->profile($profile);
+
+        $this->finishOAuth($state)->assertRedirect(url('/auth/google/interface'));
+        $user = User::sole();
+        $this->assertAuthenticatedAs($user);
+        $this->assertSame('student-123@university.example.edu', $user->email);
+        $this->assertSame('google-123', $user->google_id);
+        $this->assertTrue($user->hasVerifiedEmail());
+        $this->assertFalse($user->hasVerifiedIdentity());
+        Volt::test('pages.auth.google-interface')->call('chooseInterface', 'renter')
+            ->assertRedirect(route('identity.verify'));
+
+        auth()->logout();
+        $state = $this->begin();
+        $this->profile($profile);
+        $this->finishOAuth($state)->assertRedirect(url('/auth/google/interface'));
+        $this->assertAuthenticatedAs($user);
+        $this->assertDatabaseCount('users', 1);
+    }
+
+    public function test_verified_existing_workspace_account_links_without_merging_distinct_addresses(): void
+    {
+        $user = User::factory()->create(['email' => 'Work.Member+rentals@Company.example.com', 'name' => 'Saved Name']);
+        $other = User::factory()->create(['email' => 'workmember@company.example.com']);
+        $before = $user->getAttributes();
+        $state = $this->begin();
+        $this->profile(['email' => 'work.member+rentals@company.example.com', 'hd' => 'company.example.com']);
+
+        $this->finishOAuth($state)->assertRedirect(url('/auth/google/interface'));
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertSame('google-123', $user->fresh()->google_id);
+        foreach (['name', 'email', 'password', 'email_verified_at'] as $field) {
+            $this->assertSame($before[$field], $user->fresh()->getAttributes()[$field]);
+        }
+        $this->assertNull($other->fresh()->google_id);
+        $this->assertDatabaseCount('users', 2);
+    }
+
+    public function test_unverified_google_email_cannot_confirm_an_existing_account(): void
+    {
+        $user = User::factory()->unverified()->create(['email' => 'student@university.example.edu']);
+        $before = $user->fresh()->getAttributes();
+        $state = $this->begin();
+        $this->profile(['email' => $user->email, 'hd' => 'university.example.edu', 'email_verified' => false]);
+
+        $this->finishOAuth($state)->assertRedirect(route('login'))->assertSessionHasErrors('google');
+
+        $this->assertGuest();
+        $this->assertSame($before, $user->fresh()->getAttributes());
+    }
+
+    #[DataProvider('googleConfirmedEmails')]
+    public function test_google_confirmation_reuses_the_account_and_revokes_unconfirmed_credentials(string $email, ?string $hostedDomain): void
+    {
+        config(['session.driver' => 'database']);
+        $user = User::factory()->unverified()->create(['email' => $email, 'name' => 'Saved Name']);
+        $password = $user->getRawOriginal('password');
+        $rememberToken = $user->remember_token;
+        DB::table('password_reset_tokens')->insert(['email' => $email, 'token' => Hash::make('123456'), 'created_at' => now()]);
+        DB::table('sessions')->insert([
+            'id' => 'prior-unverified-session', 'user_id' => $user->id,
+            'payload' => base64_encode(serialize([])), 'last_activity' => now()->timestamp,
+        ]);
+        $state = $this->begin();
+        $this->profile(['email' => $email, 'hd' => $hostedDomain]);
+
+        $this->finishOAuth($state)->assertRedirect(url('/auth/google/interface'));
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertTrue($user->fresh()->hasVerifiedEmail());
+        $this->assertSame('google-123', $user->fresh()->google_id);
+        $this->assertSame('Saved Name', $user->fresh()->name);
+        $this->assertNotSame($password, $user->fresh()->getRawOriginal('password'));
+        $this->assertFalse(Hash::check('password', $user->fresh()->password));
+        $this->assertNotSame($rememberToken, $user->fresh()->remember_token);
+        $this->assertDatabaseMissing('password_reset_tokens', ['email' => $email]);
+        $this->assertDatabaseMissing('sessions', ['id' => 'prior-unverified-session']);
+        $this->assertFalse($user->fresh()->hasVerifiedIdentity());
+        $this->assertDatabaseCount('users', 1);
+        $this->get('/auth/google/interface')->assertOk()->assertSee('Google sign-in complete.');
+    }
+
+    public static function googleConfirmedEmails(): array
+    {
+        return [
+            ['member@gmail.com', null],
+            ['student-123@university.example.edu', 'university.example.edu'],
+        ];
+    }
+
     public function test_returning_google_member_uses_selected_interface_and_keeps_saved_profile(): void
     {
         $user = User::factory()->create(['email' => 'testmember@gmail.com', 'name' => 'Saved Name']);
@@ -108,14 +228,16 @@ class GoogleAuthenticationTest extends TestCase
         $state = $this->begin();
         $this->profile();
 
-        $this->finishOAuth($state)->assertRedirect(route('renter.dashboard'));
+        $this->finishOAuth($state)->assertRedirect(url('/auth/google/interface'));
+        Volt::test('pages.auth.google-interface')->call('chooseInterface', 'renter')
+            ->assertRedirect(route('renter.dashboard'));
 
         $this->assertAuthenticatedAs($user);
         $this->assertSame('Saved Name', $user->fresh()->name);
     }
 
     #[DataProvider('invalidProfiles')]
-    public function test_unverified_non_gmail_and_malformed_remote_profiles_cannot_authenticate(array $changes): void
+    public function test_unverified_unmanaged_and_malformed_remote_profiles_cannot_authenticate(array $changes): void
     {
         $state = $this->begin();
         $this->profile($changes);
@@ -135,15 +257,21 @@ class GoogleAuthenticationTest extends TestCase
             [['email' => 'invalid @gmail.com']], [['email' => null]], [['email' => ['testmember@gmail.com']]],
             [['sub' => '']], [['sub' => str_repeat('g', 256)]], [['sub' => ['google-123']]],
             [['name' => str_repeat('n', 256)]], [['name' => ['Google Member']]],
+            [['email' => 'member@university.example.edu', 'hd' => null]],
+            [['email' => 'member@university.example.edu', 'hd' => '']],
+            [['email' => 'member@university.example.edu', 'hd' => '   ']],
+            [['email' => 'member@university.example.edu', 'hd' => ['university.example.edu']]],
+            [['email' => 'member@university.example.edu', 'hd' => true]],
+            [['email' => 'member@university.example.edu', 'hd' => 'university.example.edu', 'email_verified' => false]],
+            [['email' => 'invalid @university.example.edu', 'hd' => 'university.example.edu']],
         ];
     }
 
     #[DataProvider('blockedAccounts')]
-    public function test_unverified_suspended_admin_and_conflicting_existing_accounts_cannot_be_merged(string $kind): void
+    public function test_suspended_admin_and_conflicting_existing_accounts_cannot_be_merged(string $kind): void
     {
         $user = User::factory()->create(['email' => 'testmember@gmail.com']);
         match ($kind) {
-            'unverified' => $user->forceFill(['email_verified_at' => null])->save(),
             'suspended' => $user->update(['status' => 'suspended']),
             'admin' => $user->update(['role' => 'admin']),
             'different Google identity' => $user->forceFill(['google_id' => 'other-google-id'])->save(),
@@ -154,16 +282,12 @@ class GoogleAuthenticationTest extends TestCase
         $this->finishOAuth($state)->assertRedirect(route('login'))->assertSessionHasErrors('google');
 
         $this->assertGuest();
-        if ($kind === 'unverified') {
-            $this->assertNull($user->fresh()->email_verified_at);
-            $this->assertNull($user->fresh()->google_id);
-        }
         $this->assertDatabaseCount('users', 1);
     }
 
     public static function blockedAccounts(): array
     {
-        return array_map(fn ($kind) => [$kind], ['unverified', 'suspended', 'admin', 'different Google identity']);
+        return array_map(fn ($kind) => [$kind], ['suspended', 'admin', 'different Google identity']);
     }
 
     public function test_google_identity_cannot_authenticate_an_account_whose_email_changed(): void
@@ -187,7 +311,7 @@ class GoogleAuthenticationTest extends TestCase
         $state = $this->begin();
         $this->profile();
 
-        $this->finishOAuth($state)->assertRedirect(route('identity.verify'));
+        $this->finishOAuth($state)->assertRedirect(url('/auth/google/interface'));
 
         $this->assertAuthenticated();
         $this->assertNotSame($closed->id, auth()->id());
@@ -286,10 +410,10 @@ class GoogleAuthenticationTest extends TestCase
         $this->assertNull($user->fresh()->google_id);
     }
 
-    public function test_callback_requires_the_saved_interface_even_when_google_state_is_valid(): void
+    public function test_callback_requires_google_state_before_offering_interface_selection(): void
     {
         $state = $this->begin();
-        session()->forget('google_oauth_interface');
+        session()->forget('state');
 
         $this->finishOAuth($state)->assertRedirect(route('login'))->assertSessionHasErrors('google')
             ->assertSessionMissing('state');
@@ -307,7 +431,7 @@ class GoogleAuthenticationTest extends TestCase
         $this->finishOAuth('wrong-state')->assertRedirect(route('login'))->assertSessionHasErrors('google');
         $state = $this->begin();
         $this->profile();
-        $this->finishOAuth($state)->assertRedirect(route('identity.verify'));
+        $this->finishOAuth($state)->assertRedirect(url('/auth/google/interface'));
         auth()->logout();
         $this->finishOAuth($state)->assertRedirect(route('login'))->assertSessionHasErrors('google');
         $this->assertGuest();
@@ -318,6 +442,9 @@ class GoogleAuthenticationTest extends TestCase
     {
         $state = $this->begin();
         $this->google->append(new Response(400, [], '{"error":"sensitive-token-payload"}'));
+        Log::shouldReceive('warning')->once()->with('Google sign-in failed.', [
+            'stage' => 'profile', 'exception_type' => ClientException::class, 'exception_code' => 400,
+        ]);
 
         $response = $this->finishOAuth($state)->assertRedirect(route('login'))->assertSessionHasErrors('google');
 

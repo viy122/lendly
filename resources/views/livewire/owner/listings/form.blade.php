@@ -5,6 +5,8 @@
         :subtitle="$listing?->exists ? 'Save your changes after checking the required details.' : 'Complete the required details to publish your item immediately.'"
     />
 
+    <x-identity-review-notice />
+    <x-input-error :messages="$errors->get('identity')" class="mx-4 mt-4" role="alert" />
     <form wire:submit="save" class="flex min-h-0 flex-1 flex-col">
         <div class="listing-form-content min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6 sm:px-6 lg:px-8" role="region" aria-label="Listing details" tabindex="0">
             <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -210,9 +212,17 @@
                                 <x-input-error :messages="$errors->get('security_deposit')" class="mt-2" />
                             </div>
                             <div>
-                                <x-input-label for="price_per_hour" value="Price per hour (optional)" />
+                                <x-input-label for="price_per_hour" value="Price per hour (optional — enables hourly rental)" />
                                 <x-text-input wire:model="price_per_hour" id="price_per_hour" type="number" step="0.01" class="mt-1 block w-full" />
                                 <x-input-error :messages="$errors->get('price_per_hour')" class="mt-2" />
+                                <label class="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" wire:model="allows_daily_rentals" class="rounded border-slate-300">Also allow daily rentals</label>
+                                <x-input-error :messages="$errors->get('allows_daily_rentals')" />
+                                <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                                    <div><x-input-label for="min-rental-hours" value="Minimum hours" /><x-text-input id="min-rental-hours" type="number" min="1" max="8760" wire:model="min_rental_duration_hours" class="mt-1 w-full" /><x-input-error :messages="$errors->get('min_rental_duration_hours')" /></div>
+                                    <div><x-input-label for="max-rental-hours" value="Maximum hours" /><x-text-input id="max-rental-hours" type="number" min="1" max="8760" wire:model="max_rental_duration_hours" class="mt-1 w-full" /><x-input-error :messages="$errors->get('max_rental_duration_hours')" /></div>
+                                    <div><x-input-label for="available-time-from" value="Available from (Philippine time)" /><x-text-input id="available-time-from" type="time" wire:model="available_time_from" class="mt-1 w-full" /><x-input-error :messages="$errors->get('available_time_from')" /></div>
+                                    <div><x-input-label for="available-time-until" value="Available until (Philippine time)" /><x-text-input id="available-time-until" type="time" wire:model="available_time_until" class="mt-1 w-full" /><x-input-error :messages="$errors->get('available_time_until')" /></div>
+                                </div>
                             </div>
                             <div>
                                 <x-input-label for="price_per_week" value="Price per week (optional)" />

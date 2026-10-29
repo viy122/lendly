@@ -4,7 +4,10 @@ namespace App\Livewire\Admin\Listings;
 
 use App\Enums\ListingStatus;
 use App\Models\Listing;
+use App\Models\User;
+use App\Services\ListingPublication;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -27,9 +30,15 @@ class Index extends Component
 
     public function approve(int $listingId): void
     {
-        $listing = Listing::findOrFail($listingId);
-
-        $listing->update(['status' => ListingStatus::Published, 'rejection_reason' => null]);
+        $admin = User::find(auth()->id());
+        abort_unless($admin && $admin->isAdmin() && ! $admin->isSuspended() && $admin->hasVerifiedEmail(), 403);
+        DB::transaction(function () use ($listingId) {
+            $snapshot = Listing::findOrFail($listingId);
+            ListingPublication::ensureVerifiedOwner($snapshot->owner_id);
+            $listing = Listing::lockForUpdate()->findOrFail($listingId);
+            abort_unless($listing->owner_id === $snapshot->owner_id, 409);
+            $listing->update(['status' => ListingStatus::Published, 'rejection_reason' => null]);
+        });
     }
 
     public function startRejecting(int $listingId): void

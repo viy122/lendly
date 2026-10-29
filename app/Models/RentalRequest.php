@@ -24,6 +24,7 @@ class RentalRequest extends Model
         'start_date',
         'end_date',
         'rental_days',
+        'rental_unit', 'rental_hours', 'starts_at', 'ends_at',
         'fulfillment_method',
         'rental_fee',
         'commission_rate',
@@ -43,6 +44,7 @@ class RentalRequest extends Model
     protected function casts(): array
     {
         return [
+            'starts_at' => 'datetime', 'ends_at' => 'datetime', 'rental_hours' => 'integer',
             'start_date' => 'date',
             'end_date' => 'date',
             'fulfillment_method' => FulfillmentMethod::class,

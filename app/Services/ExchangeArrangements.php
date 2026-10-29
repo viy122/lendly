@@ -37,7 +37,7 @@ class ExchangeArrangements
             if ($time->isPast() || $time->equalTo(now())) {
                 throw ValidationException::withMessages(['exchange_time' => 'Choose a future pickup or delivery time.']);
             }
-            if ($time->toDateString() < $rental->start_date->toDateString() || $time->toDateString() > $rental->end_date->toDateString()) {
+            if (($rental->rental_unit === 'hour' && ($time->utc()->lt($rental->starts_at) || $time->utc()->gte($rental->ends_at))) || $time->toDateString() < $rental->start_date->toDateString() || $time->toDateString() > $rental->end_date->toDateString()) {
                 throw ValidationException::withMessages(['exchange_time' => 'Choose a pickup or delivery time within the rental period.']);
             }
 

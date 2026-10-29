@@ -49,13 +49,14 @@
     <div class="w-full px-4 py-6 sm:px-6 lg:px-8">
         <div x-ref="searchPanel" :style="{ top: (headerHeight + 16) + 'px' }"
              class="sticky z-10 rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_12px_36px_rgba(15,45,95,0.14)] backdrop-blur-xl">
-            <div class="flex flex-col gap-3 lg:flex-row">
-                <div class="relative min-w-0 flex-1">
+            <div class="flex flex-col gap-3 lg:flex-row lg:flex-wrap">
+                <div class="relative min-w-0 flex-1 lg:min-w-64">
                     <x-icon name="search" class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                     <input type="text" wire:model.live.debounce.400ms="keyword" placeholder="Search for tools, cameras, tents..." aria-label="Search items"
                            class="w-full rounded-lg border-slate-300 py-3 pl-11 pr-4 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                 </div>
 
+                <select wire:model.live="rentalUnit" aria-label="Rental pricing unit" class="rounded-lg border-slate-300 text-sm lg:w-40"><option value="day">Rent by day</option><option value="hour">Rent by hour</option></select>
                 <div class="relative min-w-0 lg:w-56">
                     <x-icon name="map-pin" class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                     <input type="text" wire:model.live.debounce.400ms="location" placeholder="City or area" aria-label="Filter by city or area"
@@ -105,9 +106,9 @@
                 </select>
 
                 <div class="flex min-w-0 items-center gap-2">
-                    <input type="number" wire:model.live.debounce.400ms="minPrice" placeholder="Min ₱/day" aria-label="Minimum price per day" class="min-w-0 w-full rounded-lg border-slate-300 px-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <input type="number" wire:model.live.debounce.400ms="minPrice" placeholder="Min ₱/{{ $rentalUnit === 'hour' ? 'hour' : 'day' }}" aria-label="Minimum price per selected rental unit" class="min-w-0 w-full rounded-lg border-slate-300 px-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     <span class="text-slate-400">–</span>
-                    <input type="number" wire:model.live.debounce.400ms="maxPrice" placeholder="Max ₱/day" aria-label="Maximum price per day" class="min-w-0 w-full rounded-lg border-slate-300 px-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <input type="number" wire:model.live.debounce.400ms="maxPrice" placeholder="Max ₱/{{ $rentalUnit === 'hour' ? 'hour' : 'day' }}" aria-label="Maximum price per selected rental unit" class="min-w-0 w-full rounded-lg border-slate-300 px-2 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     <button type="button" wire:click="resetFilters" aria-label="Clear filters" title="Clear filters"
                             class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-500 shadow-sm hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                         <x-icon name="x-mark" class="h-4 w-4" aria-hidden="true" />
@@ -178,7 +179,7 @@
                                 <div class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/40 to-transparent"></div>
                                 <x-category-badge :category="$listing->category" class="absolute left-3 top-3 shadow-sm" />
                                 <span class="absolute bottom-3 right-3 rounded-full bg-white/95 px-3 py-1 text-sm font-bold text-slate-900 shadow-sm">
-                                    ₱{{ number_format($listing->price_per_day, 0) }}<span class="text-xs font-medium text-slate-400">/day</span>
+                                    ₱{{ number_format($rentalUnit === 'hour' ? $listing->price_per_hour : $listing->price_per_day, 0) }}<span class="text-xs font-medium text-slate-400">/{{ $rentalUnit === 'hour' ? 'hour' : 'day' }}</span>
                                 </span>
                             </div>
                             <div class="p-4">

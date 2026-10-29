@@ -4,11 +4,21 @@ namespace App\Services;
 
 use App\Enums\ListingCondition;
 use App\Models\Listing;
+use App\Models\User;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ListingPublication
 {
+    public static function ensureVerifiedOwner(int $ownerId): void
+    {
+        $owner = User::whereKey($ownerId)->lockForUpdate()->first();
+        if (! $owner?->hasVerifiedIdentity()) {
+            throw ValidationException::withMessages(['identity' => 'Complete your ID review before creating or publishing a listing.']);
+        }
+    }
+
     public static function rules(): array
     {
         return [
@@ -22,6 +32,11 @@ class ListingPublication
             'purchase_year' => ['nullable', 'integer', 'min:1970', 'max:'.date('Y')],
             'estimated_original_price' => ['nullable', 'numeric', 'min:0'],
             'price_per_day' => ['required', 'numeric', 'gt:0'],
+            'allows_daily_rentals' => ['boolean'],
+            'min_rental_duration_hours' => ['sometimes', 'required', 'integer', 'min:1', 'max:8760'],
+            'max_rental_duration_hours' => ['sometimes', 'required', 'integer', 'gte:min_rental_duration_hours', 'max:8760'],
+            'available_time_from' => ['sometimes', 'required', 'date_format:H:i'],
+            'available_time_until' => ['sometimes', 'required', 'date_format:H:i', 'after:available_time_from'],
             'price_per_hour' => ['nullable', 'numeric', 'gt:0'],
             'price_per_week' => ['nullable', 'numeric', 'gt:0'],
             'security_deposit' => ['required', 'numeric', 'min:0'],
@@ -55,6 +70,7 @@ class ListingPublication
 
     public static function validate(Listing $listing): void
     {
+        self::ensureVerifiedOwner($listing->owner_id);
         $data = $listing->getAttributes();
         $data['available_from'] = $listing->available_from?->toDateString();
         $data['available_until'] = $listing->available_until?->toDateString();

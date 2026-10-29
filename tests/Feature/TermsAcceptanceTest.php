@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Notifications\TalaNotification;
 use App\Services\CancellationPolicy;
 use App\Services\RentalAgreement;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
@@ -29,8 +30,8 @@ class TermsAcceptanceTest extends TestCase
 
     private function requestFixture(bool $approve = true): array
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $category = Category::create(['name' => 'Tools', 'slug' => 'tools']);
         $listing = Listing::create([
             'owner_id' => $owner->id,
@@ -210,7 +211,7 @@ class TermsAcceptanceTest extends TestCase
 
         foreach ([$owner, $renter] as $user) {
             Livewire::actingAs($user)->test(Agreement::class, ['rentalRequest' => $request])
-                ->assertSee('Cancellation policy and fees')->assertSee('at least 48 hours')
+                ->assertSee('Cancellation policy and fees')->assertSee('at least 24 hours')
                 ->assertSee('20% of the rental fee')->assertSee('40.00')
                 ->assertSee('Clean the item before returning it.')->assertDontSee('A new rule after approval.')
                 ->assertSee('720.00')->assertSee('Return, damages and security deposit');
@@ -322,7 +323,7 @@ class TermsAcceptanceTest extends TestCase
     public function test_unrelated_users_cannot_view_or_accept_an_agreement(): void
     {
         [, , , $request] = $this->requestFixture();
-        foreach ([User::factory()->owner()->create(), User::factory()->renter()->create(), User::factory()->admin()->create()] as $user) {
+        foreach ([User::factory()->identityVerified()->owner()->create(), User::factory()->identityVerified()->renter()->create(), User::factory()->admin()->create()] as $user) {
             Livewire::actingAs($user)->test(Agreement::class, ['rentalRequest' => $request])->assertForbidden();
         }
         $this->assertNull($request->fresh()->owner_terms_accepted_at);
@@ -392,13 +393,13 @@ class TermsAcceptanceTest extends TestCase
         $this->assertSame(0, Rental::count());
     }
 
-    public function test_cancellation_policy_matches_the_saved_agreement_at_the_48_hour_boundary(): void
+    public function test_cancellation_policy_matches_the_saved_agreement_at_the_chargeable_window_boundary(): void
     {
         [$owner, $renter, , $request] = $this->requestFixture();
         $this->acceptAs($owner, $request);
         $this->acceptAs($renter, $request);
         $booking = $request->fresh()->rental;
-        $this->travelTo($booking->start_date->copy()->subHours(48));
+        $this->travelTo(Carbon::parse($booking->rentalRequest->agreement_terms['cancellation_reference_at'])->subHours(24));
         $this->assertSame(0.0, CancellationPolicy::evaluate($booking)['fee']);
         $this->travel(1)->seconds();
         $this->assertSame(40.0, CancellationPolicy::evaluate($booking)['fee']);

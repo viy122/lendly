@@ -47,11 +47,14 @@ class User extends Authenticatable implements MustVerifyEmail
                 $user->forceFill($clearedIdentity);
                 IdentityVerificationAttempt::where('user_id', $user->id)
                     ->whereIn('status', ['pending', 'processing'])->update(['status' => 'cancelled']);
+                IdentitySubmission::cancelPending($user->id);
             }
         });
 
         static::deleting(function (User $user) {
             if ($user->isForceDeleting()) {
+                IdentitySubmission::cancelPending($user->id);
+
                 return;
             }
 
@@ -200,7 +203,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function hasVerifiedIdentity(): bool
     {
-        return $this->identity_verified_at !== null && $this->identity_verification_environment === 'production'
+        return $this->identity_verified_at !== null && in_array($this->identity_verification_environment, ['production', 'manual'], true)
             && $this->hasVerifiedEmail() && ! $this->isAdmin() && ! $this->isSuspended() && ! $this->trashed();
     }
 

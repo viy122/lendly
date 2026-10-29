@@ -58,8 +58,8 @@ class NotificationsAndChatTest extends TestCase
 
     public function test_both_parties_are_notified_when_a_rental_request_is_pending(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         Livewire::actingAs($renter)
@@ -80,8 +80,8 @@ class NotificationsAndChatTest extends TestCase
 
     public function test_both_parties_are_notified_when_request_is_approved(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         Livewire::actingAs($renter)
@@ -113,8 +113,8 @@ class NotificationsAndChatTest extends TestCase
 
     public function test_both_parties_are_notified_when_request_is_declined(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         Livewire::actingAs($renter)
@@ -150,9 +150,9 @@ class NotificationsAndChatTest extends TestCase
 
     public function test_automatic_overlap_decline_notifies_both_parties_and_leaves_other_requests_pending(): void
     {
-        $owner = User::factory()->owner()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
         $listing = $this->publishedListing($owner);
-        $renters = User::factory()->renter()->count(3)->create();
+        $renters = User::factory()->identityVerified()->renter()->count(3)->create();
         $requests = [];
 
         foreach ($renters as $index => $renter) {
@@ -183,9 +183,9 @@ class NotificationsAndChatTest extends TestCase
 
     public function test_invalid_or_unauthorized_decisions_do_not_send_status_notifications(): void
     {
-        $owner = User::factory()->owner()->create();
-        $stranger = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $stranger = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         Livewire::actingAs($renter)->test(Create::class, ['listing' => $listing])->set('accept_terms', true)
@@ -208,8 +208,8 @@ class NotificationsAndChatTest extends TestCase
 
     public function test_both_parties_notified_when_pickup_confirmed_by_both(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         $request = RentalRequest::create([
@@ -262,8 +262,8 @@ class NotificationsAndChatTest extends TestCase
 
     public function test_renter_and_owner_can_message_each_other_on_a_rental_request(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         $request = RentalRequest::create([
@@ -302,8 +302,8 @@ class NotificationsAndChatTest extends TestCase
     // FR-32: recipient is notified of each new incoming message, not just left to notice an unread badge.
     public function test_recipient_is_notified_of_a_new_message(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         $request = RentalRequest::create([
@@ -333,8 +333,8 @@ class NotificationsAndChatTest extends TestCase
 
     public function test_viewing_the_thread_marks_received_messages_as_read(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         $request = RentalRequest::create([
@@ -367,9 +367,9 @@ class NotificationsAndChatTest extends TestCase
 
     public function test_unrelated_user_cannot_view_or_send_messages_on_a_rental_request(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
-        $stranger = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
+        $stranger = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         $request = RentalRequest::create([
@@ -393,8 +393,8 @@ class NotificationsAndChatTest extends TestCase
 
     public function test_overdue_command_notifies_both_parties(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         $request = RentalRequest::create([

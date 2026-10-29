@@ -2,7 +2,7 @@
 
 For the prepared **Continue with Google** option, see [Google sign-in setup](google-sign-in.md). Email/password registration remains available.
 
-New accounts require a valid `@gmail.com` address and must open the verification link before renting, listing items, or entering a dashboard. Gmail dots, plus tags, letter case, and existing Googlemail aliases refer to the same mailbox for duplicate checks. Existing account records are preserved. Email verification proves access to a mailbox; this does not verify a person's identity or prevent someone from using multiple Gmail accounts.
+Email/password registration requires a valid `@gmail.com` address and opening the verification link before renting, listing items, or entering a dashboard. Google sign-in also supports verified, managed school/work Google Workspace accounts; see [Google sign-in setup](google-sign-in.md). Gmail dots, plus tags, letter case, and existing Googlemail aliases refer to the same mailbox for duplicate checks. Existing account records are preserved. Email verification proves access to a mailbox; this does not verify a person's identity or prevent someone from using multiple Google accounts.
 
 Passwords require at least 8 characters, an uppercase letter, a lowercase letter, a number, and a special character. Signup, password reset, and profile password changes share the server rule. New password fields display a Weak/Medium/Strong meter and a checklist. Password inputs block copy, cut, paste, and dropping text in the browser; browser controls can be bypassed, so server validation remains mandatory.
 

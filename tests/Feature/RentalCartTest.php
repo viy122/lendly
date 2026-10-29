@@ -28,7 +28,7 @@ class RentalCartTest extends TestCase
 
     private function listing(?User $owner = null, array $overrides = []): Listing
     {
-        $owner ??= User::factory()->create();
+        $owner ??= User::factory()->identityVerified()->create();
         $category = Category::firstOrCreate(['slug' => 'cart-tools'], ['name' => 'Tools']);
 
         return Listing::create([
@@ -61,7 +61,7 @@ class RentalCartTest extends TestCase
 
     public function test_save_is_one_draft_per_listing_with_server_quotes_and_no_requests_holds_or_notifications(): void
     {
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         $listing = $this->listing();
         $item = RentalCart::save($renter, $listing->id, $this->details() + ['rental_fee' => 1, 'total_amount' => 1, 'owner_id' => $renter->id]);
         $same = RentalCart::save($renter, $listing->id, $this->details(7, 8));
@@ -79,11 +79,11 @@ class RentalCartTest extends TestCase
 
     public function test_update_requotes_dates_and_remove_only_operates_on_the_passed_renters_draft(): void
     {
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         $item = RentalCart::save($renter, $this->listing()->id, $this->details());
         $updated = RentalCart::update($renter, $item->id, $this->details(6, 6) + ['fulfillment_method' => 'delivery']);
         $this->assertSame(610.0, $updated->totalAmount());
-        $other = User::factory()->create();
+        $other = User::factory()->identityVerified()->create();
         foreach ([fn () => RentalCart::update($other, $item->id, $this->details()), fn () => RentalCart::remove($other, $item->id)] as $action) {
             try {
                 $action();
@@ -98,7 +98,7 @@ class RentalCartTest extends TestCase
 
     public function test_a_full_cart_can_update_an_existing_draft_but_cannot_add_another_listing(): void
     {
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         $listing = $this->listing();
         $first = RentalCart::save($renter, $listing->id, $this->details());
         for ($index = 1; $index < 50; $index++) {
@@ -113,7 +113,7 @@ class RentalCartTest extends TestCase
 
     public function test_checkout_consumes_only_selected_rows_and_retries_cannot_submit_them_again(): void
     {
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         $first = RentalCart::save($renter, $this->listing()->id, $this->details());
         $second = RentalCart::save($renter, $this->listing()->id, $this->details(8, 9));
         $ids = RentalCart::checkout($renter, [$first->id], true);
@@ -132,9 +132,9 @@ class RentalCartTest extends TestCase
 
     public function test_malformed_or_foreign_selection_and_missing_acceptance_cannot_submit(): void
     {
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         $item = RentalCart::save($renter, $this->listing()->id, $this->details());
-        $foreign = RentalCart::save(User::factory()->create(), $this->listing()->id, $this->details());
+        $foreign = RentalCart::save(User::factory()->identityVerified()->create(), $this->listing()->id, $this->details());
         foreach ([[], [$item->id, $item->id], [$item->id, $foreign->id], ['bad'], [true], [[$item->id]], range(1, 51)] as $selection) {
             $this->validation(fn () => RentalCart::checkout($renter, $selection, true), 'selected');
         }
@@ -145,7 +145,7 @@ class RentalCartTest extends TestCase
 
     public function test_changed_prices_rules_and_commission_refresh_quotes_without_sending_any_requests(): void
     {
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         $first = RentalCart::save($renter, $this->listing()->id, $this->details());
         $second = RentalCart::save($renter, $this->listing()->id, $this->details());
         $first->listing->update(['price_per_day' => 200, 'rental_rules' => 'Updated rule']);
@@ -161,7 +161,7 @@ class RentalCartTest extends TestCase
 
     public function test_one_unavailable_selected_listing_aborts_the_whole_checkout(): void
     {
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         $first = RentalCart::save($renter, $this->listing()->id, $this->details());
         $second = RentalCart::save($renter, $this->listing()->id, $this->details());
         $second->listing->delete();
@@ -173,11 +173,11 @@ class RentalCartTest extends TestCase
 
     public function test_outdated_dates_and_newly_approved_overlaps_preserve_all_cart_drafts(): void
     {
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         $first = RentalCart::save($renter, $this->listing()->id, $this->details());
         $second = RentalCart::save($renter, $this->listing()->id, $this->details());
         RentalRequest::create([
-            'listing_id' => $second->listing_id, 'renter_id' => User::factory()->create()->id,
+            'listing_id' => $second->listing_id, 'renter_id' => User::factory()->identityVerified()->create()->id,
             ...$this->details(), 'rental_days' => 3, 'rental_fee' => 300, 'commission_rate' => 10,
             'commission_amount' => 30, 'security_deposit' => 500, 'total_amount' => 830, 'status' => 'approved',
         ]);
@@ -193,7 +193,7 @@ class RentalCartTest extends TestCase
     public function test_component_rechecks_member_eligibility_for_every_selection_and_mutation(): void
     {
         foreach (['selectAll', 'selectOwner', 'remove', 'updateItem', 'checkout'] as $action) {
-            $renter = User::factory()->create();
+            $renter = User::factory()->identityVerified()->create();
             $item = RentalCart::save($renter, $this->listing()->id, $this->details());
             $component = Livewire::actingAs($renter)->test(Index::class);
             $renter->update(['status' => 'suspended']);
@@ -201,12 +201,12 @@ class RentalCartTest extends TestCase
             $this->assertDatabaseHas('cart_items', ['id' => $item->id]);
         }
         session(['active_interface' => 'owner']);
-        Livewire::actingAs(User::factory()->create())->test(Index::class)->assertForbidden();
+        Livewire::actingAs(User::factory()->identityVerified()->create())->test(Index::class)->assertForbidden();
     }
 
     public function test_late_submission_failure_rolls_back_every_request_and_cart_consumption(): void
     {
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         $first = RentalCart::save($renter, $this->listing()->id, $this->details());
         $second = RentalCart::save($renter, $this->listing()->id, $this->details());
         $created = 0;
@@ -231,7 +231,7 @@ class RentalCartTest extends TestCase
     public function test_stale_ineligible_members_and_owner_interface_cannot_use_cart_actions(): void
     {
         foreach (['suspended', 'deleted', 'unverified', 'admin', 'owner_interface'] as $change) {
-            $renter = User::factory()->create();
+            $renter = User::factory()->identityVerified()->create();
             $item = RentalCart::save($renter, $this->listing()->id, $this->details());
             $stale = $renter->fresh();
             match ($change) {
@@ -255,12 +255,12 @@ class RentalCartTest extends TestCase
 
     public function test_component_groups_selects_and_edits_only_own_items_and_resets_acceptance(): void
     {
-        $renter = User::factory()->create();
-        $owner = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
+        $owner = User::factory()->identityVerified()->create();
         $first = RentalCart::save($renter, $this->listing($owner)->id, $this->details());
         $second = RentalCart::save($renter, $this->listing($owner)->id, $this->details());
         $third = RentalCart::save($renter, $this->listing()->id, $this->details());
-        $foreign = RentalCart::save(User::factory()->create(), $this->listing()->id, $this->details());
+        $foreign = RentalCart::save(User::factory()->identityVerified()->create(), $this->listing()->id, $this->details());
         $component = Livewire::actingAs($renter)->test(Index::class)
             ->assertSet('selected', [$first->id, $second->id, $third->id])
             ->assertViewHas('groups', fn ($groups) => $groups->count() === 2)
@@ -277,7 +277,7 @@ class RentalCartTest extends TestCase
 
     public function test_component_checkout_keeps_changed_quotes_for_review_then_redirects_after_explicit_acceptance(): void
     {
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         $item = RentalCart::save($renter, $this->listing()->id, $this->details());
         $component = Livewire::actingAs($renter)->test(Index::class)->set('accept_terms', true);
         $item->listing->update(['price_per_day' => 150]);
@@ -290,7 +290,7 @@ class RentalCartTest extends TestCase
 
     public function test_checkout_refuses_draft_changes_after_the_reviewed_snapshot_was_displayed(): void
     {
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         $item = RentalCart::save($renter, $this->listing()->id, $this->details());
         $reviewed = [$item->id => $this->details() + ['terms' => $item->terms]];
         RentalCart::update($renter, $item->id, $this->details(3, 8));
@@ -302,7 +302,7 @@ class RentalCartTest extends TestCase
 
     public function test_checkout_accepts_unchanged_strict_term_values_when_json_object_key_order_changes(): void
     {
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         $item = RentalCart::save($renter, $this->listing()->id, $this->details());
         $reviewed = [$item->id => array_reverse($this->details() + ['terms' => $item->terms], preserve_keys: true)];
         $item->update(['terms' => array_reverse($item->terms, preserve_keys: true)]);
@@ -314,7 +314,7 @@ class RentalCartTest extends TestCase
 
     public function test_storage_key_order_changes_do_not_clear_a_components_acceptance(): void
     {
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         $item = RentalCart::save($renter, $this->listing()->id, $this->details());
         $component = Livewire::actingAs($renter)->test(Index::class)->set('accept_terms', true);
         $item->update(['terms' => array_reverse($item->terms, preserve_keys: true)]);
@@ -325,7 +325,7 @@ class RentalCartTest extends TestCase
 
     public function test_component_blocks_a_draft_change_between_its_precheck_and_the_locked_checkout_read(): void
     {
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         $item = RentalCart::save($renter, $this->listing()->id, $this->details());
         $component = Livewire::actingAs($renter)->test(Index::class)->set('accept_terms', true);
         $changed = false;
@@ -346,7 +346,7 @@ class RentalCartTest extends TestCase
 
     public function test_reviewed_cart_snapshots_cannot_be_tampered_with_by_the_browser(): void
     {
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         $item = RentalCart::save($renter, $this->listing()->id, $this->details());
         $this->expectException(CannotUpdateLockedPropertyException::class);
         Livewire::actingAs($renter)->test(Index::class)->set('reviewed.'.$item->id.'.terms.price_per_day', 1);
@@ -354,7 +354,7 @@ class RentalCartTest extends TestCase
 
     public function test_a_render_with_updated_cart_details_clears_acceptance_before_the_next_checkout(): void
     {
-        $renter = User::factory()->create();
+        $renter = User::factory()->identityVerified()->create();
         $item = RentalCart::save($renter, $this->listing()->id, $this->details());
         $component = Livewire::actingAs($renter)->test(Index::class);
         RentalCart::update($renter, $item->id, $this->details(3, 8));

@@ -1,5 +1,7 @@
 <div class="min-h-screen bg-slate-50">
     <x-page-header eyebrow="Renting" title="My rental cart" subtitle="Choose your items, rental dates and handover, then send requests to their owners." />
+    <x-identity-review-notice />
+    <x-input-error :messages="$errors->get('identity')" class="mx-4 mt-4" role="alert" />
 
     <div class="w-full px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         @if (session('status'))
@@ -8,6 +10,25 @@
         <x-input-error :messages="$errors->get('cart')" class="mb-4" role="alert" />
         <x-input-error :messages="$errors->get('selected')" class="mb-4" role="alert" />
         <x-input-error :messages="$errors->get('listing')" class="mb-4" role="alert" />
+        <x-input-error :messages="$errors->get('waitlist')" class="mb-4" role="alert" />
+
+        @if ($waitlistEntries->isNotEmpty())
+            <section class="mb-6 rounded-2xl border border-blue-100 bg-white p-5" aria-labelledby="waitlist-title">
+                <h2 id="waitlist-title" class="text-lg font-semibold text-slate-900">My availability waitlist</h2>
+                <p class="mt-2 text-sm text-slate-600">Alerts are sent in joining order when your exact dates are available. An alert does not reserve the item. Review the current price and send a request for owner approval.</p>
+                <ul class="mt-4 divide-y divide-slate-100">
+                    @foreach ($waitlistEntries as $entry)
+                        <li wire:key="waitlist-{{ $entry->id }}" class="flex flex-wrap items-center justify-between gap-3 py-4">
+                            <div><p class="font-semibold text-slate-800">{{ $entry->listing?->name ?? 'Removed item' }}</p><p class="mt-1 text-sm text-slate-500">{{ $entry->details['start_date'] }} {{ $entry->details['start_time'] ?? '' }} – {{ $entry->details['end_date'] }} {{ $entry->details['end_time'] ?? '' }} · {{ $entry->notified_at ? 'Availability alert sent — check dates again' : 'Waiting for these dates' }}</p></div>
+                            <div class="flex items-center gap-4">
+                                @if ($entry->listing && ! $entry->listing->trashed())<a href="{{ route('renter.rental-requests.create', ['listing' => $entry->listing_id, 'waitlist' => $entry->id]) }}" wire:navigate class="text-sm font-semibold text-blue-700">Review dates</a>@endif
+                                <button type="button" wire:click="leaveWaitlist({{ $entry->id }})" wire:loading.attr="disabled" class="min-h-10 rounded px-2 text-sm font-semibold text-rose-700 focus:outline-none focus:ring-4 focus:ring-rose-100">Leave waitlist</button>
+                            </div>
+                        </li>
+                    @endforeach
+                </ul>
+            </section>
+        @endif
 
         @if ($items->isEmpty())
             <section class="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
@@ -100,9 +121,16 @@
                                                     <x-input-error :messages="$errors->get('edits.'.$item->id.'.fulfillment_method')" class="mt-1" />
                                                 </div>
                                             </div>
-                                            <p class="text-xs leading-5 text-slate-500">{{ $item->start_date->format('M d, Y') }} – {{ $item->end_date->format('M d, Y') }} saved · Both dates count toward the rental duration.@if ($listing) Maximum {{ $listing->max_rental_duration_days }} days.@endif</p>
+                                            @if ($item->rental_unit === 'hour')
+                                                <div class="grid gap-3 sm:grid-cols-2">
+                                                    <div><x-input-label :for="'cart-start-time-'.$item->id" value="Start time (Philippine time)" /><x-text-input :id="'cart-start-time-'.$item->id" type="time" wire:model="edits.{{ $item->id }}.start_time" class="mt-1 w-full" /><x-input-error :messages="$errors->get('items.'.$item->id.'.start_time')" /></div>
+                                                    <div><x-input-label :for="'cart-end-time-'.$item->id" value="Return time (Philippine time)" /><x-text-input :id="'cart-end-time-'.$item->id" type="time" wire:model="edits.{{ $item->id }}.end_time" class="mt-1 w-full" /><x-input-error :messages="$errors->get('items.'.$item->id.'.end_time')" /></div>
+                                                </div>
+                                            @endif
+                                            <p class="text-xs leading-5 text-slate-500"><x-rental-period :booking="$item" /></p>
                                             <div class="flex flex-wrap items-center justify-between gap-3">
                                                 <x-secondary-button type="submit" wire:loading.attr="disabled" wire:target="updateItem({{ $item->id }})" :disabled="$unavailable" class="min-h-10 text-xs">Update dates &amp; handover</x-secondary-button>
+                                                @if (! $unavailable)<button type="button" wire:click="joinWaitlist({{ $item->id }})" wire:loading.attr="disabled" class="min-h-10 rounded px-2 text-xs font-semibold text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100">Join waitlist for saved dates</button>@endif
                                                 <button type="button" wire:click="remove({{ $item->id }})" wire:loading.attr="disabled" wire:target="remove({{ $item->id }})" class="inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 focus:outline-none focus:ring-4 focus:ring-rose-100 disabled:opacity-60"><x-icon name="trash" class="h-4 w-4" aria-hidden="true" /> Remove</button>
                                             </div>
                                         </form>

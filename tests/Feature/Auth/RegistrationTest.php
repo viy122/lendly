@@ -24,7 +24,8 @@ class RegistrationTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSeeVolt('pages.auth.register');
+            ->assertSeeVolt('pages.auth.register')
+            ->assertSee('ID review');
     }
 
     public function test_new_users_can_register(): void
@@ -76,15 +77,15 @@ class RegistrationTest extends TestCase
         ]);
 
         $this->get($verificationUrl)->assertRedirect(route('identity.verify', absolute: false));
-        $this->get(route('identity.verify'))->assertOk()->assertSee('Choose QR image')
-            ->assertSee('Consent and live selfie')->assertSee('type="file"', false);
+        $this->get(route('identity.verify'))->assertOk()->assertSee('National ID front')
+            ->assertSee('Privacy and consent')->assertSee('type="file"', false);
 
         $this->assertTrue($member->fresh()->hasVerifiedEmail());
         $this->assertFalse($member->fresh()->hasVerifiedIdentity());
         $this->assertDatabaseCount('identity_verification_attempts', 0);
     }
 
-    public function test_signup_without_a_provider_stays_honest_about_pending_identity_verification(): void
+    public function test_signup_without_an_api_provider_continues_to_manual_id_review(): void
     {
         Notification::fake();
         config(['services.identity.client_id' => null]);
@@ -98,8 +99,9 @@ class RegistrationTest extends TestCase
 
         $this->get($verificationUrl)->assertRedirect(route('identity.verify', absolute: false));
         $this->get(route('identity.verify'))->assertOk()
-            ->assertSee('Automatic identity verification is not available yet')
-            ->assertDontSee('type="file"', false)->assertDontSee('Identity verified');
+            ->assertSee('Submit your ID for review.')
+            ->assertSee('Privacy and consent')->assertSee('Registration progress')
+            ->assertSee('type="file"', false)->assertDontSee('Identity verified');
 
         $this->assertNull($member->fresh()->identity_verified_at);
     }

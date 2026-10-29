@@ -35,6 +35,21 @@ class Show extends Component
 
     public bool $owner_funds_received = false;
 
+    public string $cancellation_review_notes = '';
+
+    public function advanceFulfillment(string $stage): void
+    {
+        RentalLifecycle::advanceFulfillment($this->rental, auth()->user(), $stage);
+        $this->rental->refresh();
+    }
+
+    public function reviewCancellation(bool $approve): void
+    {
+        RentalLifecycle::reviewCancellation($this->rental, auth()->user(), $approve, $this->cancellation_review_notes);
+        $this->reset('cancellation_review_notes');
+        $this->rental->refresh();
+    }
+
     public function confirmPaymentReceipt(int $submissionId): void
     {
         $this->rental->refresh();

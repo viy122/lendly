@@ -9,6 +9,7 @@
             <span class="text-xs font-medium text-slate-500">Rental #{{ $rental->id }}</span>
         </div>
 
+        <x-booking-progress :rental="$rental" :owner="true" :reviewer="true" />
         <div class="owner-rental-grid">
             <aside class="min-w-0 space-y-6" aria-label="Rented item and earnings">
                 <section class="owner-rental-panel overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -109,7 +110,7 @@
                     <dl class="owner-rental-dates mt-5 grid gap-4">
                         <div><dt class="text-xs text-slate-500">Start date</dt><dd class="mt-1 text-sm font-semibold text-slate-800">{{ $rental->start_date->format('M d, Y') }}</dd></div>
                         <div><dt class="text-xs text-slate-500">End date</dt><dd class="mt-1 text-sm font-semibold text-slate-800">{{ $rental->end_date->format('M d, Y') }}</dd></div>
-                        <div><dt class="text-xs text-slate-500">Duration</dt><dd class="mt-1 text-sm font-semibold text-slate-800">{{ $rental->rental_days }} day{{ (int) $rental->rental_days === 1 ? '' : 's' }}</dd></div>
+                        <div><dt class="text-xs text-slate-500">Duration</dt><dd class="mt-1 text-sm font-semibold text-slate-800">{{ $rental->rental_unit === 'hour' ? $rental->rental_hours.' hours' : $rental->rental_days.' days' }}</dd></div>
                     </dl>
                     <div class="mt-5 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3"><p class="text-sm font-medium text-blue-700">Your earnings</p><p class="text-xl font-bold tracking-tight text-blue-700">₱{{ number_format($rental->ownerEarnings(), 2) }}</p></div>
                 </section>
@@ -155,7 +156,7 @@
 
                 @if ($rental->isOverdue())
                     <div class="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm leading-6 text-rose-800" role="status">
-                        <p class="font-semibold">This rental is overdue by {{ $rental->currentOverdueDays() }} day{{ $rental->currentOverdueDays() === 1 ? '' : 's' }}.</p>
+                        <p class="font-semibold">@if ($rental->rental_unit === 'hour')This rental is overdue. Late fees apply per started hour.@else This rental is overdue by {{ $rental->currentOverdueDays() }} day{{ $rental->currentOverdueDays() === 1 ? '' : 's' }}.@endif</p>
                         <p class="mt-1">Late fee so far: ₱{{ number_format($rental->currentLateFee(), 2) }}</p>
                     </div>
                 @endif

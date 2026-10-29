@@ -31,6 +31,7 @@ new class extends Component
         Auth::user()->update([
             'password' => Hash::make($validated['password']),
         ]);
+        session()->put('password_hash_web', Auth::guard('web')->hashPasswordForCookie(Auth::user()->getAuthPassword()));
 
         $this->reset('current_password', 'password', 'password_confirmation');
 
@@ -51,7 +52,7 @@ new class extends Component
 
     <form wire:submit="updatePassword" class="space-y-6 p-6 sm:p-7">
         @if (auth()->user()->google_id)
-            <p class="rounded-xl bg-blue-50 p-4 text-sm leading-6 text-blue-800">If you only sign in with Google and have not set a Lendly password, sign out and choose <strong>Forgot password?</strong> on the login page first. Set your password using the code sent to your Gmail, then return here.</p>
+            <p class="rounded-xl bg-blue-50 p-4 text-sm leading-6 text-blue-800">If you only sign in with Google and have not set a Lendly password, sign out and choose <strong>Forgot password?</strong> on the login page first. Set your password using the code sent to your account email, then return here.</p>
         @endif
         <div class="account-profile-fields account-profile-password-fields">
             <div class="account-profile-current-password">

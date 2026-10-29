@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Socialite\Facades\Socialite;
@@ -19,31 +20,28 @@ class GoogleAuthController extends Controller
 {
     public function redirect(Request $request): RedirectResponse
     {
-        $request->session()->forget(['state', 'google_oauth_interface']);
-        $interface = $request->query('interface', 'renter');
-        abort_unless(in_array($interface, ['renter', 'owner'], true), 403);
+        $request->session()->forget(['state', 'google_oauth_interface', 'google_oauth_pending_user']);
         if (! $this->configured()) {
             return $this->failed();
         }
 
         try {
-            $request->session()->put('google_oauth_interface', $interface);
-
             return Socialite::driver('google')->scopes(['openid', 'profile', 'email'])
-                ->with(['prompt' => 'select_account'])->redirect();
-        } catch (Throwable) {
+                ->with(['prompt' => $request->query('prompt') === 'consent' ? 'select_account consent' : 'select_account'])->redirect();
+        } catch (Throwable $exception) {
             $request->session()->forget(['state', 'google_oauth_interface']);
 
-            return $this->failed();
+            return $this->failed('redirect', $exception);
         }
     }
 
     public function callback(Request $request): RedirectResponse
     {
-        $interface = $request->session()->pull('google_oauth_interface');
+        $request->session()->forget('google_oauth_pending_user');
+        $stage = 'profile';
         try {
-            if (! $this->configured() || ! in_array($interface, ['renter', 'owner'], true) || $request->has('error')) {
-                return $this->failed();
+            if (! $this->configured() || $request->has('error')) {
+                return $this->failed('configuration_or_provider');
             }
 
             // Stateful Socialite consumes and validates state before exchanging the authorization code.
@@ -54,20 +52,25 @@ class GoogleAuthController extends Controller
             $raw = $profile->getRaw();
             if (! is_string($id) || trim($id) === '' || strlen($id) > 255
                 || ! is_string($email) || strlen($email) > 255
-                || ! preg_match('/\A[a-z0-9]+(?:\.[a-z0-9]+)*(?:\+[a-z0-9._-]+)?@gmail\.com\z/i', trim($email))
+                || ! filter_var(trim($email), FILTER_VALIDATE_EMAIL)
                 || ! is_array($raw) || (($raw['email_verified'] ?? null) !== true && ($raw['verified_email'] ?? null) !== true)
+                // Google is authoritative for Gmail and managed Workspace addresses only.
+                || (! str_ends_with(strtolower(trim($email)), '@gmail.com')
+                    && (! is_string($raw['hd'] ?? null) || trim($raw['hd']) === ''))
                 || ($name !== null && (! is_string($name) || ! mb_check_encoding($name, 'UTF-8') || mb_strlen($name) > 255))) {
-                return $this->failed();
+                return $this->failed('profile_validation');
             }
             $email = AuthEmail::normalize($email);
             AccountLockout::ensureNotLocked($email, 'google');
 
+            $stage = 'account';
             $user = DB::transaction(function () use ($id, $email, $name) {
                 $linked = User::withTrashed()->where('google_id', $id)->first();
                 // shortcut: legacy Gmail aliases require a scan; add an indexed canonical column at larger account volumes.
                 $matches = User::withTrashed()->where(fn ($query) => $query
                     ->whereRaw('LOWER(email) LIKE ?', ['%@gmail.com'])
-                    ->orWhereRaw('LOWER(email) LIKE ?', ['%@googlemail.com']))
+                    ->orWhereRaw('LOWER(email) LIKE ?', ['%@googlemail.com'])
+                    ->orWhereRaw('LOWER(email) = ?', [$email]))
                     ->get()->filter(fn (User $candidate) => AuthEmail::normalize($candidate->email) === $email);
                 $ids = $matches->pluck('id');
                 if ($linked) {
@@ -80,12 +83,22 @@ class GoogleAuthController extends Controller
                 }
                 $user = $matches->first();
                 if ($user) {
-                    if (! $this->eligible($user) || ($user->google_id !== null && $user->google_id !== $id)) {
+                    if ($user->trashed() || $user->isSuspended() || $user->isAdmin()
+                        || ($user->google_id !== null && $user->google_id !== $id)) {
                         throw $this->rejected();
                     }
-                    if ($user->google_id === null) {
-                        $user->forceFill(['google_id' => $id])->save();
+                    if (! $user->hasVerifiedEmail()) {
+                        // Discard credentials and sessions from an earlier, unconfirmed signup.
+                        $user->forceFill([
+                            'email_verified_at' => now(), 'password' => Str::random(64), 'remember_token' => Str::random(60),
+                        ]);
+                        DB::table(config('auth.passwords.users.table'))->where('email', $user->email)->delete();
+                        if (config('session.driver') === 'database') {
+                            DB::connection(config('session.connection'))->table(config('session.table'))
+                                ->where('user_id', $user->id)->delete();
+                        }
                     }
+                    $user->forceFill(['google_id' => $id])->save();
                 } else {
                     $user = new User;
                     $user->forceFill([
@@ -108,19 +121,21 @@ class GoogleAuthController extends Controller
                 return $user;
             });
 
+            $stage = 'session';
             $request->session()->regenerate();
-            $request->session()->forget('url.intended');
-            $request->session()->put('active_interface', $interface);
+            $request->session()->forget(['url.intended', 'active_interface']);
+            $request->session()->put('google_oauth_pending_user', $user->id);
             AccountLockout::clear($email);
 
-            return redirect()->route($user->hasVerifiedIdentity() ? $interface.'.dashboard' : 'identity.verify');
-        } catch (Throwable) {
+            return redirect()->route('auth.google.interface');
+        } catch (Throwable $exception) {
             // Remote exceptions can include tokens and profile data; expose only the generic sign-in error.
             if (Auth::guard('web')->check()) {
                 Auth::guard('web')->logout();
             }
+            $request->session()->forget('google_oauth_pending_user');
 
-            return $this->failed();
+            return $this->failed($stage, $exception);
         } finally {
             $request->session()->forget(['state', 'google_oauth_interface']);
         }
@@ -147,8 +162,14 @@ class GoogleAuthController extends Controller
         return ValidationException::withMessages(['google' => 'Google sign-in could not be completed. Please try again or use your password.']);
     }
 
-    private function failed(): RedirectResponse
+    private function failed(string $stage = 'configuration', ?Throwable $exception = null): RedirectResponse
     {
+        Log::warning('Google sign-in failed.', array_filter([
+            'stage' => $stage,
+            'exception_type' => $exception ? $exception::class : null,
+            'exception_code' => $exception?->getCode(),
+        ], fn ($value) => $value !== null));
+
         return redirect()->route('login')->withErrors($this->rejected()->errors());
     }
 }

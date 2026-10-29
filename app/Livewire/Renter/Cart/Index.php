@@ -3,8 +3,11 @@
 namespace App\Livewire\Renter\Cart;
 
 use App\Models\CartItem;
+use App\Models\RentalWaitlistEntry;
 use App\Models\User;
 use App\Services\RentalCart;
+use App\Services\RentalPeriod;
+use App\Services\RentalWaitlist;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -61,6 +64,19 @@ class Index extends Component
                 }
             }
         }
+    }
+
+    public function joinWaitlist(int $id): void
+    {
+        $item = CartItem::where('user_id', $this->member()->id)->findOrFail($id);
+        RentalWaitlist::join($this->member(), $item->listing_id, $this->details($item));
+        session()->flash('status', 'Joined the waitlist for the saved dates. No reservation or payment has been made.');
+    }
+
+    public function leaveWaitlist(int $id): void
+    {
+        RentalWaitlistEntry::where('user_id', $this->member()->id)->findOrFail($id)->delete();
+        session()->flash('status', 'Left the waitlist.');
     }
 
     public function remove(int $id): void
@@ -141,8 +157,7 @@ class Index extends Component
 
     private function details(CartItem $item): array
     {
-        return ['start_date' => $item->start_date->toDateString(), 'end_date' => $item->end_date->toDateString(),
-            'fulfillment_method' => $item->fulfillment_method];
+        return RentalPeriod::details($item);
     }
 
     public function render(): View
@@ -160,6 +175,7 @@ class Index extends Component
         $this->reviewed = $reviewed;
 
         return view('livewire.renter.cart.index', [
+            'waitlistEntries' => RentalWaitlistEntry::where('user_id', $this->member()->id)->with('listing')->orderBy('created_at')->orderBy('id')->get(),
             'items' => $items, 'groups' => $items->groupBy('listing.owner_id'),
             'selectedTotal' => round($items->whereIn('id', $this->selected)->sum(fn (CartItem $item) => $item->totalAmount()), 2),
         ]);

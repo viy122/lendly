@@ -52,8 +52,8 @@ class RentalRequestTest extends TestCase
 
     public function test_renter_can_submit_a_rental_request_with_correct_cost_breakdown(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         Livewire::actingAs($renter)
@@ -75,8 +75,8 @@ class RentalRequestTest extends TestCase
 
     public function test_listing_embeds_the_request_form_for_an_eligible_renter(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         Livewire::actingAs($renter)
@@ -90,8 +90,8 @@ class RentalRequestTest extends TestCase
     public function test_request_modal_submits_with_the_existing_costs_and_redirect(): void
     {
         Notification::fake();
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         Livewire::actingAs($renter)
@@ -113,8 +113,8 @@ class RentalRequestTest extends TestCase
 
     public function test_listing_does_not_embed_a_request_form_for_guests_owners_or_unavailable_items(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         Livewire::test(ListingShow::class, ['listing' => $listing])
@@ -137,8 +137,8 @@ class RentalRequestTest extends TestCase
     public function test_embedded_request_form_rechecks_the_renter_interface_on_submit(): void
     {
         Notification::fake();
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         $form = Livewire::actingAs($renter)
@@ -153,7 +153,7 @@ class RentalRequestTest extends TestCase
 
     public function test_renter_cannot_rent_their_own_listing(): void
     {
-        $renter = User::factory()->renter()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
 
         // Owner/renter roles are normally mutually exclusive, so to exercise the
         // defensive "no self-rental" business rule directly (not just the role
@@ -182,8 +182,8 @@ class RentalRequestTest extends TestCase
     {
         Notification::fake();
 
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         $form = Livewire::actingAs($renter)
@@ -206,8 +206,8 @@ class RentalRequestTest extends TestCase
     {
         Notification::fake();
 
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         $component = Livewire::actingAs($renter)
@@ -226,8 +226,8 @@ class RentalRequestTest extends TestCase
 
     public function test_submission_and_both_pending_notices_roll_back_if_the_second_notice_fails(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
         $component = Livewire::actingAs($renter)->test(Create::class, ['listing' => $listing])->set('accept_terms', true)
             ->set('start_date', now()->addDays(3)->toDateString())
@@ -258,8 +258,8 @@ class RentalRequestTest extends TestCase
 
     public function test_open_form_uses_current_listing_charges_and_one_commission_snapshot_on_submission(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
         $form = Livewire::actingAs($renter)->test(Create::class, ['listing' => $listing])->set('accept_terms', true)
             ->set('start_date', now()->addDays(3)->toDateString())
@@ -295,8 +295,8 @@ class RentalRequestTest extends TestCase
     public function test_open_form_rechecks_changed_fulfillment_duration_and_available_dates(array $changes, string $field): void
     {
         Notification::fake();
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner, [
             'available_from' => now()->toDateString(), 'available_until' => now()->addMonth()->toDateString(),
         ]);
@@ -313,8 +313,8 @@ class RentalRequestTest extends TestCase
     #[DataProvider('unavailableListingStates')]
     public function test_owner_cannot_approve_after_the_listing_becomes_unavailable(array $changes): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
         Livewire::actingAs($renter)->test(Create::class, ['listing' => $listing])->set('accept_terms', true)
             ->set('start_date', now()->addDays(3)->toDateString())
@@ -334,8 +334,8 @@ class RentalRequestTest extends TestCase
     #[DataProvider('unavailableListingStates')]
     public function test_unavailable_listing_cannot_open_the_request_form(array $changes): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner, $changes);
 
         $this->actingAs($renter)
@@ -345,8 +345,8 @@ class RentalRequestTest extends TestCase
 
     public function test_cannot_request_dates_beyond_max_rental_duration(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner, ['max_rental_duration_days' => 3]);
 
         Livewire::actingAs($renter)
@@ -361,8 +361,8 @@ class RentalRequestTest extends TestCase
 
     public function test_cannot_request_past_dates(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         Livewire::actingAs($renter)
@@ -377,9 +377,9 @@ class RentalRequestTest extends TestCase
 
     public function test_new_request_is_blocked_when_dates_overlap_an_approved_request(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renterA = User::factory()->renter()->create();
-        $renterB = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renterA = User::factory()->identityVerified()->renter()->create();
+        $renterB = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         Livewire::actingAs($renterA)
@@ -407,9 +407,9 @@ class RentalRequestTest extends TestCase
 
     public function test_approving_a_request_auto_rejects_other_overlapping_pending_requests(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renterA = User::factory()->renter()->create();
-        $renterB = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renterA = User::factory()->identityVerified()->renter()->create();
+        $renterB = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         Livewire::actingAs($renterA)
@@ -441,9 +441,9 @@ class RentalRequestTest extends TestCase
 
     public function test_owner_cannot_approve_a_request_for_another_owners_listing(): void
     {
-        $ownerA = User::factory()->owner()->create();
-        $ownerB = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $ownerA = User::factory()->identityVerified()->owner()->create();
+        $ownerB = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($ownerA);
 
         Livewire::actingAs($renter)
@@ -462,8 +462,8 @@ class RentalRequestTest extends TestCase
 
     public function test_renter_can_cancel_requests_without_a_booking_even_after_the_scheduled_start(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         $futureRequest = RentalRequest::create([
@@ -511,9 +511,9 @@ class RentalRequestTest extends TestCase
 
     public function test_renter_cannot_cancel_another_renters_request(): void
     {
-        $owner = User::factory()->owner()->create();
-        $renterA = User::factory()->renter()->create();
-        $renterB = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renterA = User::factory()->identityVerified()->renter()->create();
+        $renterB = User::factory()->identityVerified()->renter()->create();
         $listing = $this->publishedListing($owner);
 
         $request = RentalRequest::create([

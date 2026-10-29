@@ -59,7 +59,7 @@
                                     <td class="px-4 py-3 font-medium text-slate-800">{{ $rental->listing->name }}</td>
                                     <td class="px-4 py-3 text-slate-500">{{ $rental->owner->name }}</td>
                                     <td class="px-4 py-3 text-slate-500">{{ $rental->renter->name }}</td>
-                                    <td class="px-4 py-3 text-slate-500">{{ $rental->start_date->format('M d') }} &ndash; {{ $rental->end_date->format('M d, Y') }}</td>
+                                    <td class="px-4 py-3 text-slate-500"><x-rental-period :booking="$rental" /></td>
                                     <td class="px-4 py-3 font-medium text-slate-800">₱{{ number_format($rental->total_amount, 2) }}</td>
                                     <td class="px-4 py-3">
                                         <x-badge :color="$rental->displayStatusColor()">{{ $rental->displayStatusLabel() }}</x-badge>

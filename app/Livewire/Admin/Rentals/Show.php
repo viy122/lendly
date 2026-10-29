@@ -25,6 +25,16 @@ class Show extends Component
 
     public string $note = '';
 
+    public string $cancellation_review_notes = '';
+
+    public function reviewCancellation(bool $approve): void
+    {
+        $rental = Rental::findOrFail($this->rentalId);
+        $this->authorize('manage', $rental);
+        RentalLifecycle::reviewCancellation($rental, auth()->user(), $approve, $this->cancellation_review_notes);
+        $this->reset('cancellation_review_notes');
+    }
+
     public bool $funds_received = false;
 
     public function mount(Rental $rental): void

@@ -1,152 +1,158 @@
-<div x-data="identityVerification($wire, @js(['available' => $available, 'publicKey' => $available ? $publicKey : '', 'sdkUrl' => $available ? $sdkUrl : '']))">
-    <x-page-header eyebrow="Account" title="Verify your identity" subtitle="One identity check for renting and lending on Lendly." />
+<div x-data="{
+    stream: null, cameraOpen: false, uploading: false, cameraError: '', cameraNotice: '',
+    async startCamera() {
+        this.cameraError = ''; this.cameraNotice = '';
+        if (!$wire.consent) return;
+        if (!navigator.mediaDevices?.getUserMedia) {
+            this.cameraError = 'Camera access needs HTTPS or localhost. You can upload a selfie instead.';
+            return;
+        }
+        try {
+            this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+            if (!$wire.consent || !this.$root.isConnected) { this.stopCamera(); return; }
+            this.cameraOpen = true;
+            await this.$nextTick();
+            this.$refs.selfieVideo.srcObject = this.stream;
+            await this.$refs.selfieVideo.play();
+        } catch (error) {
+            this.stopCamera();
+            this.cameraError = 'The camera could not open. Allow camera access or upload a clear selfie.';
+        }
+    },
+    stopCamera() {
+        this.stream?.getTracks().forEach(track => track.stop());
+        this.stream = null; this.cameraOpen = false;
+    },
+    captureSelfie() {
+        const video = this.$refs.selfieVideo;
+        if (!video.videoWidth || !video.videoHeight) { this.cameraError = 'Wait for the camera preview before taking the photo.'; return; }
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        this.uploading = true;
+        this.stopCamera();
+        canvas.toBlob(blob => {
+            if (!blob || !$wire.consent) { this.uploading = false; return; }
+            $wire.upload('selfie', new File([blob], 'selfie.jpg', { type: 'image/jpeg' }),
+                () => { this.uploading = false; this.cameraNotice = 'Selfie captured. It will be included when you submit for review.'; },
+                () => { this.uploading = false; this.cameraError = 'The selfie could not upload. Please try again or choose a file.'; });
+        }, 'image/jpeg', 0.9);
+    },
+    destroy() { this.stopCamera(); }
+}" x-effect="if (!$wire.consent) stopCamera()" @keydown.escape.window="stopCamera()" @identity-submitted.window="stopCamera(); cameraNotice = ''">
+    <x-page-header eyebrow="Account" title="ID review" subtitle="Submit your National ID and selfie for a Lendly administrator to review." />
 
     <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         <x-registration-progress :step="3" class="max-w-xl" />
-        <a href="{{ route('profile') }}" wire:navigate class="mb-6 inline-flex min-h-10 items-center gap-2 rounded-lg text-sm font-semibold text-slate-600 transition hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100">
+        <a href="{{ route('profile') }}" wire:navigate class="mb-6 inline-flex min-h-10 items-center gap-2 rounded-lg text-sm font-semibold text-slate-600 hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100">
             <x-icon name="chevron-down" class="h-4 w-4 rotate-90" aria-hidden="true" /> Back to profile
         </a>
 
         @if ($verified)
-            <section class="rounded-3xl border border-emerald-200 bg-white p-6 shadow-sm sm:p-10" aria-labelledby="identity-result-title" role="status">
-                <span class="mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-emerald-50 text-emerald-700"><x-icon name="user-circle" class="h-8 w-8" aria-hidden="true" /></span>
-                <p class="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-700">Identity verified</p>
-                <h2 id="identity-result-title" class="text-2xl font-bold tracking-tight text-slate-900">You’re verified for renting and lending.</h2>
-                <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600">Your National ID, personal details and live selfie have been checked. Your identity verification belongs to your member account and covers both interfaces.</p>
-                <a href="{{ route(auth()->user()->dashboardRouteName()) }}" wire:navigate class="mt-6 inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100">Continue to dashboard</a>
+            <section class="rounded-3xl border border-emerald-200 bg-white p-6 shadow-sm sm:p-10" role="status" aria-labelledby="identity-result-title">
+                <p class="text-xs font-bold uppercase tracking-wider text-emerald-700">{{ $member->identity_verification_environment === 'manual' ? 'ID reviewed' : 'Identity verified' }}</p>
+                <h2 id="identity-result-title" class="mt-2 text-2xl font-bold text-slate-900">Your identity check is complete.</h2>
+                <p class="mt-3 text-sm leading-6 text-slate-600">Your account can rent and list items. This Lendly review covers both interfaces; it is not a government-issued verification badge.</p>
+                <a href="{{ route($member->dashboardRouteName()) }}" wire:navigate class="mt-6 inline-flex min-h-11 items-center rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100">Continue to dashboard</a>
             </section>
-        @elseif ($testVerified && $environment === 'sandbox')
-            <section class="rounded-3xl border border-amber-200 bg-white p-6 shadow-sm sm:p-10" aria-labelledby="identity-test-title" role="status">
-                <span class="mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-amber-50 text-amber-700"><x-icon name="clipboard-list" class="h-7 w-7" aria-hidden="true" /></span>
-                <p class="mb-2 text-xs font-bold uppercase tracking-wider text-amber-700">Test verification completed</p>
-                <h2 id="identity-test-title" class="text-2xl font-bold tracking-tight text-slate-900">Your test identity check is complete.</h2>
-                <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600">This was a test check. It does not grant a verified identity badge on your public profile.</p>
-                <a href="{{ route(auth()->user()->dashboardRouteName()) }}" wire:navigate class="mt-6 inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100">Continue to dashboard</a>
-            </section>
-        @elseif (! $available)
-            <section class="overflow-hidden rounded-3xl border border-blue-200 bg-white shadow-sm" aria-labelledby="identity-unavailable-title">
-                <div class="border-b border-blue-100 bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-6 sm:p-10">
-                    <span class="mb-5 grid h-14 w-14 place-items-center rounded-2xl border border-blue-100 bg-white text-blue-600 shadow-sm"><x-icon name="user-circle" class="h-8 w-8" aria-hidden="true" /></span>
-                    <p class="mb-2 text-xs font-bold uppercase tracking-wider text-blue-700">Member identity</p>
-                    <h2 id="identity-unavailable-title" class="max-w-2xl text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Automatic identity verification is not available yet</h2>
-                    <p class="mt-4 max-w-2xl text-sm leading-7 text-slate-600">Your account is created and your email is confirmed. Your identity check is still pending. When verification is available, a single check of your National ID, personal details and live selfie will cover both renting and lending. You can continue using your account.</p>
-                </div>
-                <div class="p-6 sm:px-10 sm:py-7">
-                    <h3 class="font-bold text-slate-900">Need to check your National ID?</h3>
-                    <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600">You can use the government’s public QR checker. A check there does not verify your Lendly account.</p>
-                    <a href="https://everify.gov.ph/check" target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 focus:outline-none focus:ring-4 focus:ring-blue-100">Open official National ID Check <span class="sr-only">(opens in a new tab)</span><x-icon name="chevron-down" class="h-4 w-4 -rotate-90" aria-hidden="true" /></a>
-                    <p class="mt-5 text-xs leading-5 text-slate-500">Lendly is not collecting your ID details or selfie on this page while verification is unavailable.</p>
-                </div>
+        @elseif ($submission?->status === 'pending' && $submission->created_at->gt(now()->subDays(30)))
+            <section class="rounded-3xl border border-blue-200 bg-white p-6 shadow-sm sm:p-10" role="status" aria-labelledby="identity-pending-title">
+                <p class="text-xs font-bold uppercase tracking-wider text-blue-700">Awaiting administrator review</p>
+                <h2 id="identity-pending-title" class="mt-2 text-2xl font-bold text-slate-900">Your ID and selfie have been submitted.</h2>
+                <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600">An administrator will check the National ID QR code using the official checker, compare the details with your account, and review the face comparison. You can browse while your submission is pending. Renting and listing unlock after approval.</p>
+                <p class="mt-3 text-xs text-slate-500">Submitted {{ $submission->created_at->format('M j, Y g:i A') }}. Check this page for the decision.</p>
+                <a href="{{ route('listings.index') }}" wire:navigate class="mt-6 inline-flex min-h-11 items-center rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100">Browse items</a>
             </section>
         @else
             <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-                <div class="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-                    <div class="border-b border-slate-100 bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-6 sm:p-7">
-                        <p class="text-xs font-bold uppercase tracking-wider text-blue-700">One check, both interfaces</p>
-                        <h2 class="mt-2 text-2xl font-bold tracking-tight text-slate-900">Build trust with your community.</h2>
-                        <p class="mt-3 text-sm leading-6 text-slate-600">Use your own Philippine National ID. Your ID details must match your account name.</p>
-                        <p class="mt-2 text-sm leading-6 text-slate-600"><a href="{{ route('profile') }}" wire:navigate class="font-semibold text-blue-700 underline">Review your account name</a> before continuing. Use your full legal name from your National ID, including your middle name and suffix. Your Google display name may need to be corrected.</p>
-                        @if ($environment === 'sandbox')
-                            <p class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-800"><strong>Test verification.</strong> Completing this check does not give your public profile a verified identity badge.</p>
-                        @endif
+                <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm" aria-labelledby="identity-form-title">
+                    <div class="border-b border-slate-100 bg-blue-50/60 p-6 sm:p-7">
+                        <h2 id="identity-form-title" class="text-2xl font-bold text-slate-900">Submit your ID for review.</h2>
+                        <p class="mt-3 text-sm leading-6 text-slate-600">Use your own Philippine National ID and a clear selfie. Include the back if the QR code is on that side. An administrator makes the decision; the face comparison never approves an account automatically.</p>
+                        <p class="mt-2 text-sm leading-6 text-slate-600">Account name: <strong>{{ $member->name }}</strong>. <a href="{{ route('profile') }}" wire:navigate class="font-semibold text-blue-700 underline">Correct your name</a> to match your ID, including your middle name and suffix, before submitting.</p>
                     </div>
 
-                    <form @submit.prevent="start()" class="space-y-7 p-6 sm:p-7" aria-label="Identity verification" :aria-busy="busy || reading">
+                    <form wire:submit="submit" class="space-y-6 p-6 sm:p-7" aria-label="Submit ID for administrator review">
+                        @if ($submission?->status === 'rejected')
+                            <div class="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-800" role="status">
+                                <p class="font-bold">Your previous submission was not approved.</p>
+                                <p class="mt-1 whitespace-pre-line">{{ $submission->review_notes }}</p>
+                                <p class="mt-2">Address the reason above, then submit new photos for review.</p>
+                            </div>
+                        @elseif ($submission && ($submission->status === 'cancelled' || ($submission->status === 'pending' && $submission->created_at->lte(now()->subDays(30)))))
+                            <p class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800" role="status">Your previous submission is no longer active. Check your account details and submit new photos.</p>
+                        @endif
+
                         @if ($errors->any())
-                            <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert" tabindex="-1">
-                                <p class="font-semibold">Your identity check needs attention.</p>
+                            <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
+                                <p class="font-semibold">Your submission needs attention.</p>
                                 <ul class="mt-2 list-inside list-disc space-y-1">
-                                    @foreach ($errors->all() as $message)
-                                        <li>{{ $message }}</li>
-                                    @endforeach
+                                    @foreach ($errors->all() as $message)<li>{{ $message }}</li>@endforeach
                                 </ul>
                             </div>
                         @endif
 
-                        <fieldset :disabled="busy" class="space-y-4 disabled:opacity-70">
-                            <legend class="mb-1 flex items-center gap-3 text-base font-bold text-slate-900"><span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-blue-50 text-xs text-blue-700" aria-hidden="true">1</span> Enter your National ID details</legend>
-                            <p id="identity-name-help" class="text-sm leading-6 text-slate-500">Enter your name exactly as it appears on your National ID. Leave optional fields blank if they do not apply.</p>
-                            <div class="grid gap-4 sm:grid-cols-2">
-                                <div>
-                                    <x-input-label for="identity-first-name" value="First name" />
-                                    <x-text-input id="identity-first-name" wire:model="first_name" type="text" maxlength="100" autocomplete="given-name" required class="mt-2 block min-h-11 w-full" aria-describedby="identity-name-help" aria-invalid="{{ $errors->has('first_name') ? 'true' : 'false' }}" />
-                                </div>
-                                <div>
-                                    <x-input-label for="identity-middle-name" value="Middle name (optional)" />
-                                    <x-text-input id="identity-middle-name" wire:model="middle_name" type="text" maxlength="100" autocomplete="additional-name" class="mt-2 block min-h-11 w-full" aria-describedby="identity-name-help" aria-invalid="{{ $errors->has('middle_name') ? 'true' : 'false' }}" />
-                                </div>
-                                <div>
-                                    <x-input-label for="identity-last-name" value="Last name" />
-                                    <x-text-input id="identity-last-name" wire:model="last_name" type="text" maxlength="100" autocomplete="family-name" required class="mt-2 block min-h-11 w-full" aria-invalid="{{ $errors->has('last_name') ? 'true' : 'false' }}" />
-                                </div>
-                                <div>
-                                    <x-input-label for="identity-suffix" value="Suffix (optional)" />
-                                    <x-text-input id="identity-suffix" wire:model="suffix" type="text" maxlength="30" autocomplete="honorific-suffix" placeholder="e.g. Jr., III" class="mt-2 block min-h-11 w-full" aria-invalid="{{ $errors->has('suffix') ? 'true' : 'false' }}" />
-                                </div>
-                                <div class="sm:col-span-2">
-                                    <x-input-label for="identity-birth-date" value="Date of birth" />
-                                    <x-text-input id="identity-birth-date" wire:model="birth_date" type="date" autocomplete="bday" max="{{ now()->toDateString() }}" required class="mt-2 block min-h-11 w-full sm:max-w-xs" aria-invalid="{{ $errors->has('birth_date') ? 'true' : 'false' }}" />
-                                </div>
-                            </div>
-                        </fieldset>
-
-                        <fieldset :disabled="busy" class="space-y-4 border-t border-slate-100 pt-6 disabled:opacity-70">
-                            <legend class="float-left mb-4 flex w-full items-center gap-3 text-base font-bold text-slate-900"><span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-blue-50 text-xs text-blue-700" aria-hidden="true">2</span> Read your National ID QR code</legend>
-                            <p id="identity-qr-help" class="clear-both text-sm leading-6 text-slate-500">Choose a clear image of the QR code, or scan it with your camera. Images are read on your device and are not uploaded to Lendly.</p>
-                            <div class="flex flex-wrap gap-3">
-                                <label class="relative inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 focus-within:ring-4 focus-within:ring-blue-100" :class="{ 'pointer-events-none opacity-50': !consent || reading || busy }">
-                                    <x-icon name="folder" class="h-4 w-4" aria-hidden="true" /> Choose QR image
-                                    <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp" class="sr-only" :disabled="!consent || reading || busy" @change="scanFile($event.target.files[0]); $event.target.value = ''" aria-describedby="identity-qr-help identity-image-help" />
-                                </label>
-                                <button type="button" @click="startCamera()" :disabled="!consent || reading || busy || cameraOpen" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-50"><x-icon name="camera" class="h-4 w-4" aria-hidden="true" /> Scan with camera</button>
-                            </div>
-                            <p id="identity-image-help" class="text-xs leading-5 text-slate-500">PNG, JPG, WebP, GIF or BMP · Up to 8 MB and 20 megapixels. Accept the consent below to use a scanner.</p>
-                            <div x-cloak x-show="cameraOpen" class="overflow-hidden rounded-xl border border-slate-200 bg-slate-900" wire:ignore>
-                                <video x-ref="video" autoplay muted playsinline class="aspect-video w-full object-contain" aria-label="Live camera preview for your National ID QR code"></video>
-                                <div class="flex flex-wrap items-center justify-between gap-3 p-3 text-sm text-white">
-                                    <p>Hold the QR code steady inside the camera view.</p>
-                                    <button type="button" @click="stopCamera()" class="min-h-10 rounded-lg border border-white/40 px-3 py-2 font-semibold focus:outline-none focus:ring-2 focus:ring-white">Stop camera</button>
-                                </div>
-                            </div>
-                            <p x-cloak x-show="reading" role="status" class="text-sm text-blue-700">Reading the QR image on your device…</p>
-                            <details class="rounded-xl border border-slate-200 p-4">
-                                <summary class="cursor-pointer rounded text-sm font-semibold text-slate-700 focus:outline-none focus:ring-4 focus:ring-blue-100">Already have the QR code text?</summary>
-                                <div class="mt-4">
-                                    <x-input-label for="identity-qr-value" value="National ID QR code text" />
-                                    <textarea id="identity-qr-value" wire:model="qr_value" rows="3" maxlength="20000" spellcheck="false" autocomplete="off" autocapitalize="off" class="mt-2 block w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500" aria-describedby="identity-qr-text-help" aria-invalid="{{ $errors->has('qr_value') ? 'true' : 'false' }}"></textarea>
-                                    <p id="identity-qr-text-help" class="mt-2 text-xs leading-5 text-slate-500">Paste the complete, unmodified contents of your National ID QR code. Reading a QR code alone does not verify its authenticity.</p>
-                                </div>
-                            </details>
-                        </fieldset>
-
-                        <section class="border-t border-slate-100 pt-6" aria-labelledby="identity-consent-title">
-                            <h3 id="identity-consent-title" class="flex items-center gap-3 text-base font-bold text-slate-900"><span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-blue-50 text-xs text-blue-700" aria-hidden="true">3</span> Consent and live selfie</h3>
-                            <p id="identity-consent-help" class="mt-3 text-sm leading-6 text-slate-500">Lendly compares your entered details with the official service’s result for your National ID and live selfie. Your QR contents and selfie session are sent to that service, which uses your camera for its liveness check. Lendly does not store your ID image, QR contents, date of birth or selfie.</p>
+                        <section aria-labelledby="identity-consent-title">
+                            <h3 id="identity-consent-title" class="font-bold text-slate-900">Privacy and consent</h3>
+                            <p id="identity-consent-help" class="mt-2 text-sm leading-6 text-slate-600">Your ID photos and selfie are uploaded to private Lendly storage for authorized administrators. A local face comparison provides a similarity score to assist their review. An administrator uses the official National ID checker to check the QR code. This selfie is a photo, not a liveness check.</p>
+                            <p class="mt-2 text-sm leading-6 text-slate-600">Review photos are deleted after a decision or cancellation. Pending review photos expire after 30 days. The review record and decision are retained.</p>
                             <label class="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                <input type="checkbox" x-model="consent" @change="$wire.set('consent', $event.target.checked, false)" class="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500" aria-describedby="identity-consent-help" aria-invalid="{{ $errors->has('consent') ? 'true' : 'false' }}" />
-                                <span class="text-sm leading-6 text-slate-700">I consent to the processing of my National ID details and live selfie for this identity check.</span>
+                                <input id="identity-consent" type="checkbox" wire:model.live="consent" class="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500" aria-describedby="identity-consent-help" />
+                                <span class="text-sm leading-6 text-slate-700">I consent to the private storage and administrator review of my National ID and selfie, the official QR check, and local face comparison for my Lendly account.</span>
                             </label>
+                            <x-input-error :messages="$errors->get('consent')" class="mt-2" />
                         </section>
 
-                        <p x-cloak x-show="error" x-text="error" class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800" role="alert"></p>
-                        <p x-cloak x-show="notice" x-text="notice" class="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-800" role="status"></p>
-                        <p x-cloak x-show="busy" x-text="phase" class="text-sm font-medium leading-6 text-blue-700" role="status" aria-live="polite"></p>
-                        <div class="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-5">
-                            <x-primary-button x-bind:disabled="!consent || busy || reading" class="min-h-11 justify-center disabled:cursor-not-allowed disabled:opacity-50"><x-icon name="camera" class="h-4 w-4" aria-hidden="true" /><span x-text="busy ? 'Verification in progress…' : 'Continue to live selfie'">Continue to live selfie</span></x-primary-button>
-                            <button type="button" x-cloak x-show="busy" @click="cancel()" :disabled="cancelling" x-text="cancelling ? 'Cancelling…' : 'Cancel verification'" class="min-h-11 rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:opacity-50">Cancel verification</button>
-                        </div>
-                        <p class="text-xs leading-5 text-slate-500">Your camera opens only when you choose to scan a QR code or continue to the live selfie. Follow the selfie window’s instructions to finish or close it.</p>
-                    </form>
-                </div>
+                        <fieldset :disabled="!$wire.consent || uploading" wire:loading.attr="disabled" wire:target="submit" class="space-y-5 border-t border-slate-100 pt-5 disabled:opacity-60">
+                            <legend class="sr-only">ID photos and selfie</legend>
+                            <p id="identity-file-help" class="text-xs leading-5 text-slate-500">Accept the consent above before choosing photos. JPG, PNG or WebP; up to 8 MB each; 200–6,000 pixels on each side. Keep all ID text and the QR code readable.</p>
+                            <div>
+                                <x-input-label for="identity-front" value="National ID front" />
+                                <input id="identity-front" type="file" wire:model="front" accept="image/jpeg,image/png,image/webp" required aria-describedby="identity-file-help" class="mt-2 block w-full rounded-lg border border-slate-300 text-sm text-slate-600 file:mr-3 file:border-0 file:bg-blue-50 file:px-4 file:py-3 file:font-semibold file:text-blue-700" />
+                                <x-input-error :messages="$errors->get('front')" class="mt-2" />
+                            </div>
+                            <div>
+                                <x-input-label for="identity-back" value="National ID back (if needed for the QR code)" />
+                                <input id="identity-back" type="file" wire:model="back" accept="image/jpeg,image/png,image/webp" aria-describedby="identity-file-help" class="mt-2 block w-full rounded-lg border border-slate-300 text-sm text-slate-600 file:mr-3 file:border-0 file:bg-blue-50 file:px-4 file:py-3 file:font-semibold file:text-blue-700" />
+                                <x-input-error :messages="$errors->get('back')" class="mt-2" />
+                            </div>
+                            <div>
+                                <x-input-label for="identity-selfie" value="Clear selfie" />
+                                <p class="mt-2 text-sm leading-6 text-slate-500">Face the camera in good light, with your face visible. Take a photo now or upload one.</p>
+                                <div class="mt-3 flex flex-wrap gap-3">
+                                    <button type="button" @click="startCamera()" :disabled="cameraOpen || uploading" class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:opacity-50"><x-icon name="camera" class="h-4 w-4" aria-hidden="true" /> Open selfie camera</button>
+                                    @if ($selfie)<span class="self-center text-sm font-semibold text-emerald-700" role="status">Selfie ready</span>@endif
+                                </div>
+                                <input id="identity-selfie" type="file" wire:model="selfie" accept="image/jpeg,image/png,image/webp" capture="user" aria-describedby="identity-file-help" class="mt-3 block w-full rounded-lg border border-slate-300 text-sm text-slate-600 file:mr-3 file:border-0 file:bg-blue-50 file:px-4 file:py-3 file:font-semibold file:text-blue-700" />
+                                <x-input-error :messages="$errors->get('selfie')" class="mt-2" />
+                            </div>
+                        </fieldset>
 
-                <aside class="space-y-5 rounded-2xl border border-blue-100 bg-blue-50/60 p-6" aria-labelledby="identity-how-title">
-                    <h2 id="identity-how-title" class="font-bold text-slate-900">Before you begin</h2>
-                    <ul class="space-y-4 text-sm leading-6 text-slate-600">
-                        <li class="flex gap-3"><x-icon name="user-circle" class="mt-0.5 h-5 w-5 shrink-0 text-blue-600" aria-hidden="true" /><span>Use your own National ID and your matching Lendly account name.</span></li>
-                        <li class="flex gap-3"><x-icon name="camera" class="mt-0.5 h-5 w-5 shrink-0 text-blue-600" aria-hidden="true" /><span>Use a device with a camera and find a well-lit space for your live selfie.</span></li>
-                        <li class="flex gap-3"><x-icon name="clipboard-list" class="mt-0.5 h-5 w-5 shrink-0 text-blue-600" aria-hidden="true" /><span>Your result covers both renting and lending. No separate role checks are needed.</span></li>
-                    </ul>
-                    <p class="border-t border-blue-100 pt-4 text-xs leading-6 text-slate-500">Identity verification is separate from email verification. A badge helps members identify you; it does not guarantee a rental or listing.</p>
+                        <div x-cloak x-show="cameraOpen" wire:ignore class="overflow-hidden rounded-xl border border-slate-200 bg-slate-900">
+                            <video x-ref="selfieVideo" autoplay muted playsinline class="max-h-80 w-full object-contain" aria-label="Selfie camera preview"></video>
+                            <div class="flex flex-wrap gap-3 p-3">
+                                <button type="button" @click="captureSelfie()" :disabled="uploading" class="min-h-11 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-300">Take selfie</button>
+                                <button type="button" @click="stopCamera()" class="min-h-11 rounded-lg border border-white/50 px-4 py-2 text-sm font-semibold text-white focus:outline-none focus:ring-4 focus:ring-blue-300">Close camera</button>
+                            </div>
+                        </div>
+                        <p x-cloak x-show="cameraError" x-text="cameraError" class="text-sm text-red-700" role="alert"></p>
+                        <p x-cloak x-show="cameraNotice" x-text="cameraNotice" class="text-sm text-emerald-700" role="status"></p>
+                        <p x-cloak x-show="uploading" class="text-sm text-blue-700" role="status">Uploading captured selfie…</p>
+                        <p wire:loading wire:target="front,back,selfie" class="text-sm text-blue-700" role="status">Uploading photo…</p>
+                        <div class="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-5">
+                            <x-primary-button :disabled="!$consent" x-bind:disabled="!$wire.consent || uploading" wire:loading.attr="disabled" wire:target="submit,front,back,selfie" class="min-h-11"><span wire:loading.remove wire:target="submit">Submit for review</span><span wire:loading wire:target="submit">Submitting…</span></x-primary-button>
+                            <a href="{{ route('listings.index') }}" wire:navigate class="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 focus:outline-none focus:ring-4 focus:ring-blue-100">Browse for now</a>
+                        </div>
+                    </form>
+                </section>
+                <aside class="space-y-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-6">
+                    <h2 class="font-bold text-slate-900">What happens next</h2>
+                    <ol class="list-inside list-decimal space-y-3 text-sm leading-6 text-slate-600">
+                        <li>Upload readable ID photos and a clear selfie.</li>
+                        <li>An administrator checks the QR code, account details and face comparison.</li>
+                        <li>Approval unlocks renting and listing across both interfaces.</li>
+                    </ol>
+                    <p class="border-t border-blue-100 pt-4 text-xs leading-6 text-slate-500">You can browse while waiting. Face scores can be wrong. An administrator reviews the photos and never relies on the score alone.</p>
                 </aside>
             </div>
         @endif

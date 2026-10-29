@@ -1,10 +1,12 @@
 <?php
 
+use App\Http\Controllers\IdentityDocumentController;
 use App\Http\Controllers\OwnerPaymentQrController;
 use App\Http\Controllers\PaymentProofController;
 use App\Livewire\Admin\DamageReports\Index as AdminDamageReportsIndex;
 use App\Livewire\Admin\Dashboard as AdminDashboard;
 use App\Livewire\Admin\Disputes\Index as AdminDisputesIndex;
+use App\Livewire\Admin\IdentitySubmissions\Index as AdminIdentitySubmissionsIndex;
 use App\Livewire\Admin\Listings\Index as AdminListingsIndex;
 use App\Livewire\Admin\Payments\Settings as AdminPaymentSettings;
 use App\Livewire\Admin\Rentals\Index as AdminRentalsIndex;
@@ -47,6 +49,8 @@ Route::view('profile', 'profile')
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('rentals/{rental}/payment-qr', [OwnerPaymentQrController::class, 'booking'])->name('rentals.payment-qr');
     Route::get('identity/verify', VerifyIdentity::class)->name('identity.verify');
+    Route::get('identity/documents/{submission}/{kind}', IdentityDocumentController::class)
+        ->where('kind', 'front|back|selfie')->name('identity.documents');
     Route::get('payment-proofs/{submission}', PaymentProofController::class)->name('payment-proofs.show');
     Route::get('notifications', NotificationsIndex::class)->name('notifications.index');
     Route::get('messages', MessagesIndex::class)->name('messages.index');
@@ -89,6 +93,7 @@ Route::middleware(['auth', 'verified', 'role:owner'])->prefix('owner')->name('ow
 
 Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('dashboard', AdminDashboard::class)->name('dashboard');
+    Route::get('identity-submissions', AdminIdentitySubmissionsIndex::class)->name('identity-submissions.index');
     Route::get('listings', AdminListingsIndex::class)->name('listings.index');
     Route::get('rentals', AdminRentalsIndex::class)->name('rentals.index');
     Route::get('rentals/{rental}', AdminRentalShow::class)->name('rentals.show');

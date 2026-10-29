@@ -24,3 +24,9 @@ Root owns dependency setup, routes/config, environment placeholders, migration/U
 The user chose Google first with email/password below. The shared login/register control now uses a white pill button with the colored Google logo, hover and keyboard-focus states. It remains visible and natively disabled with a short availability message while credentials are missing; registration has no Google link until configured. Existing email/password, admin login and OAuth actions are preserved.
 
 Verified after the presentation change: **62 focused tests, 669 assertions passed**, including absent/partial/complete Google settings and existing login/registration/admin flows. Blade compilation, production Vite build, scoped Pint and whitespace checks passed. Browser visual checks and live Google login remain unavailable.
+
+## Google account before interface selection
+
+The user corrected the order: both Google buttons open Google immediately. After a valid callback authenticates the member and rotates the session, a dedicated page reuses the existing renter/owner picker. A server-side session marker binds the pending selection to that member and is consumed once. Selection rechecks account status and lockout, then sends identity-pending members to ID/selfie verification or identity-verified members to the chosen dashboard. Cancelling signs out. Email/password login keeps its existing behavior; OAuth state validation, account linking, environment credentials and Google Cloud callbacks are unchanged.
+
+Verified: **192 tests, 1,493 assertions passed** across authentication, interface access, profile and identity-flow checks. Scoped Pint, Blade compilation, production Vite build and whitespace checks passed. Local HTTP checks returned login 200 with no role picker and a 302 redirect to accounts.google.com. Live Google consent and browser interaction were not tested.

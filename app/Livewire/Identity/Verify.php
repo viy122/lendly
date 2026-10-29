@@ -2,75 +2,48 @@
 
 namespace App\Livewire\Identity;
 
-use App\Models\IdentityVerificationAttempt;
+use App\Models\IdentitySubmission;
 use App\Models\User;
-use App\Services\IdentityVerification;
+use App\Services\ManualIdentityReview;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Layout('layouts.app')]
 class Verify extends Component
 {
-    public string $first_name = '';
+    use WithFileUploads;
 
-    public string $middle_name = '';
+    public $front;
 
-    public string $last_name = '';
+    public $back;
 
-    public string $suffix = '';
-
-    public string $birth_date = '';
-
-    public string $qr_value = '';
+    public $selfie;
 
     public bool $consent = false;
-
-    #[Locked]
-    public ?string $attemptId = null;
 
     public function mount(): void
     {
         $this->member();
     }
 
-    public function startVerification(): ?string
+    public function submit(): void
     {
         $member = $this->member();
-        $this->validate(['consent' => ['accepted']], [
-            'consent.accepted' => 'Please consent to the identity and live selfie check before continuing.',
-        ]);
-        $this->resetErrorBag('identity');
-        $this->attemptId = app(IdentityVerification::class)->begin($member, $this->details());
+        $this->validate([
+            'front' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192', 'dimensions:min_width=200,min_height=200,max_width=6000,max_height=6000'],
+            'back' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192', 'dimensions:min_width=200,min_height=200,max_width=6000,max_height=6000'],
+            'selfie' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192', 'dimensions:min_width=200,min_height=200,max_width=6000,max_height=6000'],
+            'consent' => ['accepted'],
+        ], ['consent.accepted' => 'Please consent to the private ID review and face comparison before submitting.']);
 
-        return $this->attemptId;
-    }
-
-    public function completeVerification(string $attemptId, string $sessionId): void
-    {
-        $member = $this->member();
-        $this->validate(['consent' => ['accepted']]);
-        abort_unless($this->attemptId !== null && hash_equals($this->attemptId, $attemptId), 403);
-        app(IdentityVerification::class)->finish($member, $attemptId, $this->details(), $sessionId);
-        $this->attemptId = null;
-        $this->reset('first_name', 'middle_name', 'last_name', 'suffix', 'birth_date', 'qr_value', 'consent');
-        $this->dispatch('identity-verified');
-    }
-
-    public function cancelVerification(string $attemptId): void
-    {
-        $member = $this->member();
-        IdentityVerificationAttempt::whereKey($attemptId)->where('user_id', $member->id)
-            ->whereIn('status', ['pending', 'processing'])->update(['status' => 'cancelled']);
-        if ($this->attemptId === $attemptId) {
-            $this->attemptId = null;
+        app(ManualIdentityReview::class)->submit($member, $this->front, $this->back, $this->selfie, $this->consent);
+        foreach ([$this->front, $this->back, $this->selfie] as $upload) {
+            $upload?->delete();
         }
-    }
-
-    private function details(): array
-    {
-        return $this->only(['first_name', 'middle_name', 'last_name', 'suffix', 'birth_date', 'qr_value']);
+        $this->reset('front', 'back', 'selfie', 'consent');
+        $this->dispatch('identity-submitted');
     }
 
     private function member(): User
@@ -84,15 +57,11 @@ class Verify extends Component
     public function render(): View
     {
         $member = $this->member();
-        $available = app(IdentityVerification::class)->available();
 
         return view('livewire.identity.verify', [
-            'available' => $available,
-            'sdkUrl' => $available ? config('services.identity.sdk_url') : '',
-            'publicKey' => $available ? config('services.identity.public_key') : '',
-            'environment' => config('services.identity.environment', 'sandbox'),
+            'member' => $member,
             'verified' => $member->hasVerifiedIdentity(),
-            'testVerified' => $member->hasTestedIdentity(),
+            'submission' => IdentitySubmission::where('user_id', $member->id)->latest('id')->first(),
         ]);
     }
 }

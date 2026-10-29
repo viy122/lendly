@@ -1,5 +1,9 @@
 <div class="listing-detail-page min-h-screen bg-slate-50" wire:poll.15s.visible x-data="{ previousBodyOverflow: '' }">
     <x-page-header eyebrow="Lendly marketplace" :title="$listing->name" :subtitle="$listing->location" />
+    <x-identity-review-notice />
+    @if (! $listing->owner->hasVerifiedIdentity())
+        <p role="status" class="mx-4 my-3 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">The owner must complete their ID review before this item can receive new rental requests.</p>
+    @endif
 
     <div class="listing-detail-content w-full px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         @if (session('status'))
@@ -122,7 +126,7 @@
                             <h2 id="rental-rates-title" class="text-base font-bold text-slate-900">Rental rates</h2>
                             <x-badge :color="$availability->badgeColor()">{{ $availability->label() }}</x-badge>
                         </div>
-                        <p class="mt-4 flex flex-wrap items-baseline gap-x-2 text-3xl font-extrabold tracking-tight text-slate-900">₱{{ number_format($listing->price_per_day, 2) }} <span class="text-sm font-medium tracking-normal text-slate-500">/ day</span></p>
+                        <p class="mt-4 flex flex-wrap items-baseline gap-x-2 text-3xl font-extrabold tracking-tight text-slate-900">₱{{ number_format($listing->allows_daily_rentals ? $listing->price_per_day : $listing->price_per_hour, 2) }} <span class="text-sm font-medium tracking-normal text-slate-500">/ {{ $listing->allows_daily_rentals ? 'day' : 'hour' }}</span></p>
                     </div>
                     <div class="p-5 sm:p-6">
                         <dl class="space-y-4 text-sm">

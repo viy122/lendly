@@ -20,6 +20,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 class RentalLifecycle
 {
@@ -47,39 +48,82 @@ class RentalLifecycle
             $rental = Rental::lockForUpdate()->findOrFail($rental->id);
             $admin ? Gate::forUser($admin)->authorize('adminCancel', $rental) : Gate::authorize('cancel', $rental);
 
-            $evaluation = CancellationPolicy::evaluate($rental);
-            $reason = $reason !== null && trim($reason) !== '' ? trim($reason) : null;
-            validator(['cancellation_reason' => $reason], ['cancellation_reason' => ['nullable', 'string', 'max:1000']])->validate();
-            $cancellation = [
-                'status' => RentalStatus::Cancelled,
-                'cancelled_at' => now(),
-                'cancellation_reason' => $reason,
-                'cancellation_fee' => $evaluation['fee'],
-            ];
-
-            $rental->update($cancellation);
-
-            $rental->rentalRequest?->update([
-                ...$cancellation,
-                'status' => RentalRequestStatus::Cancelled,
-            ]);
-
-            $rental->securityDeposit?->update(['status' => SecurityDepositStatus::Refunded]);
-
-            if (! $admin) {
-                foreach ([$rental->owner, $rental->renter] as $participant) {
-                    self::notify(
-                        $participant,
-                        NotificationType::RentalCancelled,
-                        'Rental cancelled',
-                        "The renter cancelled the rental for \"{$rental->listing->name}\".".($evaluation['fee'] > 0 ? " A ₱{$evaluation['fee']} cancellation fee applies." : '')." Item availability: {$rental->listing->availabilityStatus()->label()}.",
-                        self::urlFor($participant, $rental),
-                    );
-                }
+            if ($rental->paymentSubmissions()->where('status', 'pending')->exists()) {
+                throw ValidationException::withMessages(['cancellation_reason' => 'Payment proof is awaiting verification. Have the payment reviewed before cancelling so any money received is included in the refund.']);
             }
 
-            return $evaluation;
+            $evaluation = CancellationPolicy::evaluate($rental);
+            $reason = $reason !== null && trim($reason) !== '' ? trim($reason) : null;
+            validator(['cancellation_reason' => $reason], ['cancellation_reason' => [$evaluation['requires_review'] && ! $admin ? 'required' : 'nullable', 'string', 'max:1000']])->validate();
+            if (! $admin && $evaluation['requires_review']) {
+                if ($rental->cancellationRequest?->status !== 'pending') {
+                    $rental->cancellationRequest()->create(['requested_by' => $rental->renter_id, 'reason' => $reason, 'fee' => $evaluation['fee']]);
+                    self::notify($rental->owner, NotificationType::RentalCancelled, 'Cancellation requested', "Review the cancellation request for booking #{$rental->id}. The reservation remains in place until approved.", self::urlFor($rental->owner, $rental));
+                }
+
+                return $evaluation;
+            }
+
+            return self::applyCancellation($rental, $reason, $evaluation);
         }, 3);
+    }
+
+    public static function advanceFulfillment(Rental $rental, User $owner, string $stage): void
+    {
+        DB::transaction(function () use ($rental, $owner, $stage) {
+            $rental = Rental::lockForUpdate()->findOrFail($rental->id);
+            $owner = User::find($owner->id);
+            abort_unless($owner && $owner->id === $rental->owner_id && $owner->hasVerifiedEmail() && ! $owner->isSuspended()
+                && $rental->isPaid() && ! $rental->pickup_confirmed_by_owner_at && ! $rental->pickup_confirmed_by_renter_at, 403);
+            if ($rental->cancellationRequest?->status === 'pending') {
+                throw ValidationException::withMessages(['fulfillment' => 'Review the pending cancellation request before continuing fulfillment.']);
+            }
+            $next = match ($rental->fulfillment_stage) {
+                'reserved' => 'packed', 'packed' => 'waiting_for_courier', 'waiting_for_courier' => 'shipped', default => null,
+            };
+            abort_unless($stage === $next && ($stage === 'packed' || $rental->fulfillment_method->value === 'delivery'), 403);
+            $rental->update(['fulfillment_stage' => $stage]);
+            self::notify($rental->renter, NotificationType::PickupConfirmed, 'Fulfillment updated', 'Booking #'.$rental->id.': '.str_replace('_', ' ', $stage).'.', self::urlFor($rental->renter, $rental));
+        }, 3);
+    }
+
+    public static function reviewCancellation(Rental $rental, User $reviewer, bool $approve, string $notes): void
+    {
+        DB::transaction(function () use ($rental, $reviewer, $approve, $notes) {
+            Listing::withTrashed()->whereKey($rental->listing_id)->lockForUpdate()->firstOrFail();
+            $rental = Rental::lockForUpdate()->findOrFail($rental->id);
+            $reviewer = User::find($reviewer->id);
+            abort_unless($reviewer && ($reviewer->isAdmin() || $reviewer->id === $rental->owner_id)
+                && $reviewer->hasVerifiedEmail() && ! $reviewer->isSuspended(), 403);
+            $request = $rental->cancellationRequest()->lockForUpdate()->first();
+            abort_unless($request && $request->status === 'pending' && $rental->isCancellableByRenter(), 403);
+            if ($approve && $rental->paymentSubmissions()->where('status', 'pending')->exists()) {
+                throw ValidationException::withMessages(['review_notes' => 'Review pending payment proof before approving cancellation so the refund includes any funds received.']);
+            }
+            validator(['review_notes' => trim($notes)], ['review_notes' => ['required', 'string', 'max:1000']])->validate();
+            $request->update(['status' => $approve ? 'approved' : 'rejected', 'reviewed_by' => $reviewer->id, 'review_notes' => trim($notes), 'reviewed_at' => now()]);
+            if ($approve) {
+                self::applyCancellation($rental, $request->reason, ['fee' => (float) $request->fee]);
+            } else {
+                self::notify($rental->renter, NotificationType::RentalCancelled, 'Cancellation declined', trim($notes), self::urlFor($rental->renter, $rental));
+            }
+        }, 3);
+    }
+
+    private static function applyCancellation(Rental $rental, ?string $reason, array $evaluation): array
+    {
+        $cancellation = ['status' => RentalStatus::Cancelled, 'cancelled_at' => now(), 'cancellation_reason' => $reason, 'cancellation_fee' => $evaluation['fee']];
+        $rental->update($cancellation + ['cancellation_refund_amount' => $rental->paid_at ? max(0, round((float) $rental->total_amount - $evaluation['fee'], 2)) : 0]);
+        $rental->rentalRequest?->update([...$cancellation, 'status' => RentalRequestStatus::Cancelled]);
+        $rental->cancellationRequest()->where('status', 'pending')->update(['status' => 'approved', 'review_notes' => 'The booking was cancelled.', 'reviewed_at' => now()]);
+        $rental->securityDeposit?->update(['status' => SecurityDepositStatus::Refunded]);
+        foreach ([$rental->owner, $rental->renter] as $participant) {
+            self::notify($participant, NotificationType::RentalCancelled, 'Rental cancelled',
+                "Booking #{$rental->id} cancelled.".($evaluation['fee'] > 0 ? " A ₱{$evaluation['fee']} cancellation fee applies." : '')." Item availability: {$rental->listing->availabilityStatus()->label()}. Any refund must be transferred manually.",
+                self::urlFor($participant, $rental));
+        }
+
+        return $evaluation;
     }
 
     public static function confirmPickup(Rental $rental, User $confirmingUser): void
@@ -308,7 +352,7 @@ class RentalLifecycle
 
         ($query ?? Rental::query())
             ->whereIn('status', [RentalStatus::Active, RentalStatus::Overdue])
-            ->where('end_date', '<', now()->startOfDay())
+            ->where(fn ($due) => $due->where(fn ($hourly) => $hourly->where('rental_unit', 'hour')->where('ends_at', '<', now()))->orWhere(fn ($daily) => $daily->where('rental_unit', 'day')->where('end_date', '<', now()->startOfDay())))
             ->each(function (Rental $rental) use (&$newlyOverdue) {
                 if (self::synchronizeRentalStatus($rental)) {
                     $newlyOverdue++;
@@ -328,7 +372,7 @@ class RentalLifecycle
             $rental = Rental::lockForUpdate()->findOrFail($rental->id);
 
             if (! in_array($rental->status, [RentalStatus::Active, RentalStatus::Overdue], true)
-                || $rental->end_date->greaterThanOrEqualTo(now()->startOfDay())) {
+                || ($rental->rental_unit === 'hour' ? $rental->ends_at->gte(now()) : $rental->end_date->gte(today()))) {
                 return false;
             }
 
@@ -337,7 +381,7 @@ class RentalLifecycle
             $rental->fill([
                 'status' => RentalStatus::Overdue,
                 'days_overdue' => $daysOverdue,
-                'late_fee' => round($rental->agreedDailyRate() * $daysOverdue, 2),
+                'late_fee' => $rental->currentLateFee(),
             ]);
 
             if ($rental->isDirty()) {

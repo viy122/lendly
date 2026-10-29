@@ -37,8 +37,8 @@ class PaidReservationTest extends TestCase
     {
         $this->travelTo(now()->startOfDay());
         Storage::set('local', Storage::fake('paid-reservations-'.Str::random(12)));
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $admin = User::factory()->admin()->create();
         $category = Category::create(['name' => 'Tools', 'slug' => 'tools']);
         $listing = Listing::create([

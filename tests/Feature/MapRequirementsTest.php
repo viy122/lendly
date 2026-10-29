@@ -27,7 +27,7 @@ class MapRequirementsTest extends TestCase
         parent::setUp();
 
         Mail::fake();
-        $this->owner = User::factory()->owner()->create();
+        $this->owner = User::factory()->identityVerified()->owner()->create();
         $this->category = Category::create(['name' => 'Tools', 'slug' => 'tools']);
     }
 

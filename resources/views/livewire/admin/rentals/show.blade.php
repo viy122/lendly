@@ -17,6 +17,7 @@
             <p class="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800" role="status">{{ session('status') }}</p>
         @endif
 
+        <x-booking-progress :rental="$rental" :reviewer="true" />
         <div class="admin-rental-layout">
             <aside class="min-w-0" aria-label="Rental item and booking summary">
                 <section aria-label="Transaction summary" class="admin-rental-summary overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -35,7 +36,7 @@
                             <x-badge :color="$rental->displayStatusColor()">{{ $rental->displayStatusLabel() }}</x-badge>
                         </div>
                         <h2 class="mt-4 break-words text-2xl font-bold tracking-tight text-slate-900">{{ $rental->listing->name }}</h2>
-                        <p class="mt-3 text-sm text-slate-500">{{ $rental->fulfillment_method->label() }} · {{ $rental->rental_days }} days</p>
+                        <p class="mt-3 text-sm text-slate-500">{{ $rental->fulfillment_method->label() }} · {{ $rental->rental_unit === 'hour' ? $rental->rental_hours.' hours' : $rental->rental_days.' days' }}</p>
                         @if ($rental->listing->trashed())
                             <p class="mt-4 text-sm text-slate-500">Listing removed. This transaction and its evidence are retained.</p>
                         @else
@@ -45,7 +46,7 @@
                     <dl class="space-y-5 border-t border-slate-100 bg-slate-50/70 p-6">
                         <div>
                             <dt class="text-xs text-slate-500">Rental period</dt>
-                            <dd class="mt-1 text-sm font-semibold text-slate-800">{{ $rental->start_date->format('M d, Y') }} – {{ $rental->end_date->format('M d, Y') }}</dd>
+                            <dd class="mt-1 text-sm font-semibold text-slate-800"><x-rental-period :booking="$rental" /></dd>
                         </div>
                         <div>
                             <dt class="text-xs text-slate-500">Booking total</dt>
@@ -105,13 +106,13 @@
                                 @endforeach
                                 <div>
                                     <dt class="text-slate-500">Rental period</dt>
-                                    <dd class="mt-1 font-semibold">{{ $rental->start_date->format('M d, Y') }} – {{ $rental->end_date->format('M d, Y') }}</dd>
+                                    <dd class="mt-1 font-semibold"><x-rental-period :booking="$rental" /></dd>
                                 </div>
                                 <div>
                                     <dt class="text-slate-500">Duration and fulfillment</dt>
                                     <dd class="mt-1 font-semibold">{{ $rental->rental_days }} days · {{ $rental->fulfillment_method->label() }}</dd>
                                 </div>
-                                <div><dt class="text-slate-500">Agreed daily rate</dt><dd class="mt-1 font-semibold">₱{{ number_format($rental->agreedDailyRate(), 2) }}</dd></div>
+                                <div><dt class="text-slate-500">Agreed {{ $rental->rental_unit === 'hour' ? 'hourly' : 'daily' }} rate</dt><dd class="mt-1 font-semibold">₱{{ number_format($rental->rental_unit === 'hour' ? (float) $rental->rental_fee / max(1, $rental->rental_hours) : $rental->agreedDailyRate(), 2) }}</dd></div>
                                 <div><dt class="text-slate-500">Commission rate</dt><dd class="mt-1 font-semibold">{{ number_format($rental->commission_rate, 2) }}%</dd></div>
                                 <div><dt class="text-slate-500">Days overdue</dt><dd class="mt-1 font-semibold">{{ $rental->currentOverdueDays() }}</dd></div>
                                 <div><dt class="text-slate-500">Renter accepted terms</dt><dd class="mt-1 font-semibold">{{ $rental->rentalRequest?->renter_terms_accepted_at?->format('M d, Y g:i A') ?? 'Not recorded' }}</dd></div>

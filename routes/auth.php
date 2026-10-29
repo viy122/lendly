@@ -26,6 +26,9 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Volt::route('auth/google/interface', 'pages.auth.google-interface')
+        ->middleware('verified')->name('auth.google.interface');
+
     Volt::route('verify-email', 'pages.auth.verify-email')
         ->name('verification.notice');
 

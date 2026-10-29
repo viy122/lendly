@@ -45,8 +45,7 @@
                                         @endif
                                         <p class="mt-1 text-xs text-slate-500">Submitted {{ $request->created_at->timezone('Asia/Manila')->format('M d, Y · g:i A') }} (PHT)</p>
                                         <p class="mt-1 text-sm text-slate-500">
-                                            {{ $request->start_date->format('M d, Y') }} &ndash; {{ $request->end_date->format('M d, Y') }}
-                                            ({{ $request->rental_days }} day{{ $request->rental_days === 1 ? '' : 's' }})
+                                            <x-rental-period :booking="$request" />
                                         </p>
                                         <p class="mt-1 text-xs text-slate-400">
                                             Renter: {{ $request->renter->name }}@unless ($request->renter->trashed()) ({{ $request->renter->email }})@endunless &middot; {{ ucfirst($request->fulfillment_method->value) }} &middot; Total ₱{{ number_format($request->total_amount, 2) }}

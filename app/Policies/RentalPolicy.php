@@ -58,6 +58,7 @@ class RentalPolicy
     {
         return $user->id === $rental->renter_id && ! $user->trashed() && ! $user->isSuspended()
             && $rental->isPaymentPending() && $rental->paid_at === null
+            && (! $rental->payment_due_at || $rental->payment_due_at->isFuture())
             && $rental->hasAcceptedAgreement() && ! $rental->payment()->exists()
             && ! $rental->securityDeposit()->exists()
             && ! $rental->paymentSubmissions()->where('status', 'pending')->exists();

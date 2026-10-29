@@ -4,6 +4,8 @@
     <p class="mt-2 text-sm text-slate-600">Owner: {{ $request->listing->owner->name }} &middot; Renter: {{ $request->renter->name }}</p>
 
     <x-input-error :messages="$errors->get('agreement')" class="mt-4" role="alert" />
+    <x-input-error :messages="$errors->get('identity')" class="mt-4" role="alert" />
+    @unless ($request->rental)<x-identity-review-notice />@endunless
 
     @if (! $request->isApproved())
         <p class="mt-6 rounded-lg bg-rose-50 p-4 text-sm text-rose-700" role="alert">This request is {{ strtolower($request->status->label()) }}. Its agreement can no longer be accepted.</p>

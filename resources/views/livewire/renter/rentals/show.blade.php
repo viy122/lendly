@@ -10,6 +10,7 @@
             <span class="text-xs font-medium text-slate-500">Rental #{{ $rental->id }}</span>
         </div>
 
+        <x-booking-progress :rental="$rental" />
         <div class="rental-detail-grid">
             <aside class="renter-rental-sidebar" aria-label="Rented item and payment receipt">
                 <section class="renter-rental-item rental-panel overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -82,7 +83,7 @@
                                 <dd class="font-medium text-slate-800">₱{{ number_format($rental->rental_fee, 2) }}</dd>
                             </div>
                             <div class="flex flex-wrap justify-between gap-x-4 gap-y-1">
-                                <dt class="text-slate-500">Platform fee</dt>
+                                <dt class="text-slate-500">Platform fee (processing)</dt>
                                 <dd class="font-medium text-slate-800">₱{{ number_format($rental->commission_amount, 2) }}</dd>
                             </div>
                             <div class="flex flex-wrap justify-between gap-x-4 gap-y-1">
@@ -136,7 +137,7 @@
                     <dl class="rental-detail-dates mt-5 grid gap-4">
                         <div><dt class="text-xs text-slate-500">Start date</dt><dd class="mt-1 text-sm font-semibold text-slate-800">{{ $rental->start_date->format('M d, Y') }}</dd></div>
                         <div><dt class="text-xs text-slate-500">End date</dt><dd class="mt-1 text-sm font-semibold text-slate-800">{{ $rental->end_date->format('M d, Y') }}</dd></div>
-                        <div><dt class="text-xs text-slate-500">Duration</dt><dd class="mt-1 text-sm font-semibold text-slate-800">{{ $rental->rental_days }} day{{ (int) $rental->rental_days === 1 ? '' : 's' }}</dd></div>
+                        <div><dt class="text-xs text-slate-500">Duration</dt><dd class="mt-1 text-sm font-semibold text-slate-800">{{ $rental->rental_unit === 'hour' ? $rental->rental_hours.' hours' : $rental->rental_days.' days' }}</dd></div>
                     </dl>
                     <div class="mt-5 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3"><p class="text-sm font-medium text-blue-700">Total amount</p><p class="text-xl font-bold tracking-tight text-blue-700">₱{{ number_format($rental->total_amount, 2) }}</p></div>
                 </section>
@@ -149,7 +150,7 @@
                                 <dd class="font-medium text-slate-800">₱{{ number_format($rental->rental_fee, 2) }}</dd>
                             </div>
                             <div class="flex flex-wrap justify-between gap-x-4 gap-y-1">
-                                <dt class="text-slate-500">Platform fee</dt>
+                                <dt class="text-slate-500">Platform fee (processing)</dt>
                                 <dd class="font-medium text-slate-800">₱{{ number_format($rental->commission_amount, 2) }}</dd>
                             </div>
                             <div class="flex flex-wrap justify-between gap-x-4 gap-y-1">
@@ -176,6 +177,10 @@
                                 @endif
                             </div>
                         @elseif ($paymentDestination && auth()->user()->can('pay', $rental))
+                            <p class="mt-4 text-sm font-semibold text-slate-800">Do you want to pay now?</p>
+                            <p class="mt-1 text-sm text-slate-500">You can return later before the payment deadline. Check the recipient and amount before transferring.</p>
+                            <details class="mt-3 rounded-xl border border-blue-100 p-4" open>
+                                <summary class="cursor-pointer rounded text-sm font-semibold text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100">Pay now — view payment instructions</summary>
                             <x-payment-destination :destination="$paymentDestination" :rental="$rental" />
                             @if (($paymentDestination['source'] ?? null) === 'owner_wallet')
                                 <p class="mt-3 text-sm leading-6 text-slate-600">Open your e-wallet app and scan or import this QR. Confirm the recipient account name and the full total above before paying. Complete the payment in your e-wallet, then upload its transfer confirmation below. The owner acknowledges receipt before final admin review. Submitting proof does not mark this booking paid.</p>
@@ -188,11 +193,13 @@
                                 <p wire:loading wire:target="payment_proof" class="text-sm text-slate-500">Uploading proof…</p>
                                 <x-primary-button wire:loading.attr="disabled">Submit payment proof</x-primary-button>
                             </form>
+                            </details>
+                            <a href="{{ route('renter.rentals.index') }}" wire:navigate class="mt-3 inline-flex min-h-10 items-center rounded-lg px-3 text-sm font-semibold text-slate-600 focus:outline-none focus:ring-4 focus:ring-blue-100">Pay later — return to my rentals</a>
                         @else
                             <p class="mt-4 text-sm text-slate-600">Payment is unavailable until support provides payment instructions and the booking agreement is confirmed. Contact support before sending any funds.</p>
                         @endif
 
-                        @if ($rental->isCancellableByRenter())
+                        @if ($rental->isCancellableByRenter() && $rental->cancellationRequest?->status !== 'pending')
                             <button type="button" wire:click="$toggle('showCancelForm')" class="mt-3 w-full text-center text-xs font-medium text-slate-500 hover:text-slate-700">
                                 Cancel this booking instead
                             </button>
@@ -203,7 +210,7 @@
                 @else
                     @if ($rental->isOverdue())
                         <div class="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm leading-6 text-rose-700" role="status">
-                            <p class="font-semibold">This rental is overdue by {{ $rental->currentOverdueDays() }} day{{ $rental->currentOverdueDays() === 1 ? '' : 's' }}.</p>
+                            <p class="font-semibold">@if ($rental->rental_unit === 'hour')This rental is overdue. Late fees apply per started hour.@else This rental is overdue by {{ $rental->currentOverdueDays() }} day{{ $rental->currentOverdueDays() === 1 ? '' : 's' }}.@endif</p>
                             <p class="mt-1">Late fee so far: ₱{{ number_format($rental->currentLateFee(), 2) }}</p>
                         </div>
                     @endif
@@ -213,7 +220,7 @@
                             <p class="font-semibold text-slate-700">This booking was cancelled.</p>
                             <x-cancellation-details :record="$rental" />
                         </div>
-                    @elseif ($rental->isCancellableByRenter())
+                    @elseif ($rental->isCancellableByRenter() && $rental->cancellationRequest?->status !== 'pending')
                         <x-rental-panel title="Booking options" icon="x-mark" subtitle="Review any cancellation fees before cancelling.">
                             <button type="button" wire:click="$toggle('showCancelForm')" class="mt-5 inline-flex min-h-10 items-center rounded-lg border border-rose-200 px-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 focus:outline-none focus:ring-4 focus:ring-rose-100">
                                 Cancel this booking

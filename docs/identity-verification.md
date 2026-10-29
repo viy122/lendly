@@ -1,62 +1,55 @@
-# Member identity verification
+# Member ID review
 
-Registration follows three steps: account details, email confirmation, then National ID and live-selfie verification. Confirming a member's email opens `/identity/verify` before an intended dashboard or account page. Members can also return to verification from Profile. Administrators keep their existing email-confirmation destination.
+Lendly uses administrator review at `/identity/verify`. Google or email signup confirms the email separately. Members may browse and save rental drafts while waiting; ID approval is required to create/publish listings, submit rental requests or finalize a new booking. Existing rental payments, returns and dispute obligations remain available.
 
-A member uses the same identity verification when renting and when listing items. Email verification remains separate. The signup handoff does not impose a new verification requirement on existing rental or listing actions. Without provider configuration, the final step explains that the account and email are ready while identity verification is still pending; it does not collect ID images or grant a badge.
+## Member and administrator workflow
 
-## What is checked
+1. The member confirms their account name matches their Philippine National ID, accepts processing consent and uploads the ID front, optional back containing the QR, and a clear selfie. JPEG, PNG or WebP, 200–6,000 pixels per side, at most 8 MB each.
+2. Lendly runs YuNet face detection and SFace comparison locally. The main ID portrait is aligned and compared with the single selfie face. Missing, too-small or multiple selfie faces stop submission with an actionable error. Runtime failures cannot approve or create a partial submission.
+3. An active, email-confirmed administrator opens **ID reviews** at `/admin/identity-submissions`. They inspect the photos and raw cosine score, use [the official National ID Check](https://everify.gov.ph/check), and compare the checker's demographics with the submitted ID and current account name.
+4. Approval requires three explicit confirmations: official QR passed, details match, and visual face/score review. Rejection requires a reason displayed to the member; they can upload new photos. The decision and reviewer are recorded. Members approved this way display **ID reviewed**.
 
-The browser decodes the National ID QR locally. With the member's explicit consent, the official eVerify liveness SDK captures a live selfie and returns a session identifier. Laravel sends the QR value and that session identifier to the documented National ID **QR Verify** endpoint, then checks the authenticated name components and birth date against the submitted details and account name.
+The administrator must manually transfer/upload the QR image to the official checker. Opening that site does not send a verification result back to Lendly. The review form records the administrator's attestation; it does not call a government API.
 
-The client cannot grant verification. Reading a QR, completing a selfie capture, returning HTTP 200, or opening the public National ID checker is not sufficient. Only the documented matched result and matching details can set the server-side verification state.
+A raw cosine score is not a probability, confidence percentage or automatic verdict. Higher means more similar. No uncalibrated threshold decides access. A selfie photo (including a camera capture) does not establish liveness or prevent replay/deepfake attacks. Reviewers must assess the photos and official QR result together; unclear submissions should be rejected with instructions to retry.
 
-The member must use the full name on their National ID. Name matching ignores case and extra whitespace, but does not guess alternative names, remove accents, or apply fuzzy matching. Correct an account-name error in Profile before retrying.
+## Local setup
 
-## Configure the official connection
-
-Obtain approved credentials and the assigned API base URL from the provider. Use `.env`, never a source file or browser bundle:
-
-```dotenv
-IDENTITY_ENVIRONMENT=sandbox
-IDENTITY_BASE_URL=https://your-assigned-provider-base-url
-IDENTITY_CLIENT_ID=your-server-client-id
-IDENTITY_CLIENT_SECRET=your-server-client-secret
-IDENTITY_PUBLIC_KEY=your-sdk-public-key
-IDENTITY_SDK_URL=https://hackathon-everify-face-liveness.e.gov.ph/js/everify-liveness-sdk.min.js
-```
-
-The default SDK URL is the **staging SDK documented by DICT**. Production requires the provider's assigned production API URL, production credentials and production SDK URL; do not relabel staging credentials as production. The SDK public key may be sent to the browser. The client ID, client secret and API access token remain server-side.
-
-After changing configuration, clear/rebuild the application's configuration cache as appropriate. The app never guesses the assigned API base URL. Without a complete valid configuration it shows an unavailable state and does not collect identity details or start a selfie session.
-
-Apply the migration during deployment:
+Python 3.10+ is required. From the project directory:
 
 ```powershell
+python -m venv storage/app/private/face-runtime
+& storage/app/private/face-runtime/Scripts/python.exe -m pip install -r scripts/face-match/requirements.txt
+& storage/app/private/face-runtime/Scripts/python.exe scripts/face-match/setup_models.py storage/app/private/face-models
 php artisan migrate
-npm install
+php artisan config:clear
 npm run build
 ```
 
-Use HTTPS for a deployed verification page. Browser camera access is restricted to secure contexts; localhost is suitable for local development. Camera capture starts only after the member grants consent and explicitly chooses the camera action. QR image uploads are decoded in the browser, limited in size, and are not uploaded to Lendly.
+On Linux use `face-runtime/bin/python` in place of `face-runtime/Scripts/python.exe`. These private runtime/model directories are ignored by Git. The default Laravel config uses this project's private virtual environment. Set `FACE_MATCH_PYTHON` only when using a different absolute Python executable path. Install the same runtime and weights on each application server. Enable PHP process execution for the app user; comparison has a 45-second timeout. Missing setup produces an honest submission error.
 
-## Sandbox and production
+Weights come from [OpenCV Zoo YuNet](https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet) (MIT) and [OpenCV Zoo SFace](https://github.com/opencv/opencv_zoo/tree/main/models/face_recognition_sface) (Apache 2.0). The setup script checks the published Git LFS SHA-256 IDs before accepting either model and saves their license texts alongside them. See [OpenCV's comparison documentation](https://docs.opencv.org/4.x/d0/dd4/tutorial_dnn_face.html) for algorithm details. Benchmark thresholds are not calibrated for photographs of Philippine IDs.
 
-Sandbox success is shown privately as **Test identity check completed**. It does not earn a public Identity verified badge. Only a production result can display that badge. Neither mode has a mock success switch or an administrator override.
+Run the Laravel scheduler (`php artisan schedule:work` for local development, normal per-minute `schedule:run` cron in deployment). `identity:prune-documents` runs hourly and can be invoked manually. It cancels submissions older than 30 days and retries deletion of photos from decided/cancelled reviews. At the 30-day boundary photos immediately become inaccessible to the document endpoint; physical deletion runs on the next scheduler pass. Backups need their own expiry policy.
 
-Use synthetic test identities supplied by the provider in its sandbox. Local automated tests fake the HTTP boundary and do not contact the registry or submit a real ID or selfie.
+## Privacy and account changes
 
-## Data handling and invalidation
+Files use generated names under `storage/app/private/identity-documents`. They are never put on the public disk or included in model serialization. A protected, non-cached document endpoint rechecks the current viewer and serves only unexpired pending images to the submitting member or an active, email-confirmed administrator. Keep the private storage outside the web server's document root and disable request-body logging for uploads/Livewire requests.
 
-- Lendly does not store ID images, selfies, QR contents, birth dates, returned demographic profiles or face-image URLs. The member necessarily supplies the QR and personal details during their authenticated verification request; keep production request-body logging disabled for this page and its Livewire requests.
-- Attempts store a keyed input fingerprint, expiry and status. A one-way liveness-session hash prevents the same session from being replayed. No raw liveness session is saved.
-- The provider reference is encrypted at rest and hidden from User serialization. Public profiles receive only the production verification state.
-- Changing an account name or email, account suspension, or account deletion clears verification and cancels pending attempts. Results arriving after cancellation, expiry, profile changes or deletion cannot restore it.
-- A successful identity check concerns the matched identity at the time of verification. It is not a background check, a guarantee of rental performance, or a guarantee that a later account session belongs to the same person.
+Photos are deleted after a decision, cancellation, account name/email change, suspension or closure. Temporary upload files are removed on successful submission; abandoned Livewire uploads follow Livewire's normal temporary-file cleanup. Failed or interrupted deletions are retried by the pruning command. Minimal decision metadata remains: member/reviewer IDs, dates, consent date, notes, keyed profile fingerprint and raw similarity. Embeddings, decoded QR data and government demographic responses are not stored by this workflow. Do not paste ID numbers or sensitive demographics into review notes.
 
-## Official references
+User identity references are encrypted and hidden from serialization. Changing name/email, suspension or deletion clears approval and cancels pending submissions. Fresh account fingerprints and locked server transactions prevent stale profiles or concurrent decisions from granting approval. Both member interfaces share the same approval.
 
-- [DICT eVerify API reference](https://platforms.e.gov.ph/api-catalogs/everify): `/api/auth`, `/api/query/qr`, matched and face-mismatch responses.
-- [Official liveness SDK integration](https://platforms.e.gov.ph/api-catalogs/everify?tab=integration): `window.eKYC().start({ pubKey })`, returning `result.session_id`.
-- [PSA public QR checker](https://everify.gov.ph/check): a separate public tool; its browser result does not automatically verify an account in this app.
+## Verification
 
-Live provider integration cannot be exercised until the assigned credentials, environment and allowed origins are configured. Verify the assigned deployment's current contract against these documented fields during onboarding; unknown response shapes fail closed.
+Laravel tests cover private access, consent/file validation, malformed face results, duplicate/stale decisions, review confirmations, lifecycle cleanup, member/admin screens and rental/listing gates. Local model smoke checks can be run with two non-sensitive single-face photos:
+
+```powershell
+& storage/app/private/face-runtime/Scripts/python.exe scripts/face-match/self_check.py storage/app/private/face-models first.jpg second.jpg
+```
+
+The check compares the same photo and different people, then asserts blank and multiple-face selfies are rejected. This is a runtime smoke check, not an accuracy/fairness study. Use authorized fixtures; never submit a real member ID in automated tests.
+
+## Legacy official API backend
+
+The earlier `IdentityVerification` service, attempts table and its server-side contract tests remain for compatibility. Its SDK/QR flow is not offered by the active member screen. `IDENTITY_*` settings do not enable or disable manual review. Production approvals previously obtained through that service still count; sandbox results never do. Connecting the official API later requires approved credentials and a separate integration review. [PSA's public-checker advisory](https://psa.gov.ph/content/public-advisory-37) describes the public tool and its intended assurance limits.

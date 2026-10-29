@@ -156,7 +156,7 @@
                             @endif
                             <span class="min-w-0">
                                 <span class="block break-words text-sm font-semibold text-slate-900">{{ $marker['name'] }}</span>
-                                <span class="mt-1 block text-sm text-slate-600">₱{{ $marker['price'] }}/day</span>
+                                <span class="mt-1 block text-sm text-slate-600">₱{{ $marker['price'] }}/{{ $marker['priceUnit'] ?? 'day' }}</span>
                                 @if ($marker['distance'] !== null)
                                     <span class="mt-1 block text-xs font-semibold text-blue-700">{{ $marker['distance'] }}</span>
                                 @endif

@@ -26,6 +26,21 @@ class EnsureAccountIsActive
             ]);
         }
 
+        if ($user && $user->google_id !== null) {
+            $guard = Auth::guard('web');
+            $credentialSnapshot = $request->session()->get('password_hash_web');
+
+            if (! is_string($credentialSnapshot) || ! hash_equals($guard->hashPasswordForCookie($user->getAuthPassword()), $credentialSnapshot)) {
+                $guard->logoutCurrentDevice();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return redirect()->route('login')->withErrors([
+                    'email' => 'Your sign-in has changed. Please sign in again.',
+                ]);
+            }
+        }
+
         return $next($request);
     }
 }
