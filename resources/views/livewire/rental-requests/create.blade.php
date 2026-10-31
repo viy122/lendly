@@ -1,4 +1,4 @@
-<div class="mx-auto max-w-3xl px-4 py-6 sm:px-6 {{ $modal ? '' : 'lg:px-8 lg:py-8' }}">
+<div x-data @if ($modal) x-on:rental-dates-selected.window="$wire.$set('start_date', $event.detail.startDate, false); $wire.$set('accept_terms', false, false); $wire.$set('end_date', $event.detail.endDate)" @endif class="mx-auto max-w-3xl px-4 py-6 sm:px-6 {{ $modal ? '' : 'lg:px-8 lg:py-8' }}">
     @unless ($modal)
         <a href="{{ route('listings.show', $listing) }}" wire:navigate class="flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-700">
             <x-icon name="chevron-down" class="h-3.5 w-3.5 rotate-90" /> Back to listing
@@ -113,13 +113,20 @@
             <x-input-error :messages="$errors->get('accept_terms')" class="mt-2" />
         </div>
 
+        @php($ownerIdentityApproved = $listing->owner?->fresh()?->hasVerifiedIdentity())
+        @if (! $ownerIdentityApproved)
+            <p id="rental-owner-verification-notice" role="status" class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+                This owner has not completed ID verification. An administrator must approve their identity before this item can receive rental requests.
+            </p>
+        @endif
+
         <div class="flex flex-wrap justify-end gap-3">
             @if ($modal)
                 <x-secondary-button x-on:click="$dispatch('close-rental-request')">Cancel</x-secondary-button>
             @endif
             <x-secondary-button type="button" wire:click="addToCart" wire:loading.attr="disabled" wire:target="addToCart,submit" class="disabled:cursor-wait disabled:opacity-60">Add to cart</x-secondary-button>
             <x-secondary-button type="button" wire:click="joinWaitlist" wire:loading.attr="disabled" wire:target="joinWaitlist">Join waitlist for these dates</x-secondary-button>
-            <x-primary-button :disabled="! auth()->user()?->fresh()?->hasVerifiedIdentity() || ! $listing->owner?->fresh()?->hasVerifiedIdentity()" wire:loading.attr="disabled" wire:target="submit,addToCart" class="disabled:cursor-wait disabled:opacity-60">Send rental request</x-primary-button>
+            <x-primary-button :disabled="! auth()->user()?->fresh()?->hasVerifiedIdentity() || ! $ownerIdentityApproved" :aria-describedby="$ownerIdentityApproved ? null : 'rental-owner-verification-notice'" wire:loading.attr="disabled" wire:loading.class="cursor-wait" wire:loading.class.remove="disabled:cursor-not-allowed" wire:target="submit,addToCart" class="disabled:cursor-not-allowed disabled:opacity-60">Send rental request</x-primary-button>
         </div>
     </form>
 </div>

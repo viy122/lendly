@@ -71,6 +71,29 @@ class IdentityApprovalGateTest extends TestCase
         $this->assertDatabaseCount('rental_requests', 0);
     }
 
+    public function test_request_form_explains_owner_verification_and_enables_sending_after_approval(): void
+    {
+        $owner = User::factory()->create();
+        $listing = $this->listing($owner);
+        $renter = User::factory()->identityVerified()->create();
+        $form = Livewire::actingAs($renter)->test(Create::class, ['listing' => $listing, 'modal' => true]);
+
+        foreach ([false, true] as $approved) {
+            if ($approved) {
+                $owner->forceFill(['identity_verified_at' => now(), 'identity_verification_environment' => 'manual'])->save();
+            }
+            $form->call('$refresh');
+            $notice = 'This owner has not completed ID verification.';
+            $approved ? $form->assertDontSee($notice) : $form->assertSee($notice);
+
+            $document = new \DOMDocument;
+            $document->loadHTML($form->html(), LIBXML_NOERROR | LIBXML_NOWARNING);
+            $button = (new \DOMXPath($document))->query('//button[normalize-space(.)="Send rental request"]')->item(0);
+            $this->assertNotNull($button);
+            $this->assertSame(! $approved, $button->hasAttribute('disabled'));
+        }
+    }
+
     public function test_unapproved_members_can_save_cart_drafts_but_cannot_checkout(): void
     {
         $listing = $this->listing();

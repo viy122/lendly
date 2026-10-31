@@ -164,11 +164,11 @@
                     </div>
                 </section>
 
-                <x-listing-detail-panel title="Availability" icon="clipboard-list" subtitle="Check the calendar before requesting dates." class="listing-detail-availability">
+                <x-listing-detail-panel title="Availability" icon="clipboard-list" subtitle="Select your rental dates, then choose Request to rent." class="listing-detail-availability">
                     @if ($listing->available_from && $listing->available_until)
                         <p class="mt-4 text-sm font-medium text-slate-700">Available {{ $listing->available_from->format('M d, Y') }} – {{ $listing->available_until->format('M d, Y') }}</p>
                     @endif
-                    <div class="mt-5" wire:key="availability-calendar-{{ $listing->id }}-{{ md5($bookedRanges->toJson().$reservedRanges->toJson().$listing->available_from?->toDateString().$listing->available_until?->toDateString()) }}" x-data="availabilityCalendar(@js($bookedRanges), @js($reservedRanges), @js($listing->available_from?->toDateString()), @js($listing->available_until?->toDateString()))">
+                    <div class="mt-5" wire:key="availability-calendar-{{ $listing->id }}-{{ md5($bookedRanges->toJson().$reservedRanges->toJson().$listing->available_from?->toDateString().$listing->available_until?->toDateString().now()->toDateString()) }}" x-data="availabilityCalendar(@js($bookedRanges), @js($reservedRanges), @js($listing->available_from?->toDateString()), @js($listing->available_until?->toDateString()), @js(max(now()->addDay()->toDateString(), $listing->available_from?->toDateString() ?? '')))">
                         <div class="flex items-center justify-between gap-2">
                             <button type="button" @click="prevMonth" aria-label="Previous month" class="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100"><x-icon name="chevron-down" class="h-4 w-4 rotate-90" aria-hidden="true" /></button>
                             <p class="text-center text-sm font-semibold text-slate-800" x-text="monthLabel" aria-live="polite"></p>
@@ -179,20 +179,27 @@
                             <template x-for="(week, wi) in weeks" :key="wi">
                                 <div class="grid grid-cols-7 gap-1">
                                     <template x-for="(day, di) in week" :key="di">
-                                        <div class="flex h-10 items-center justify-center rounded-lg text-xs"
+                                        <button type="button" class="flex h-10 items-center justify-center rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed"
+                                            @click="selectDate(day)"
+                                            :disabled="!canSelect(day) || !@js((bool) $listing->is_available && $listing->isPublished())"
+                                            :aria-pressed="isSelected(day)"
+                                            :aria-hidden="!day"
                                             :class="{
+                                                'bg-blue-600 font-semibold text-white': isSelected(day) && @js((bool) $listing->is_available && $listing->isPublished()),
                                                 'bg-amber-100 font-semibold text-amber-800': day && isReserved(day),
                                                 'bg-rose-100 font-semibold text-rose-700': day && isBooked(day) && !isReserved(day),
                                                 'text-slate-400': day && isPast(day) && !isBooked(day),
-                                                'bg-blue-50 font-medium text-blue-700': day && !isPast(day) && !isBooked(day) && !isOutsideWindow(day) && @js((bool) $listing->is_available && $listing->isPublished()),
-                                                'bg-slate-100 text-slate-500': day && !isPast(day) && !isBooked(day) && (isOutsideWindow(day) || !@js((bool) $listing->is_available && $listing->isPublished())),
+                                                'bg-blue-50 font-medium text-blue-700': canSelect(day) && !isSelected(day) && @js((bool) $listing->is_available && $listing->isPublished()),
+                                                'bg-slate-100 text-slate-500': day && !isPast(day) && !isBooked(day) && (!canSelect(day) || !@js((bool) $listing->is_available && $listing->isPublished())),
                                             }"
-                                            :aria-label="day ? day.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) + ': ' + (isReserved(day) ? 'Reserved' : isBooked(day) ? 'On hold' : isPast(day) ? 'Past date' : !isOutsideWindow(day) && @js((bool) $listing->is_available && $listing->isPublished()) ? 'Available' : 'Unavailable') : null"
-                                            x-text="day ? day.getDate() : ''"></div>
+                                            :aria-label="day ? day.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) + ': ' + (isReserved(day) ? 'Reserved' : isBooked(day) ? 'On hold' : isPast(day) ? 'Past date' : canSelect(day) && @js((bool) $listing->is_available && $listing->isPublished()) ? 'Available' : 'Unavailable') : null"
+                                            x-text="day ? day.getDate() : ''"></button>
                                     </template>
                                 </div>
                             </template>
                         </div>
+                        <p class="mt-3 text-sm font-medium text-blue-700" role="status" x-text="selectionLabel"></p>
+                        <p x-show="selectionError" x-cloak class="mt-2 text-sm text-rose-700" role="alert" x-text="selectionError"></p>
                         <div class="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-100 pt-4 text-xs text-slate-500">
                             <span class="flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full bg-amber-200" aria-hidden="true"></span> Reserved</span>
                             <span class="flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full bg-rose-200" aria-hidden="true"></span> On hold</span>
@@ -238,6 +245,7 @@
         <dialog
             id="rental-request-modal"
             x-ref="rentalRequestModal"
+            wire:ignore.self
             aria-labelledby="rental-request-title"
             aria-describedby="rental-request-description"
             x-on:close-rental-request.stop="$el.close()"

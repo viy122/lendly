@@ -25,7 +25,7 @@ class RegistrationTest extends TestCase
         $response
             ->assertOk()
             ->assertSeeVolt('pages.auth.register')
-            ->assertSee('ID review');
+            ->assertSee('Create your free account.');
     }
 
     public function test_new_users_can_register(): void
@@ -100,7 +100,7 @@ class RegistrationTest extends TestCase
         $this->get($verificationUrl)->assertRedirect(route('identity.verify', absolute: false));
         $this->get(route('identity.verify'))->assertOk()
             ->assertSee('Submit your ID for review.')
-            ->assertSee('Privacy and consent')->assertSee('Registration progress')
+            ->assertSee('Privacy and consent')
             ->assertSee('type="file"', false)->assertDontSee('Identity verified');
 
         $this->assertNull($member->fresh()->identity_verified_at);

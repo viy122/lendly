@@ -1,5 +1,8 @@
 <div class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8" wire:poll.10s>
-    <a href="{{ route(($isOwner ? 'owner' : 'renter').'.rental-requests.index') }}" wire:navigate class="text-sm font-medium text-blue-600">Back to rental requests</a>
+    <a href="{{ route(($isOwner ? 'owner' : 'renter').'.rental-requests.index') }}" wire:navigate class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+        <x-icon name="chevron-down" class="h-4 w-4 rotate-90" aria-hidden="true" />
+        Back to rental requests
+    </a>
     <h1 class="mt-4 text-xl font-semibold text-slate-900">Review rental agreement</h1>
     <p class="mt-2 text-sm text-slate-600">Owner: {{ $request->listing->owner->name }} &middot; Renter: {{ $request->renter->name }}</p>
 

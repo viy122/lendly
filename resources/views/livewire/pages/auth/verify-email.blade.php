@@ -62,9 +62,6 @@ new #[Layout('layouts.guest')] class extends Component
 }; ?>
 
 <div>
-    @unless (auth()->user()->isAdmin())
-        <x-registration-progress :step="2" />
-    @endunless
     <h1 class="mb-3 text-2xl font-bold text-slate-900">{{ __('Verify your email') }}</h1>
     <div class="mb-4 text-sm text-slate-600">
         @if (auth()->user()->isAdmin())

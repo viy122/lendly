@@ -1,6 +1,10 @@
 document.addEventListener('alpine:init', () => {
-    Alpine.data('availabilityCalendar', (bookedRanges, reservedRanges = [], availableFrom = null, availableUntil = null) => ({
+    Alpine.data('availabilityCalendar', (bookedRanges, reservedRanges = [], availableFrom = null, availableUntil = null, earliestDate) => ({
         viewDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+        minimumDate: new Date(earliestDate + 'T00:00:00'),
+        selectedStart: null,
+        selectedEnd: null,
+        selectionError: '',
         ranges: bookedRanges.map((r) => ({
             start: new Date(r.start + 'T00:00:00'),
             end: new Date(r.end + 'T00:00:00'),
@@ -17,6 +21,46 @@ document.addEventListener('alpine:init', () => {
         isOutsideWindow(date) {
             return !!date && ((this.availableFrom && date < this.availableFrom)
                 || (this.availableUntil && date > this.availableUntil));
+        },
+
+        canSelect(date) {
+            return !!date && date >= this.minimumDate && !this.isOutsideWindow(date) && !this.isBooked(date);
+        },
+
+        isSelected(date) {
+            return !!date && !!this.selectedStart && date >= this.selectedStart && date <= (this.selectedEnd ?? this.selectedStart);
+        },
+
+        selectDate(date) {
+            if (!this.canSelect(date)) return;
+            this.selectionError = '';
+            if (!this.selectedStart || this.selectedEnd || date < this.selectedStart) {
+                this.selectedStart = date;
+                this.selectedEnd = null;
+            } else {
+                if ([...this.ranges, ...this.reservations].some((range) => range.start <= date && range.end >= this.selectedStart)) {
+                    this.selectionError = 'These dates include an unavailable day. Choose an earlier end date or a new start date.';
+                    return;
+                }
+                this.selectedEnd = date;
+            }
+            this.$dispatch('rental-dates-selected', {
+                startDate: this.dateString(this.selectedStart),
+                endDate: this.dateString(this.selectedEnd ?? this.selectedStart),
+            });
+        },
+
+        dateString(date) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        },
+
+        get selectionLabel() {
+            if (!this.selectedStart) return 'Select a start date, then an end date.';
+            const format = { month: 'short', day: 'numeric', year: 'numeric' };
+            const start = this.selectedStart.toLocaleDateString('en-US', format);
+            return this.selectedEnd
+                ? `${start} – ${this.selectedEnd.toLocaleDateString('en-US', format)}`
+                : `${start} · Choose an end date, or request one day.`;
         },
 
         get monthLabel() {

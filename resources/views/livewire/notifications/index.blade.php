@@ -1,4 +1,4 @@
-<div>
+<div wire:poll.5s.visible>
     <x-page-header title="Notifications" subtitle="Updates about your requests, rentals, and disputes." maxWidth="max-w-3xl" />
 
     <div class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">

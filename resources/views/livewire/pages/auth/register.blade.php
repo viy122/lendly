@@ -70,7 +70,6 @@ new #[Layout('layouts.guest')] class extends Component
 }; ?>
 
 <div x-data="{ showPassword: false, showConfirmation: false }">
-    <x-registration-progress :step="1" />
     <div class="mb-7">
         <span class="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.15em] text-blue-700 ring-1 ring-blue-100">
             <span class="h-1.5 w-1.5 rounded-full bg-blue-600"></span>
@@ -78,7 +77,7 @@ new #[Layout('layouts.guest')] class extends Component
         </span>
         <h1 class="mt-4 text-3xl font-extrabold tracking-[-0.04em] text-[#071a3d] sm:text-4xl">Create your free account.</h1>
         <p class="mt-3 text-sm leading-6 text-slate-500">One account lets you rent what you need and earn from the useful things you already own.</p>
-        <p class="mt-2 text-sm leading-6 text-slate-500">Create your account, confirm your email, then submit your National ID and selfie for administrator review. Approval is required to rent or list items.</p>
+        <p class="mt-2 text-sm leading-6 text-slate-500">A National ID and selfie review is required before you can rent or list items.</p>
     </div>
 
     <x-google-sign-in :href="route('auth.google.redirect', ['prompt' => 'consent'])" />

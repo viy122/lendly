@@ -2,6 +2,11 @@
     <x-page-header title="Messages" subtitle="Conversations with owners and renters about your listings and rentals." />
 
     <x-messages.shell :threads="$threads" :active-id="$activeId" :search="$search">
+        @if (! $listing->trashed() && $listing->isPublished())
+            <a href="{{ route('listings.show', $listing) }}" wire:navigate class="flex min-h-11 shrink-0 items-center gap-2 border-b border-slate-100 px-5 py-3 text-sm font-semibold text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500">
+                <x-icon name="chevron-down" class="h-4 w-4 rotate-90" aria-hidden="true" /> Back to listing
+            </a>
+        @endif
         <a href="{{ route('messages.index') }}" wire:navigate class="flex items-center gap-1 border-b border-slate-100 px-4 py-3 text-sm font-medium text-slate-500 hover:text-slate-700 md:hidden">
             <x-icon name="chevron-down" class="h-3.5 w-3.5 rotate-90" /> Back to conversations
         </a>

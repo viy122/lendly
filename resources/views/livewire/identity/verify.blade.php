@@ -43,7 +43,6 @@
     <x-page-header eyebrow="Account" title="ID review" subtitle="Submit your National ID and selfie for a Lendly administrator to review." />
 
     <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-        <x-registration-progress :step="3" class="max-w-xl" />
         <a href="{{ route('profile') }}" wire:navigate class="mb-6 inline-flex min-h-10 items-center gap-2 rounded-lg text-sm font-semibold text-slate-600 hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100">
             <x-icon name="chevron-down" class="h-4 w-4 rotate-90" aria-hidden="true" /> Back to profile
         </a>
