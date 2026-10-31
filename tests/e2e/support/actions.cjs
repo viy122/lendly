@@ -66,9 +66,21 @@ async function autoConfirm() {
   });
 }
 
+// Accepts a native confirm/alert if one is open (the window.confirm override can be lost
+// when Livewire re-renders between the override and the click).
+async function acceptDialogIfOpen() {
+  try {
+    await browser.acceptAlert();
+  } catch {
+    // No dialog open.
+  }
+}
+
 async function clickWire(method) {
   await autoConfirm();
   await scrollClick(`[wire\\:click="${method}"]`);
+  await browser.pause(300);
+  await acceptDialogIfOpen();
 }
 
 async function submitWireForm(method) {
@@ -128,7 +140,7 @@ const daysFromNow = (n) => {
 };
 
 module.exports = {
-  esc, pageText, waitForText, waitForUrl, assertNoServerError, scrollClick, autoConfirm,
+  esc, pageText, waitForText, waitForUrl, assertNoServerError, scrollClick, autoConfirm, acceptDialogIfOpen,
   clickWire, submitWireForm, type, setField, upload, screenshot, latestVerificationLink,
   daysFromNow, ensureFixture,
 };

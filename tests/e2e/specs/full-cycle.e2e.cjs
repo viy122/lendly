@@ -68,7 +68,6 @@ describe('full cycle: register → list → rent → pay → handover → return
       broken = true;
       entry.error = String(this.currentTest.err && this.currentTest.err.message).slice(0, 500);
       entry.url = await browser.getUrl().catch(() => '');
-      entry.screenshot = await a.screenshot(`fail-${results.length + 1}-${this.currentTest.title}`).catch(() => null);
     }
     results.push(entry);
   });
@@ -78,7 +77,7 @@ describe('full cycle: register → list → rent → pay → handover → return
     fs.writeFileSync(out, JSON.stringify({ run: RUN, owner, renter, item: ITEM, state, results, notes }, null, 2));
   });
 
-  it('01 admin enables offline payment instructions (FR-41 setup)', async () => {
+  it('I-01 admin enables offline payment instructions (FR-41 setup)', async () => {
     await loginAs('admin@tala.test', 'password');
     await browser.url('/admin/payment-settings');
     await a.assertNoServerError();
@@ -93,15 +92,15 @@ describe('full cycle: register → list → rent → pay → handover → return
     assert.ok(saved.includes('BDO 0000-1111-2222'), 'payment instructions did not persist');
   });
 
-  it('02 owner registers and verifies Gmail (FR-01/02)', async () => {
+  it('I-02 owner registers and verifies Gmail (FR-01/02)', async () => {
     await register(owner);
   });
 
-  it('03 renter registers and verifies Gmail (FR-01/02)', async () => {
+  it('I-03 renter registers and verifies Gmail (FR-01/02)', async () => {
     await register(renter);
   });
 
-  it('04 owner publishes a listing with photo + map pin (FR-05/06/47)', async () => {
+  it('I-04 owner publishes a listing with photo + map pin (FR-05/06/47)', async () => {
     await loginAs(owner.email, PASSWORD, 'owner');
     await browser.url('/owner/listings/create');
     await a.assertNoServerError();
@@ -139,7 +138,7 @@ describe('full cycle: register → list → rent → pay → handover → return
     await a.assertNoServerError();
   });
 
-  it('05 listing is discoverable on the public marketplace (FR-09/10)', async () => {
+  it('I-05 listing is discoverable on the public marketplace (FR-09/10)', async () => {
     await freshSession();
     await browser.url('/listings');
     const search = await $('input[aria-label="Search items"]');
@@ -162,7 +161,7 @@ describe('full cycle: register → list → rent → pay → handover → return
     else note('Listing page has no link to the owner public profile (/users/{id}).');
   });
 
-  it('06 renter sends a 3-day rental request (FR-11/16)', async () => {
+  it('I-06 renter sends a 3-day rental request (FR-11/16)', async () => {
     await loginAs(renter.email, PASSWORD, 'renter');
     await browser.url(`/listings/${state.listingId}`);
     await a.assertNoServerError();
@@ -183,7 +182,7 @@ describe('full cycle: register → list → rent → pay → handover → return
     await a.assertNoServerError();
   });
 
-  it('07 owner approves the request (FR-12)', async () => {
+  it('I-07 owner approves the request (FR-12)', async () => {
     await loginAs(owner.email, PASSWORD, 'owner');
     await browser.url('/owner/rental-requests');
     await a.waitForText(ITEM);
@@ -194,7 +193,7 @@ describe('full cycle: register → list → rent → pay → handover → return
     await a.assertNoServerError();
   });
 
-  it('08 owner accepts the rental agreement (FR-15)', async () => {
+  it('I-08 owner accepts the rental agreement (FR-15)', async () => {
     await a.scrollClick('form[wire\\:submit="acceptTerms"] input[type="checkbox"]');
     await a.submitWireForm('acceptTerms');
     await browser.pause(2000);
@@ -203,7 +202,7 @@ describe('full cycle: register → list → rent → pay → handover → return
       'owner acceptance not reflected on page');
   });
 
-  it('09 renter accepts the agreement → booking confirmed (FR-14/15/40)', async () => {
+  it('I-09 renter accepts the agreement → booking confirmed (FR-14/15/40)', async () => {
     await loginAs(renter.email, PASSWORD, 'renter');
     await browser.url(`/renter/rental-requests/${state.requestId}/agreement`);
     await a.assertNoServerError();
@@ -221,7 +220,7 @@ describe('full cycle: register → list → rent → pay → handover → return
     state.rentalId = Number(href.match(/rentals\/(\d+)/)[1]);
   });
 
-  it('10 renter submits offline payment proof (FR-41)', async () => {
+  it('I-10 renter submits offline payment proof (FR-41)', async () => {
     await browser.url(`/renter/rentals/${state.rentalId}`);
     await a.assertNoServerError();
     await a.waitForText('BDO 0000-1111-2222');
@@ -233,7 +232,7 @@ describe('full cycle: register → list → rent → pay → handover → return
     await a.assertNoServerError();
   });
 
-  it('11 admin verifies payment → rental Paid (FR-17/41)', async () => {
+  it('I-11 admin verifies payment → rental Paid (FR-17/41)', async () => {
     await loginAs('admin@tala.test', 'password');
     await browser.url(`/admin/rentals/${state.rentalId}`);
     await a.assertNoServerError();
@@ -246,12 +245,14 @@ describe('full cycle: register → list → rent → pay → handover → return
     if (!(await funds.isSelected())) await funds.click();
     await a.autoConfirm();
     await a.scrollClick('[wire\\:click^="verifyPayment("]');
+    await browser.pause(300);
+    await a.acceptDialogIfOpen();
     await a.waitForText('Payment verified', 20000).catch(() => {});
     await browser.refresh();
     await a.waitForText('Paid');
   });
 
-  it('12 owner records before-condition and confirms handover (FR-18/43)', async () => {
+  it('I-12 owner records before-condition and confirms handover (FR-18/43)', async () => {
     await loginAs(owner.email, PASSWORD, 'owner');
     await browser.url(`/owner/rentals/${state.rentalId}`);
     await a.assertNoServerError();
@@ -265,7 +266,7 @@ describe('full cycle: register → list → rent → pay → handover → return
     await a.assertNoServerError();
   });
 
-  it('13 renter confirms pickup → rental Active (FR-43/44)', async () => {
+  it('I-13 renter confirms pickup → rental Active (FR-43/44)', async () => {
     await loginAs(renter.email, PASSWORD, 'renter');
     await browser.url(`/renter/rentals/${state.rentalId}`);
     await a.clickWire('confirmPickup');
@@ -273,14 +274,14 @@ describe('full cycle: register → list → rent → pay → handover → return
     await a.assertNoServerError();
   });
 
-  it('14 renter confirms return (FR-21)', async () => {
+  it('I-14 renter confirms return (FR-21)', async () => {
     await a.clickWire('confirmReturn');
     await browser.pause(2000);
     await a.assertNoServerError();
     assert.ok(!(await $('[wire\\:click="confirmReturn"]').isExisting()), 'renter return button still shown');
   });
 
-  it('15 owner records after-condition and confirms return → Completed (FR-21/22)', async () => {
+  it('I-15 owner records after-condition and confirms return → Completed (FR-21/22)', async () => {
     await loginAs(owner.email, PASSWORD, 'owner');
     await browser.url(`/owner/rentals/${state.rentalId}`);
     await a.type('#after_notes', 'QA: returned in same condition.');
@@ -291,19 +292,19 @@ describe('full cycle: register → list → rent → pay → handover → return
     await a.assertNoServerError();
   });
 
-  it('16 owner releases the security deposit', async () => {
+  it('I-16 owner releases the security deposit', async () => {
     await a.clickWire('releaseDeposit');
     await a.waitForText('Released');
   });
 
-  it('17 owner reviews the renter (FR-23)', async () => {
+  it('I-17 owner reviews the renter (FR-23)', async () => {
     await a.setField('#renter_rating', '5');
     await a.type('#renter_comment', 'QA: on time and careful with the item.');
     await a.submitWireForm('submitRenterReview');
     await a.waitForText('QA: on time and careful');
   });
 
-  it('18 renter reviews the owner and the listing (FR-23)', async () => {
+  it('I-18 renter reviews the owner and the listing (FR-23)', async () => {
     await loginAs(renter.email, PASSWORD, 'renter');
     await browser.url(`/renter/rentals/${state.rentalId}`);
     await a.setField('#owner_rating', '4');
@@ -316,7 +317,7 @@ describe('full cycle: register → list → rent → pay → handover → return
     await a.waitForText('QA: camera worked perfectly.');
   });
 
-  it('19 reviews show publicly on owner profile and listing (FR-45)', async () => {
+  it('I-19 reviews show publicly on owner profile and listing (FR-45)', async () => {
     await freshSession();
     if (state.ownerId) {
       await browser.url(`/users/${state.ownerId}`);
@@ -328,7 +329,7 @@ describe('full cycle: register → list → rent → pay → handover → return
     assert.ok(true);
   });
 
-  it('20 renter notifications cover the cycle (FR-13/40)', async () => {
+  it('I-20 renter notifications cover the cycle (FR-13/40)', async () => {
     await loginAs(renter.email, PASSWORD, 'renter');
     await browser.url('/notifications');
     await a.assertNoServerError();
