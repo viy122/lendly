@@ -74,7 +74,7 @@ describe('Component tests', () => {
       await a.type('input[aria-label="Search items"]', 'FX Cam');
       await a.waitForText(fx.listings.drone.name);
       await a.scrollClick('button[aria-controls="listing-filters"]');
-      await a.type('input[aria-label="Maximum price per day"]', '400');
+      await a.type('input[wire\\:model\\.live\\.debounce\\.400ms="maxPrice"]', '400');
       await browser.waitUntil(async () => !(await a.pageText()).includes(fx.listings.drone.name), {
         timeout: 15000, timeoutMsg: '₱1,500 drone still shown with max ₱400',
       });
@@ -86,7 +86,7 @@ describe('Component tests', () => {
       await browser.url(`/listings/${fx.listings.tent.id}`);
       await a.waitForText('Availability');
       // The calendar draws one 7-column row per week; count the rendered day cells.
-      const days = await browser.execute(() => document.querySelectorAll('[x-data^="availabilityCalendar"] .grid-cols-7 > div.h-10').length);
+      const days = await browser.execute(() => document.querySelectorAll('[x-data*="availabilityCalendar"] .grid-cols-7 > .h-10').length);
       assert.ok(days >= 28, `calendar shows ${days} day cells`);
     });
   });

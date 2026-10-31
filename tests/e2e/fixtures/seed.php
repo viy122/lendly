@@ -35,10 +35,14 @@ if (config('database.default') !== 'sqlite') {
 $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==');
 Storage::disk('public')->put('listings/fx.png', $png);
 
-// email_verified_at is not mass-assignable, so it is set with forceFill.
+// email_verified_at and the identity fields are not mass-assignable, so they are set with forceFill.
+// Fixture members count as manually ID-verified (the same state an admin approval produces), since
+// the face-match step needs a Python face model and real face photos that the test env doesn't have.
 $user = fn (string $email, string $name) => tap(User::firstOrNew(['email' => $email]))->forceFill([
     'name' => $name, 'role' => 'member', 'status' => 'active',
     'email_verified_at' => now(), 'password' => Hash::make('password'),
+    'identity_verified_at' => now(), 'identity_verification_environment' => 'manual',
+    'identity_reference' => 'QA-FIXTURE-'.strtoupper(substr(md5($email), 0, 8)),
 ])->save() ? User::where('email', $email)->first() : null;
 
 $admin = User::where('email', 'admin@tala.test')->firstOrFail();
