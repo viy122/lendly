@@ -186,7 +186,7 @@
                                                 </div>
                                             </td>
                                             <td class="px-4 py-3 text-slate-500">{{ $request->renter->name }}</td>
-                                            <td class="px-4 py-3 text-slate-500">{{ $request->start_date->format('M d') }} &ndash; {{ $request->end_date->format('M d, Y') }}</td>
+                                            <td class="px-4 py-3 text-slate-500"><x-rental-period :booking="$request" /></td>
                                         </tr>
                                     @endforeach
                                 </tbody>

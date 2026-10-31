@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Rental;
+use Carbon\Carbon;
 
 /**
  * Rule-based, explainable cancellation-fee calculator — no ML, every peso
@@ -21,20 +22,24 @@ class CancellationPolicy
         $terms = $rental->rentalRequest?->agreement_terms;
         $windowHours = $terms['cancellation_window_hours'] ?? self::CHARGEABLE_WINDOW_HOURS;
         $feePercentage = ($terms['cancellation_fee_percentage'] ?? self::FEE_PERCENTAGE * 100) / 100;
-        $hoursUntilStart = round(max(0, now()->diffInHours($rental->start_date, false)), 1);
-        $withinChargeableWindow = now()->diffInHours($rental->start_date, false) < $windowHours;
+        $newPolicy = $terms['cancellation_requires_review'] ?? false;
+        $reference = $newPolicy ? ($rental->exchangeSchedule?->confirmed_at ? $rental->exchangeSchedule->scheduled_at : Carbon::parse($terms['cancellation_reference_at'])) : $rental->start_date;
+        $hoursUntilStart = round(max(0, now()->diffInHours($reference, false)), 1);
+        $withinChargeableWindow = now()->diffInHours($reference, false) < $windowHours;
+        $packed = $newPolicy && $rental->fulfillment_stage === 'packed';
 
-        $fee = $withinChargeableWindow
+        $fee = ($withinChargeableWindow || $packed)
             ? round((float) $rental->rental_fee * $feePercentage, 2)
             : 0.0;
 
         return [
             'fee' => $fee,
+            'requires_review' => $newPolicy && ($withinChargeableWindow || $packed),
             'hours_until_start' => $hoursUntilStart,
             'within_chargeable_window' => $withinChargeableWindow,
-            'reason' => $withinChargeableWindow
+            'reason' => $packed ? 'The owner has packed this item. A '.($feePercentage * 100).'% rental-only cancellation fee applies if your cancellation request is approved.' : ($withinChargeableWindow
                 ? 'Cancelled less than '.$windowHours.' hours before the rental start date — a '.($feePercentage * 100).'% cancellation fee applies per the rental terms and agreement.'
-                : 'Cancelled at least '.$windowHours.' hours before the rental start date — no cancellation fee applies.',
+                : 'Cancelled at least '.$windowHours.' hours before the rental start date — no cancellation fee applies.'),
         ];
     }
 }

@@ -3,6 +3,9 @@
 namespace App\Providers;
 
 use App\Http\Middleware\EnsureUserHasRole;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Livewire\Livewire;
@@ -24,5 +27,13 @@ class AppServiceProvider extends ServiceProvider
     {
         Password::defaults(fn () => Password::min(8)->mixedCase()->numbers()->symbols());
         Livewire::addPersistentMiddleware([EnsureUserHasRole::class]);
+
+        Event::listen(Login::class, function (Login $event): void {
+            if ($event->guard !== 'web' || ! request()->hasSession()) {
+                return;
+            }
+
+            request()->session()->put('password_hash_web', Auth::guard('web')->hashPasswordForCookie($event->user->getAuthPassword()));
+        });
     }
 }

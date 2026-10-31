@@ -17,6 +17,7 @@
             <p class="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800" role="status">{{ session('status') }}</p>
         @endif
 
+        <x-booking-progress :rental="$rental" :reviewer="true" />
         <div class="admin-rental-layout">
             <aside class="min-w-0" aria-label="Rental item and booking summary">
                 <section aria-label="Transaction summary" class="admin-rental-summary overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -35,7 +36,7 @@
                             <x-badge :color="$rental->displayStatusColor()">{{ $rental->displayStatusLabel() }}</x-badge>
                         </div>
                         <h2 class="mt-4 break-words text-2xl font-bold tracking-tight text-slate-900">{{ $rental->listing->name }}</h2>
-                        <p class="mt-3 text-sm text-slate-500">{{ $rental->fulfillment_method->label() }} · {{ $rental->rental_days }} days</p>
+                        <p class="mt-3 text-sm text-slate-500">{{ $rental->fulfillment_method->label() }} · {{ $rental->rental_unit === 'hour' ? $rental->rental_hours.' hours' : $rental->rental_days.' days' }}</p>
                         @if ($rental->listing->trashed())
                             <p class="mt-4 text-sm text-slate-500">Listing removed. This transaction and its evidence are retained.</p>
                         @else
@@ -45,7 +46,7 @@
                     <dl class="space-y-5 border-t border-slate-100 bg-slate-50/70 p-6">
                         <div>
                             <dt class="text-xs text-slate-500">Rental period</dt>
-                            <dd class="mt-1 text-sm font-semibold text-slate-800">{{ $rental->start_date->format('M d, Y') }} – {{ $rental->end_date->format('M d, Y') }}</dd>
+                            <dd class="mt-1 text-sm font-semibold text-slate-800"><x-rental-period :booking="$rental" /></dd>
                         </div>
                         <div>
                             <dt class="text-xs text-slate-500">Booking total</dt>
@@ -105,13 +106,13 @@
                                 @endforeach
                                 <div>
                                     <dt class="text-slate-500">Rental period</dt>
-                                    <dd class="mt-1 font-semibold">{{ $rental->start_date->format('M d, Y') }} – {{ $rental->end_date->format('M d, Y') }}</dd>
+                                    <dd class="mt-1 font-semibold"><x-rental-period :booking="$rental" /></dd>
                                 </div>
                                 <div>
                                     <dt class="text-slate-500">Duration and fulfillment</dt>
                                     <dd class="mt-1 font-semibold">{{ $rental->rental_days }} days · {{ $rental->fulfillment_method->label() }}</dd>
                                 </div>
-                                <div><dt class="text-slate-500">Agreed daily rate</dt><dd class="mt-1 font-semibold">₱{{ number_format($rental->agreedDailyRate(), 2) }}</dd></div>
+                                <div><dt class="text-slate-500">Agreed {{ $rental->rental_unit === 'hour' ? 'hourly' : 'daily' }} rate</dt><dd class="mt-1 font-semibold">₱{{ number_format($rental->rental_unit === 'hour' ? (float) $rental->rental_fee / max(1, $rental->rental_hours) : $rental->agreedDailyRate(), 2) }}</dd></div>
                                 <div><dt class="text-slate-500">Commission rate</dt><dd class="mt-1 font-semibold">{{ number_format($rental->commission_rate, 2) }}%</dd></div>
                                 <div><dt class="text-slate-500">Days overdue</dt><dd class="mt-1 font-semibold">{{ $rental->currentOverdueDays() }}</dd></div>
                                 <div><dt class="text-slate-500">Renter accepted terms</dt><dd class="mt-1 font-semibold">{{ $rental->rentalRequest?->renter_terms_accepted_at?->format('M d, Y g:i A') ?? 'Not recorded' }}</dd></div>
@@ -171,6 +172,13 @@
                                             <p class="font-semibold">Submission #{{ $submission->id }} · {{ ucfirst($submission->status) }} · {{ \App\Models\OfflinePaymentSetting::methodLabel($submission->method) }}</p>
                                             <p>Expected payment: ₱{{ number_format($submission->amount, 2) }} · Reference: {{ $submission->external_reference }}</p>
                                             <p class="whitespace-pre-line text-slate-500">Payment instructions used: {{ $submission->instructions }}</p>
+                                            @if (($submission->payment_destination['source'] ?? null) === 'owner_wallet')
+                                                <div class="rounded-xl border border-blue-100 bg-blue-50 p-3 text-blue-900">
+                                                    <p>Payment destination: owner's {{ \App\Models\OfflinePaymentSetting::methodLabel($submission->method) }} account, {{ $submission->payment_destination['account_name'] }}.</p>
+                                                    <p class="mt-1">{{ $submission->recipient_confirmed_at ? 'Owner acknowledged receipt on '.$submission->recipient_confirmed_at->setTimezone('Asia/Manila')->format('M d, Y · g:i A').' (Philippine time).' : 'Waiting for the owner to acknowledge receipt of the full amount.' }}</p>
+                                                    <p class="mt-1 text-xs">The owner holds these funds. Platform-fee remittance and deposit refunds are handled manually.</p>
+                                                </div>
+                                            @endif
                                             <a href="{{ route('payment-proofs.show', $submission) }}" class="inline-flex min-h-10 items-center font-semibold text-blue-700">Download private payment proof</a>
                                             @if ($submission->reviewed_at)
                                                 <p class="text-slate-500">Reviewed by {{ $submission->reviewer->name }} · {{ $submission->reviewed_at->format('M d, Y · g:i A') }}</p>
@@ -182,12 +190,16 @@
                                                 </textarea>
                                                 <x-input-error :messages="$errors->get('reason')" />
                                                 @can('adminVerifyPayment', $rental)
+                                                    @if (($submission->payment_destination['source'] ?? null) === 'owner_wallet' && ! $submission->recipient_confirmed_at)
+                                                        <p class="text-amber-700">Owner receipt confirmation is required before payment approval.</p>
+                                                    @else
                                                     <label class="flex items-start gap-2">
                                                         <input type="checkbox" wire:model="funds_received" class="mt-1 rounded border-slate-300">
                                                         <span>I matched this reference and proof to the collection records and confirmed the full ₱{{ number_format($rental->total_amount, 2) }} was received, including the platform fee and security deposit.</span>
                                                     </label>
                                                     <x-input-error :messages="$errors->get('funds_received')" />
                                                     <button type="button" wire:click="verifyPayment({{ $submission->id }})" wire:confirm="Confirm receipt of the full amount and mark this booking paid?" wire:loading.attr="disabled" class="rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white">Verify received payment</button>
+                                                    @endif
                                                 @else
                                                     <p class="text-amber-700">This booking is not eligible for payment completion. If funds were received, arrange their return before rejecting this proof.</p>
                                                 @endcan
@@ -211,7 +223,7 @@
                         @if ($rental->rentalRequest?->agreement_terms)
                             <x-rental-panel title="Accepted agreement" icon="clipboard-list">
                                 <div class="mt-4">
-                                    <x-rental-agreement :terms="$rental->rentalRequest->agreement_terms" />
+                                    <x-rental-agreement :terms="$rental->rentalRequest->agreement_terms" :rental-request="$rental->rentalRequest" />
                                 </div>
                             </x-rental-panel>
                         @else

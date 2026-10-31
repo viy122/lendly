@@ -37,7 +37,16 @@
         </div>
 
         @auth
-            <div class="relative shrink-0">
+            <div class="relative flex shrink-0 items-center gap-3">
+                @if (! auth()->user()->isAdmin() && auth()->user()->activeInterface() === 'renter')
+                    @php($cartCount = auth()->user()->cartItems()->count())
+                    <a href="{{ route('renter.cart.index') }}" wire:navigate aria-label="My cart, {{ $cartCount }} items" class="relative grid h-11 w-11 place-items-center rounded-xl border border-blue-100 bg-white text-blue-700 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+                        <x-icon name="cart" class="h-5 w-5" />
+                        @if ($cartCount)
+                            <span class="absolute -right-1 -top-1 rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{{ $cartCount }}</span>
+                        @endif
+                    </a>
+                @endif
                 <livewire:notifications.bell />
             </div>
         @endauth

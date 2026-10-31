@@ -1,4 +1,4 @@
-<div class="relative" x-data x-on:click.outside="$wire.open = false" @keydown.escape.window="$wire.open = false">
+<div class="relative" wire:poll.5s.visible="refresh" x-data x-on:click.outside="$wire.open = false" @keydown.escape.window="$wire.open = false">
     <button
         type="button"
         wire:click="toggle"

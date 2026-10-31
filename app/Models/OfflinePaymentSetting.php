@@ -20,6 +20,11 @@ class OfflinePaymentSetting extends Model
 
     public static function methodLabel(string $method): string
     {
-        return $method === 'cash' ? 'Cash collection' : 'Bank transfer';
+        return match ($method) {
+            'cash' => 'Cash collection',
+            'maya' => 'Maya',
+            'gcash' => 'GCash',
+            default => 'Bank transfer',
+        };
     }
 }

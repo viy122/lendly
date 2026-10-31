@@ -19,6 +19,7 @@ new #[Layout('layouts.guest')] class extends Component
      */
     public function login(): void
     {
+        $this->resetErrorBag('google');
         $this->form->email = trim($this->form->email);
         $this->showInterfacePicker = false;
         $this->validate();
@@ -65,6 +66,25 @@ new #[Layout('layouts.guest')] class extends Component
     {
         $this->showInterfacePicker = false;
     }
+
+    public function startGoogleSignIn(): void
+    {
+        $this->resetErrorBag();
+        $this->showInterfacePicker = false;
+        if (! $this->googleAvailable()) {
+            $this->addError('google', 'Google sign-in is currently unavailable. Please use your email and password.');
+
+            return;
+        }
+        $this->redirect(route('auth.google.redirect'));
+    }
+
+    private function googleAvailable(): bool
+    {
+        return filled(config('services.google.client_id'))
+            && filled(config('services.google.client_secret'))
+            && filled(config('services.google.redirect'));
+    }
 }; ?>
 
 <div x-data="{ showPassword: false }" @hide-login-password.window="showPassword = false">
@@ -78,6 +98,8 @@ new #[Layout('layouts.guest')] class extends Component
     </div>
 
     <x-auth-session-status class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700" :status="session('status')" />
+
+    <x-google-sign-in wire:click="startGoogleSignIn" wire:loading.attr="disabled" />
 
     <form wire:submit="login" class="space-y-5">
         <div>

@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Notifications\TalaNotification;
 use App\Services\CancellationPolicy;
 use App\Services\RentalAgreement;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
@@ -29,8 +30,8 @@ class TermsAcceptanceTest extends TestCase
 
     private function requestFixture(bool $approve = true): array
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $category = Category::create(['name' => 'Tools', 'slug' => 'tools']);
         $listing = Listing::create([
             'owner_id' => $owner->id,
@@ -210,7 +211,7 @@ class TermsAcceptanceTest extends TestCase
 
         foreach ([$owner, $renter] as $user) {
             Livewire::actingAs($user)->test(Agreement::class, ['rentalRequest' => $request])
-                ->assertSee('Cancellation policy and fees')->assertSee('at least 48 hours')
+                ->assertSee('Cancellation policy and fees')->assertSee('at least 24 hours')
                 ->assertSee('20% of the rental fee')->assertSee('40.00')
                 ->assertSee('Clean the item before returning it.')->assertDontSee('A new rule after approval.')
                 ->assertSee('720.00')->assertSee('Return, damages and security deposit');
@@ -222,10 +223,107 @@ class TermsAcceptanceTest extends TestCase
         $this->assertSame('720.00', $request->fresh()->rental->total_amount);
     }
 
+    public function test_approval_persists_detailed_clauses_for_both_parties(): void
+    {
+        [$owner, $renter, , $request] = $this->requestFixture();
+        $clauses = $request->agreement_terms['clauses'] ?? [];
+
+        $this->assertNotEmpty($clauses);
+        $this->assertContains('Owner responsibilities', array_column($clauses, 'title'));
+        $this->assertContains('Renter responsibilities', array_column($clauses, 'title'));
+        foreach ($clauses as $clause) {
+            $this->assertNotEmpty($clause['title']);
+            $this->assertNotEmpty($clause['paragraphs']);
+        }
+
+        foreach ([$owner, $renter] as $user) {
+            $preview = Livewire::actingAs($user)->test(Agreement::class, ['rentalRequest' => $request]);
+            foreach ($clauses as $clause) {
+                $preview->assertSee($clause['title']);
+                foreach ($clause['paragraphs'] as $paragraph) {
+                    $this->assertNotEmpty($paragraph);
+                    $preview->assertSee($paragraph);
+                }
+            }
+        }
+    }
+
+    public function test_agreement_renders_only_saved_clauses_and_escapes_their_content(): void
+    {
+        [$owner, $renter, , $request] = $this->requestFixture();
+        $title = 'Saved <title> & conditions';
+        $paragraph = 'Return this <script>alert("saved")</script> item & keep the signed terms.';
+        $terms = $request->agreement_terms;
+        $terms['clauses'] = [['title' => $title, 'paragraphs' => [$paragraph]]];
+        $request->update(['agreement_terms' => $terms]);
+
+        foreach ([$owner, $renter] as $user) {
+            Livewire::actingAs($user)->test(Agreement::class, ['rentalRequest' => $request])
+                ->assertSee($title)->assertSee($paragraph)
+                ->assertDontSee('<script>alert("saved")</script>', false)
+                ->assertDontSee('Owner responsibilities')->assertDontSee('Renter responsibilities');
+        }
+    }
+
+    public function test_legacy_agreements_keep_their_saved_terms_without_new_clauses(): void
+    {
+        [$owner, $renter, , $request] = $this->requestFixture();
+        $terms = $request->agreement_terms;
+        unset($terms['clauses']);
+        $terms['rental_rules'] = 'The originally approved item rule.';
+        $terms['cancellation_window_hours'] = 72;
+        $terms['cancellation_fee_percentage'] = 15;
+        $request->update(['agreement_terms' => $terms]);
+
+        foreach ([$owner, $renter] as $user) {
+            Livewire::actingAs($user)->test(Agreement::class, ['rentalRequest' => $request])
+                ->assertSee('The originally approved item rule.')
+                ->assertSee('at least 72 hours')->assertSee('15% of the rental fee')
+                ->assertDontSee('Owner responsibilities')->assertDontSee('Renter responsibilities');
+        }
+    }
+
+    public function test_agreement_document_records_the_parties_and_each_saved_acceptance(): void
+    {
+        $this->travelTo(now('UTC')->setDate(2026, 10, 20)->setTime(1, 5));
+        [$owner, $renter, , $request] = $this->requestFixture();
+
+        foreach ([null, $owner, $renter] as $participant) {
+            if ($participant !== null) {
+                $this->acceptAs($participant, $request);
+            }
+
+            $preview = Livewire::actingAs($renter)->test(Agreement::class, ['rentalRequest' => $request]);
+            $document = new \DOMDocument;
+            @$document->loadHTML('<?xml encoding="UTF-8">'.$preview->html());
+            $agreement = (new \DOMXPath($document))->query('//article[@aria-label="Rental agreement document"]')->item(0);
+            $this->assertNotNull($agreement);
+            $text = $agreement->textContent;
+            $this->assertStringContainsString($owner->name, $text);
+            $this->assertStringContainsString($renter->name, $text);
+            $this->assertStringContainsString('Recorded acceptance', $text);
+            $this->assertStringContainsString('Owner acceptance', $text);
+            $this->assertStringContainsString('Renter acceptance', $text);
+            $this->assertSame($participant === null ? 2 : ($participant->is($owner) ? 1 : 0), substr_count($text, 'Awaiting acceptance'));
+
+            if ($participant !== null) {
+                $this->assertStringContainsString('9:05 AM', $text);
+                $this->assertStringContainsString('Philippine time', $text);
+            }
+            if ($participant?->is($renter)) {
+                $this->assertStringContainsString('9:22 AM', $text);
+            }
+
+            if ($participant?->is($owner)) {
+                $this->travel(17)->minutes();
+            }
+        }
+    }
+
     public function test_unrelated_users_cannot_view_or_accept_an_agreement(): void
     {
         [, , , $request] = $this->requestFixture();
-        foreach ([User::factory()->owner()->create(), User::factory()->renter()->create(), User::factory()->admin()->create()] as $user) {
+        foreach ([User::factory()->identityVerified()->owner()->create(), User::factory()->identityVerified()->renter()->create(), User::factory()->admin()->create()] as $user) {
             Livewire::actingAs($user)->test(Agreement::class, ['rentalRequest' => $request])->assertForbidden();
         }
         $this->assertNull($request->fresh()->owner_terms_accepted_at);
@@ -295,13 +393,13 @@ class TermsAcceptanceTest extends TestCase
         $this->assertSame(0, Rental::count());
     }
 
-    public function test_cancellation_policy_matches_the_saved_agreement_at_the_48_hour_boundary(): void
+    public function test_cancellation_policy_matches_the_saved_agreement_at_the_chargeable_window_boundary(): void
     {
         [$owner, $renter, , $request] = $this->requestFixture();
         $this->acceptAs($owner, $request);
         $this->acceptAs($renter, $request);
         $booking = $request->fresh()->rental;
-        $this->travelTo($booking->start_date->copy()->subHours(48));
+        $this->travelTo(Carbon::parse($booking->rentalRequest->agreement_terms['cancellation_reference_at'])->subHours(24));
         $this->assertSame(0.0, CancellationPolicy::evaluate($booking)['fee']);
         $this->travel(1)->seconds();
         $this->assertSame(40.0, CancellationPolicy::evaluate($booking)['fee']);

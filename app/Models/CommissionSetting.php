@@ -7,13 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 class CommissionSetting extends Model
 {
     protected $fillable = [
-        'commission_rate',
+        'commission_rate', 'cancellation_window_hours', 'cancellation_fee_percentage', 'payment_window_hours',
     ];
 
     protected function casts(): array
     {
         return [
-            'commission_rate' => 'decimal:2',
+            'commission_rate' => 'decimal:2', 'cancellation_fee_percentage' => 'decimal:2',
+            'cancellation_window_hours' => 'integer', 'payment_window_hours' => 'integer',
         ];
     }
 

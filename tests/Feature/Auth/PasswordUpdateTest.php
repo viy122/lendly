@@ -4,6 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Volt\Volt;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -30,6 +31,23 @@ class PasswordUpdateTest extends TestCase
             ->assertNoRedirect();
 
         $this->assertTrue(Hash::check('New-password1!', $user->refresh()->password));
+    }
+
+    public function test_google_member_keeps_the_current_session_after_updating_their_password(): void
+    {
+        $user = User::factory()->create();
+        $user->forceFill(['google_id' => 'google-member'])->save();
+        $guard = Auth::guard('web');
+        $this->actingAs($user)->withSession(['password_hash_web' => $guard->hashPasswordForCookie($user->getAuthPassword())]);
+
+        $component = Volt::test('profile.update-password-form')
+            ->set('current_password', 'password')
+            ->set('password', 'New-password1!')
+            ->set('password_confirmation', 'New-password1!')
+            ->call('updatePassword')->assertHasNoErrors();
+
+        $component->assertSessionHas('password_hash_web', $guard->hashPasswordForCookie($user->fresh()->getAuthPassword()));
+        $this->get(route('profile'))->assertOk();
     }
 
     public function test_correct_password_must_be_provided_to_update_password(): void

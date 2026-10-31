@@ -2,6 +2,26 @@
 
 return [
 
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI', rtrim(env('APP_URL', 'http://localhost:8000'), '/').'/auth/google/callback'),
+    ],
+
+    'face_match' => [
+        'python' => env('FACE_MATCH_PYTHON', storage_path('app/private/face-runtime/'.(PHP_OS_FAMILY === 'Windows' ? 'Scripts/python.exe' : 'bin/python'))),
+        'models' => storage_path('app/private/face-models'),
+    ],
+
+    'identity' => [
+        'base_url' => env('IDENTITY_BASE_URL'),
+        'client_id' => env('IDENTITY_CLIENT_ID'),
+        'client_secret' => env('IDENTITY_CLIENT_SECRET'),
+        'public_key' => env('IDENTITY_PUBLIC_KEY'),
+        'sdk_url' => env('IDENTITY_SDK_URL', 'https://hackathon-everify-face-liveness.e.gov.ph/js/everify-liveness-sdk.min.js'),
+        'environment' => env('IDENTITY_ENVIRONMENT', 'sandbox'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services

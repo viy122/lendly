@@ -10,6 +10,7 @@ use App\Models\RentalRequest;
 use App\Models\User;
 use App\Notifications\TalaNotification;
 use App\Services\RentalAgreement;
+use App\Services\RentalPeriod;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
@@ -47,7 +48,7 @@ class Index extends Component
         $this->authorize('moderate', $snapshot);
         $approved = DB::transaction(function () use ($snapshot, $rentalRequestId) {
             $participants = User::whereIn('id', [$snapshot->listing->owner_id, $snapshot->renter_id])->orderBy('id')->lockForUpdate()->get();
-            abort_unless($participants->count() === 2 && $participants->every(fn (User $user) => ! $user->isSuspended()), 403);
+            abort_unless($participants->count() === 2 && $participants->every(fn (User $user) => ! $user->isSuspended() && $user->hasVerifiedIdentity()), 403);
             Listing::withTrashed()->whereKey($snapshot->listing_id)->lockForUpdate()->firstOrFail();
             $rentalRequest = RentalRequest::with('listing')->lockForUpdate()->findOrFail($rentalRequestId);
 
@@ -71,12 +72,13 @@ class Index extends Component
                 return false;
             }
 
-            if ($rentalRequest->start_date->lt(today()) || $rentalRequest->listing->hasApprovedOverlap($rentalRequest->start_date, $rentalRequest->end_date, excludingRequestId: $rentalRequest->id)) {
+            if ($rentalRequest->start_date->lt(today()) || $rentalRequest->starts_at?->lte(now()) || $rentalRequest->listing->hasApprovedOverlap($rentalRequest->start_date, $rentalRequest->end_date, excludingRequestId: $rentalRequest->id, startsAt: $rentalRequest->starts_at, endsAt: $rentalRequest->ends_at)) {
                 $this->addError('approve', 'These dates were already approved for another renter.');
 
                 return;
             }
 
+            RentalPeriod::attributes($rentalRequest->listing, RentalPeriod::details($rentalRequest), newRequest: false);
             $rentalRequest->update([
                 'status' => RentalRequestStatus::Approved,
                 'renter_terms_accepted_at' => null,
@@ -85,7 +87,7 @@ class Index extends Component
             ]);
 
             // A save callback can approve another request before this update reaches storage.
-            if ($rentalRequest->listing->hasApprovedOverlap($rentalRequest->start_date, $rentalRequest->end_date, excludingRequestId: $rentalRequest->id)) {
+            if ($rentalRequest->listing->hasApprovedOverlap($rentalRequest->start_date, $rentalRequest->end_date, excludingRequestId: $rentalRequest->id, startsAt: $rentalRequest->starts_at, endsAt: $rentalRequest->ends_at)) {
                 $rentalRequest->update([
                     'status' => RentalRequestStatus::Rejected,
                     'rejection_reason' => 'These dates were booked by another renter.',
@@ -114,7 +116,9 @@ class Index extends Component
 
             // Approving one request confirms the dates, so any other pending
             // request for the same listing that overlaps is no longer viable.
-            $overlapping = RentalRequest::overlapping($rentalRequest->listing_id, $rentalRequest->start_date, $rentalRequest->end_date)
+            $overlapping = RentalRequest::where('listing_id', $rentalRequest->listing_id)->where(function ($query) use ($rentalRequest) {
+                RentalPeriod::applyOverlap($query, $rentalRequest->start_date, $rentalRequest->end_date, $rentalRequest->starts_at, $rentalRequest->ends_at);
+            })
                 ->where('status', RentalRequestStatus::Requested)
                 ->whereKeyNot($rentalRequest->id)
                 ->lockForUpdate()
@@ -195,8 +199,8 @@ class Index extends Component
             ->whereHas('listing', fn ($query) => $query->where('owner_id', auth()->id()))
             ->when($this->filter !== 'all', fn ($query) => $query->where('status', $this->filter))
             ->with(['listing.images', 'renter', 'rental'])
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
+            ->orderBy('created_at', $this->filter === 'requested' ? 'asc' : 'desc')
+            ->orderBy('id', $this->filter === 'requested' ? 'asc' : 'desc')
             ->paginate(10);
 
         return view('livewire.owner.rental-requests.index', ['rentalRequests' => $rentalRequests]);

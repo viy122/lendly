@@ -30,8 +30,8 @@ class BookingConfirmationNotificationTest extends TestCase
 
     private function requestFixture(): array
     {
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $category = Category::create(['name' => 'Tools', 'slug' => 'tools']);
         $listing = Listing::create([
             'owner_id' => $owner->id, 'category_id' => $category->id,
@@ -122,7 +122,7 @@ class BookingConfirmationNotificationTest extends TestCase
                 ->assertSeeHtml(route($interface.'.rentals.show', $booking));
             $this->get(route($interface.'.rentals.show', $booking))->assertOk();
         }
-        $stranger = User::factory()->create();
+        $stranger = User::factory()->identityVerified()->create();
         $this->withSession(['active_interface' => 'renter']);
         Livewire::actingAs($stranger)->test(NotificationsIndex::class)->assertDontSee('Booking confirmed');
         $this->assertSame(0, $stranger->notifications()->count());

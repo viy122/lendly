@@ -36,7 +36,7 @@
                                         </div>
                                         <div class="mt-1.5 flex items-center gap-2">
                                             <x-category-badge :category="$listing->category" />
-                                            <span class="text-sm text-slate-500">₱{{ number_format($listing->price_per_day, 2) }}/day &middot; {{ $listing->location }}</span>
+                                            <span class="text-sm text-slate-500">₱{{ number_format($listing->allows_daily_rentals ? $listing->price_per_day : $listing->price_per_hour, 2) }}/{{ $listing->allows_daily_rentals ? 'day' : 'hour' }} &middot; {{ $listing->location }}</span>
                                         </div>
                                         <p class="mt-1 text-xs text-slate-400">Listed by {{ $listing->owner->name }} ({{ $listing->owner->email }})</p>
                                         @if ($listing->status->value === 'rejected' && $listing->rejection_reason)

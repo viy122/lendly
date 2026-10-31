@@ -17,7 +17,11 @@ new #[Layout('layouts.guest')] class extends Component
     public function sendVerification(): void
     {
         if (Auth::user()->hasVerifiedEmail()) {
-            $this->redirectIntended(default: route(Auth::user()->dashboardRouteName(), absolute: false), navigate: true);
+            if (! Auth::user()->isAdmin() && ! Auth::user()->hasVerifiedIdentity()) {
+                $this->redirect(route('identity.verify', absolute: false), navigate: true);
+            } else {
+                $this->redirectIntended(default: route(Auth::user()->dashboardRouteName(), absolute: false), navigate: true);
+            }
 
             return;
         }
@@ -63,7 +67,7 @@ new #[Layout('layouts.guest')] class extends Component
         @if (auth()->user()->isAdmin())
             {{ __('Verify your email using the link we emailed you to access your admin account. If you did not receive the email, you can request another below.') }}
         @else
-            {{ __('Verify your Gmail address using the link in your email before getting started. If the message has not arrived, check your spam folder or request another verification email below.') }}
+            {{ __('Your account is created. Confirm your email using the link we sent, then submit your National ID and selfie for administrator review. If the message has not arrived, check your spam folder or request another verification email below.') }}
         @endif
     </div>
 

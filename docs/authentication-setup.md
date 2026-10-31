@@ -1,6 +1,8 @@
 # Authentication and Gmail setup
 
-New accounts require a valid `@gmail.com` address and must open the verification link before renting, listing items, or entering a dashboard. Gmail dots, plus tags, letter case, and existing Googlemail aliases refer to the same mailbox for duplicate checks. Existing account records are preserved. Email verification proves access to a mailbox; this does not verify a person's identity or prevent someone from using multiple Gmail accounts.
+For the prepared **Continue with Google** option, see [Google sign-in setup](google-sign-in.md). Email/password registration remains available.
+
+Email/password registration requires a valid `@gmail.com` address and opening the verification link before renting, listing items, or entering a dashboard. Google sign-in also supports verified, managed school/work Google Workspace accounts; see [Google sign-in setup](google-sign-in.md). Gmail dots, plus tags, letter case, and existing Googlemail aliases refer to the same mailbox for duplicate checks. Existing account records are preserved. Email verification proves access to a mailbox; this does not verify a person's identity or prevent someone from using multiple Google accounts.
 
 Passwords require at least 8 characters, an uppercase letter, a lowercase letter, a number, and a special character. Signup, password reset, and profile password changes share the server rule. New password fields display a Weak/Medium/Strong meter and a checklist. Password inputs block copy, cut, paste, and dropping text in the browser; browser controls can be bypassed, so server validation remains mandatory.
 
@@ -26,7 +28,7 @@ MAIL_FROM_NAME="Lendly"
 
 Port 587 uses STARTTLS with authentication. [Google's SMTP settings](https://support.google.com/mail/answer/7104828?hl=en). Use the actual address where you access this app for `APP_URL`, because verification emails contain a signed link to that address. For hosted use, set the public HTTPS URL.
 
-Run `php artisan config:clear` after updating `.env`, and restart long-running development processes. Keep `CACHE_STORE=database` (or another shared persistent cache) so attempts and temporary locks survive requests. Apply normal migrations with `php artisan migrate` if this is a new installation; this authentication change adds no migrations and does not alter existing account data.
+Run `php artisan config:clear` after updating `.env`, and restart long-running development processes. Keep `CACHE_STORE=database` (or another shared persistent cache) so attempts and temporary locks survive requests. Apply normal migrations with `php artisan migrate`; the optional Google sign-in integration adds a nullable account identifier while preserving existing account records.
 
 To check delivery, register with a Gmail address you control, open the verification email, log out, and request a password reset code. Check Inbox and Spam. Enter the code and a compliant confirmed password, then log in with the new password. SMTP failures show a retry message; signup retains the unverified account so its verification email can be resent. Until SMTP is configured, local log messages are for development only.
 

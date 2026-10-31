@@ -8,6 +8,7 @@ use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\URL;
 use Livewire\Volt\Volt;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Mailer\Exception\TransportException;
@@ -23,7 +24,8 @@ class RegistrationTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSeeVolt('pages.auth.register');
+            ->assertSeeVolt('pages.auth.register')
+            ->assertSee('Create your free account.');
     }
 
     public function test_new_users_can_register(): void
@@ -55,6 +57,53 @@ class RegistrationTest extends TestCase
         $this->assertTrue(Hash::check('LendlyPass123!', auth()->user()->password));
         $this->get(route('dashboard'))->assertRedirect(route('verification.notice'));
         Notification::assertSentTo(auth()->user(), VerifyEmail::class);
+    }
+
+    public function test_signup_continues_to_the_id_upload_and_selfie_step_after_email_confirmation(): void
+    {
+        Notification::fake();
+        config(['services.identity' => [
+            'base_url' => 'https://identity.example.test', 'client_id' => 'test-client',
+            'client_secret' => 'test-secret', 'public_key' => 'test-public',
+            'sdk_url' => 'https://sdk.example.test/liveness.js', 'environment' => 'sandbox',
+        ]]);
+        Volt::test('pages.auth.register')->set('name', 'Maria Reyes')->set('email', 'mariareyes@gmail.com')
+            ->set('password', 'LendlyPass123!')->set('password_confirmation', 'LendlyPass123!')
+            ->call('register')->assertHasNoErrors()->assertRedirect(route('verification.notice', absolute: false));
+        $member = auth()->user();
+        $this->get(route('identity.verify'))->assertRedirect(route('verification.notice'));
+        $verificationUrl = URL::temporarySignedRoute('verification.verify', now()->addHour(), [
+            'id' => $member->id, 'hash' => sha1($member->email),
+        ]);
+
+        $this->get($verificationUrl)->assertRedirect(route('identity.verify', absolute: false));
+        $this->get(route('identity.verify'))->assertOk()->assertSee('National ID front')
+            ->assertSee('Privacy and consent')->assertSee('type="file"', false);
+
+        $this->assertTrue($member->fresh()->hasVerifiedEmail());
+        $this->assertFalse($member->fresh()->hasVerifiedIdentity());
+        $this->assertDatabaseCount('identity_verification_attempts', 0);
+    }
+
+    public function test_signup_without_an_api_provider_continues_to_manual_id_review(): void
+    {
+        Notification::fake();
+        config(['services.identity.client_id' => null]);
+        Volt::test('pages.auth.register')->set('name', 'Maria Reyes')->set('email', 'mariareyes@gmail.com')
+            ->set('password', 'LendlyPass123!')->set('password_confirmation', 'LendlyPass123!')
+            ->call('register')->assertHasNoErrors();
+        $member = auth()->user();
+        $verificationUrl = URL::temporarySignedRoute('verification.verify', now()->addHour(), [
+            'id' => $member->id, 'hash' => sha1($member->email),
+        ]);
+
+        $this->get($verificationUrl)->assertRedirect(route('identity.verify', absolute: false));
+        $this->get(route('identity.verify'))->assertOk()
+            ->assertSee('Submit your ID for review.')
+            ->assertSee('Privacy and consent')
+            ->assertSee('type="file"', false)->assertDontSee('Identity verified');
+
+        $this->assertNull($member->fresh()->identity_verified_at);
     }
 
     #[DataProvider('invalidEmailAddresses')]

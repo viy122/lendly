@@ -38,6 +38,7 @@ class Index extends Component
     public function reactivate(int $listingId): void
     {
         DB::transaction(function () use ($listingId) {
+            ListingPublication::ensureVerifiedOwner(auth()->id());
             $listing = Listing::lockForUpdate()->findOrFail($listingId);
 
             abort_unless($listing->isOwnedBy(auth()->user()), 403);

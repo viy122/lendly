@@ -25,7 +25,7 @@ export function createListingPreview(item) {
 
     const price = document.createElement('p');
     price.className = 'listing-map-preview__price';
-    price.textContent = `₱${item.price} per day`;
+    price.textContent = `₱${item.price} per ${item.priceUnit === 'hour' ? 'hour' : 'day'}`;
     preview.append(price);
 
     if (item.distance) {
@@ -56,7 +56,7 @@ export function bindListingPin(marker, item, navigate = (url) => window.location
 
     const icon = marker.getElement();
     icon.setAttribute('role', 'link');
-    icon.setAttribute('aria-label', `Open ${item.name}, ₱${item.price} per day${item.distance ? `, ${item.distance}` : ''}`);
+    icon.setAttribute('aria-label', `Open ${item.name}, ₱${item.price} per ${item.priceUnit === 'hour' ? 'hour' : 'day'}${item.distance ? `, ${item.distance}` : ''}`);
     icon.addEventListener('focus', () => marker.openTooltip());
     icon.addEventListener('blur', () => marker.closeTooltip());
     icon.addEventListener('keydown', (event) => {

@@ -12,9 +12,14 @@ class PaymentSubmission extends Model
         'proof_path', 'status', 'reviewed_by', 'review_notes', 'reviewed_at',
     ];
 
+    protected $hidden = ['payment_destination'];
+
     protected function casts(): array
     {
-        return ['amount' => 'decimal:2', 'reviewed_at' => 'datetime'];
+        return [
+            'amount' => 'decimal:2', 'reviewed_at' => 'datetime',
+            'payment_destination' => 'array', 'recipient_confirmed_at' => 'datetime',
+        ];
     }
 
     public function rental(): BelongsTo

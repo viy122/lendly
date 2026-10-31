@@ -88,7 +88,8 @@ class Show extends Component
 
         $this->validate(['cancellation_reason' => ['nullable', 'string', 'max:500']]);
 
-        RentalLifecycle::cancel($this->rental, $this->cancellation_reason);
+        $result = RentalLifecycle::cancel($this->rental, $this->cancellation_reason);
+        session()->flash('status', $result['requires_review'] ?? false ? 'Cancellation requested. Your reservation remains in place until reviewed.' : 'Booking cancelled. Any refund must be arranged manually.');
 
         $this->reset('cancellation_reason', 'showCancelForm');
         $this->rental->refresh()->load(['rentalRequest', 'securityDeposit']);
@@ -206,7 +207,16 @@ class Show extends Component
             'paymentSubmissions',
         ]);
 
-        return view('livewire.renter.rentals.show', ['paymentSettings' => OfflinePaymentSetting::current()]);
+        $paymentDestination = $this->rental->isPaymentPending()
+            ? RentalPayments::destinationFor($this->rental, auth()->user())
+            : $this->rental->payment_destination;
+
+        $this->rental->refresh();
+
+        return view('livewire.renter.rentals.show', [
+            'paymentSettings' => OfflinePaymentSetting::current(),
+            'paymentDestination' => $paymentDestination,
+        ]);
     }
 
     public function refreshRental(): void

@@ -81,7 +81,7 @@ class ListingManagementFlowTest extends TestCase
 
     public function test_creation_requires_a_photo_map_pin_and_availability_dates(): void
     {
-        $owner = User::factory()->owner()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
         $category = Category::create(['name' => 'Tools', 'slug' => 'tools']);
         Livewire::actingAs($owner)->test(Form::class)
             ->set('category_id', $category->id)->set('name', 'Camera')
@@ -102,7 +102,7 @@ class ListingManagementFlowTest extends TestCase
     public function test_invalid_listing_details_cannot_be_saved(string $field, mixed $value): void
     {
         Storage::fake('public');
-        $owner = User::factory()->owner()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
         $listing = $this->listing($owner);
         Livewire::actingAs($owner)->test(Form::class, ['listing' => $listing])
             ->set($field, $value)->call('save')->assertHasErrors([$field]);
@@ -112,7 +112,7 @@ class ListingManagementFlowTest extends TestCase
     public function test_reversed_and_expired_availability_windows_are_rejected(): void
     {
         Storage::fake('public');
-        $owner = User::factory()->owner()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
         $listing = $this->listing($owner);
         Livewire::actingAs($owner)->test(Form::class, ['listing' => $listing])
             ->set('available_from', now()->addDays(11)->toDateString())
@@ -122,7 +122,7 @@ class ListingManagementFlowTest extends TestCase
     public function test_edit_keeps_existing_photo_and_zero_coordinates_and_publishes_immediately(): void
     {
         Storage::fake('public');
-        $owner = User::factory()->owner()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
         $listing = $this->listing($owner, ['status' => ListingStatus::PendingApproval]);
         Livewire::actingAs($owner)->test(Form::class, ['listing' => $listing])
             ->assertSet('latitude', 0)->assertSet('longitude', 0)
@@ -137,7 +137,7 @@ class ListingManagementFlowTest extends TestCase
     public function test_paused_listing_stays_paused_after_edit_then_resumes_without_admin_approval(): void
     {
         Storage::fake('public');
-        $owner = User::factory()->owner()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
         $listing = $this->listing($owner, ['status' => ListingStatus::Inactive]);
         Livewire::actingAs($owner)->test(Form::class, ['listing' => $listing])
             ->set('name', 'Edited while paused')->call('save')->assertHasNoErrors();
@@ -149,7 +149,7 @@ class ListingManagementFlowTest extends TestCase
     public function test_incomplete_legacy_listing_must_be_completed_before_resuming(): void
     {
         Storage::fake('public');
-        $owner = User::factory()->owner()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
         $listing = $this->listing($owner, ['status' => ListingStatus::Inactive, 'latitude' => null]);
         $listing->images()->delete();
         Livewire::actingAs($owner)->test(Index::class)->call('reactivate', $listing->id)
@@ -160,7 +160,7 @@ class ListingManagementFlowTest extends TestCase
     public function test_last_photo_removal_requires_a_replacement_and_only_commits_on_save(): void
     {
         Storage::fake('public');
-        $owner = User::factory()->owner()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
         $listing = $this->listing($owner);
         $image = $listing->images->first();
         $form = Livewire::actingAs($owner)->test(Form::class, ['listing' => $listing])
@@ -179,9 +179,9 @@ class ListingManagementFlowTest extends TestCase
     public function test_photo_removal_is_scoped_to_the_authorized_listing(): void
     {
         Storage::fake('public');
-        $owner = User::factory()->owner()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
         $listing = $this->listing($owner);
-        $other = $this->listing(User::factory()->owner()->create());
+        $other = $this->listing(User::factory()->identityVerified()->owner()->create());
         Livewire::actingAs($owner)->test(Form::class, ['listing' => $listing])
             ->call('removeExistingImage', $other->images->first()->id)->assertNotFound();
         $this->assertCount(1, $other->fresh()->images);
@@ -190,7 +190,7 @@ class ListingManagementFlowTest extends TestCase
     public function test_non_image_upload_cannot_replace_the_last_photo(): void
     {
         Storage::fake('public');
-        $owner = User::factory()->owner()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
         $listing = $this->listing($owner);
         Livewire::actingAs($owner)->test(Form::class, ['listing' => $listing])
             ->call('removeExistingImage', $listing->images->first()->id)
@@ -203,8 +203,8 @@ class ListingManagementFlowTest extends TestCase
     {
         Storage::fake('public');
         Notification::fake();
-        $listing = $this->listing(User::factory()->owner()->create());
-        $renter = User::factory()->renter()->create();
+        $listing = $this->listing(User::factory()->identityVerified()->owner()->create());
+        $renter = User::factory()->identityVerified()->renter()->create();
         $form = Livewire::actingAs($renter)->test(Create::class, ['listing' => $listing])->set('accept_terms', true)
             ->assertSet('start_date', $listing->available_from->toDateString())
             ->set('start_date', now()->addDays(2)->toDateString())->call('submit')->assertHasErrors(['start_date']);
@@ -219,8 +219,8 @@ class ListingManagementFlowTest extends TestCase
     public function test_request_rechecks_changed_window_and_expired_window_has_no_request_button(): void
     {
         Storage::fake('public');
-        $listing = $this->listing(User::factory()->owner()->create());
-        $renter = User::factory()->renter()->create();
+        $listing = $this->listing(User::factory()->identityVerified()->owner()->create());
+        $renter = User::factory()->identityVerified()->renter()->create();
         $form = Livewire::actingAs($renter)->test(Create::class, ['listing' => $listing])->set('accept_terms', true);
         $listing->update(['available_from' => now()->addDays(4)->toDateString()]);
         $form->call('submit')->assertHasErrors(['start_date']);
@@ -232,7 +232,7 @@ class ListingManagementFlowTest extends TestCase
     public function test_browse_and_map_exclude_expired_dates_and_include_upcoming_windows(): void
     {
         Storage::fake('public');
-        $owner = User::factory()->owner()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
         $expired = $this->listing($owner, [
             'name' => 'Expired Camera',
             'available_from' => now()->subDays(3)->toDateString(),
@@ -248,9 +248,9 @@ class ListingManagementFlowTest extends TestCase
     public function test_approval_rechecks_the_window_and_removal(): void
     {
         Storage::fake('public');
-        $owner = User::factory()->owner()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
         $listing = $this->listing($owner);
-        $request = $this->request($listing, User::factory()->renter()->create());
+        $request = $this->request($listing, User::factory()->identityVerified()->renter()->create());
         $listing->update(['available_from' => now()->addDays(4)->toDateString()]);
         Livewire::actingAs($owner)->test(OwnerRequests::class)->call('approve', $request->id)->assertHasErrors(['approve']);
         $this->assertSame(RentalRequestStatus::Requested, $request->fresh()->status);
@@ -261,9 +261,9 @@ class ListingManagementFlowTest extends TestCase
     public function test_availability_edit_cannot_exclude_approved_bookings(): void
     {
         Storage::fake('public');
-        $owner = User::factory()->owner()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
         $listing = $this->listing($owner);
-        $this->request($listing, User::factory()->renter()->create(), 'approved');
+        $this->request($listing, User::factory()->identityVerified()->renter()->create(), 'approved');
         Livewire::actingAs($owner)->test(Form::class, ['listing' => $listing])
             ->set('available_from', now()->addDays(4)->toDateString())
             ->call('save')->assertHasErrors(['available_until']);
@@ -274,8 +274,8 @@ class ListingManagementFlowTest extends TestCase
     {
         Storage::fake('public');
         Notification::fake();
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $listing = $this->listing($owner);
         $request = $this->request($listing, $renter, 'approved');
         $request->update(['agreement_terms' => RentalAgreement::termsFor($request)]);

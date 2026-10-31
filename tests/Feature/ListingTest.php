@@ -27,7 +27,7 @@ class ListingTest extends TestCase
     public function test_owner_can_create_a_listing_and_it_is_published_immediately(): void
     {
         Storage::fake('public');
-        $owner = User::factory()->owner()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
         $category = $this->makeCategory();
 
         Livewire::actingAs($owner)
@@ -56,7 +56,7 @@ class ListingTest extends TestCase
 
     public function test_listing_requires_price_greater_than_zero(): void
     {
-        $owner = User::factory()->owner()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
         $category = $this->makeCategory();
 
         Livewire::actingAs($owner)
@@ -73,7 +73,7 @@ class ListingTest extends TestCase
 
     public function test_listing_requires_category_and_location(): void
     {
-        $owner = User::factory()->owner()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
 
         Livewire::actingAs($owner)
             ->test(OwnerListingForm::class)
@@ -86,7 +86,7 @@ class ListingTest extends TestCase
 
     public function test_security_deposit_cannot_be_negative(): void
     {
-        $owner = User::factory()->owner()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
         $category = $this->makeCategory();
 
         Livewire::actingAs($owner)
@@ -104,7 +104,7 @@ class ListingTest extends TestCase
 
     public function test_any_member_can_access_owner_listing_management(): void
     {
-        $member = User::factory()->renter()->create();
+        $member = User::factory()->identityVerified()->renter()->create();
 
         $this->actingAs($member)->get(route('owner.listings.index'))->assertOk();
         $this->actingAs($member)->get(route('owner.listings.create'))->assertOk();
@@ -119,8 +119,8 @@ class ListingTest extends TestCase
 
     public function test_owner_cannot_edit_another_owners_listing(): void
     {
-        $ownerA = User::factory()->owner()->create();
-        $ownerB = User::factory()->owner()->create();
+        $ownerA = User::factory()->identityVerified()->owner()->create();
+        $ownerB = User::factory()->identityVerified()->owner()->create();
         $category = $this->makeCategory();
 
         $listing = Listing::create([
@@ -141,8 +141,8 @@ class ListingTest extends TestCase
 
     public function test_pending_and_rejected_listings_are_not_publicly_visible(): void
     {
-        $owner = User::factory()->owner()->create();
-        $guest = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $guest = User::factory()->identityVerified()->renter()->create();
         $category = $this->makeCategory();
 
         $listing = Listing::create([
@@ -168,8 +168,8 @@ class ListingTest extends TestCase
     public function test_admin_can_approve_a_pending_listing_making_it_publicly_visible(): void
     {
         $admin = User::factory()->admin()->create();
-        $owner = User::factory()->owner()->create();
-        $renter = User::factory()->renter()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $renter = User::factory()->identityVerified()->renter()->create();
         $category = $this->makeCategory();
 
         $listing = Listing::create([
@@ -194,7 +194,7 @@ class ListingTest extends TestCase
     public function test_admin_can_reject_a_listing_with_a_reason(): void
     {
         $admin = User::factory()->admin()->create();
-        $owner = User::factory()->owner()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
         $category = $this->makeCategory();
 
         $listing = Listing::create([
@@ -222,7 +222,7 @@ class ListingTest extends TestCase
 
     public function test_owner_can_deactivate_and_reactivate_their_own_listing(): void
     {
-        $owner = User::factory()->owner()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
         $category = $this->makeCategory();
 
         $listing = Listing::create([
@@ -257,7 +257,7 @@ class ListingTest extends TestCase
 
     public function test_owner_can_set_availability_without_changing_approval_status(): void
     {
-        $owner = User::factory()->owner()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
         $category = $this->makeCategory();
 
         foreach (ListingStatus::cases() as $status) {
@@ -291,8 +291,8 @@ class ListingTest extends TestCase
 
     public function test_owner_cannot_change_another_owners_availability(): void
     {
-        $owner = User::factory()->owner()->create();
-        $otherOwner = User::factory()->owner()->create();
+        $owner = User::factory()->identityVerified()->owner()->create();
+        $otherOwner = User::factory()->identityVerified()->owner()->create();
         $category = $this->makeCategory();
         $listing = Listing::create([
             'owner_id' => $owner->id,
@@ -317,8 +317,8 @@ class ListingTest extends TestCase
 
     public function test_owner_cannot_deactivate_another_owners_listing(): void
     {
-        $ownerA = User::factory()->owner()->create();
-        $ownerB = User::factory()->owner()->create();
+        $ownerA = User::factory()->identityVerified()->owner()->create();
+        $ownerB = User::factory()->identityVerified()->owner()->create();
         $category = $this->makeCategory();
 
         $listing = Listing::create([

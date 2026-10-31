@@ -14,8 +14,9 @@
             <p class="mt-1 text-xs text-rose-600">{{ $preview['reason'] }}</p>
         @endif
 
+        @if ($preview['requires_review'] ?? false)<p class="mt-3 text-sm text-rose-700">This needs owner or administrator approval. Your dates remain reserved until the request is approved.</p>@endif
         <div class="mt-3">
-            <x-input-label for="cancellation_reason" value="Reason for cancellation (optional)" />
+            <x-input-label for="cancellation_reason" value="{{ ($preview['requires_review'] ?? false) ? 'Reason for cancellation (required)' : 'Reason for cancellation (optional)' }}" />
             <textarea wire:model="cancellation_reason" id="cancellation_reason" rows="2" maxlength="500" class="mt-1 block w-full rounded-lg border-rose-300 text-sm shadow-sm focus:border-rose-500 focus:ring-rose-500"></textarea>
             <x-input-error :messages="$errors->get('cancellation_reason')" class="mt-2" />
         </div>
@@ -25,7 +26,7 @@
                 Never mind
             </button>
             <button type="button" wire:click="cancelRental" wire:loading.attr="disabled" wire:target="cancelRental" wire:confirm="Are you sure you want to cancel this booking?" class="inline-flex min-h-11 items-center justify-center rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 focus:outline-none focus:ring-4 focus:ring-rose-100 disabled:cursor-wait disabled:opacity-60">
-                Confirm cancellation
+                {{ ($preview['requires_review'] ?? false) ? 'Request cancellation' : 'Confirm cancellation' }}
             </button>
         </div>
     </section>

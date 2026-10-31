@@ -44,7 +44,61 @@ class EmailVerificationTest extends TestCase
 
         Event::assertDispatched(Verified::class);
         $this->assertTrue($user->fresh()->hasVerifiedEmail());
-        $response->assertRedirect(route('dashboard', absolute: false).'?verified=1');
+        $response->assertRedirect(route('identity.verify', absolute: false));
+    }
+
+    public function test_an_intended_account_page_cannot_skip_identity_after_email_confirmation(): void
+    {
+        $this->configureIdentity();
+        $user = User::factory()->unverified()->create();
+        $verificationUrl = URL::temporarySignedRoute('verification.verify', now()->addHour(), [
+            'id' => $user->id, 'hash' => sha1($user->email),
+        ]);
+
+        $this->actingAs($user)->withSession(['url.intended' => route('owner.dashboard')])
+            ->get($verificationUrl)->assertRedirect(route('identity.verify', absolute: false));
+
+        $this->assertNull($user->fresh()->identity_verified_at);
+    }
+
+    public function test_admin_email_confirmation_keeps_the_existing_dashboard_destination(): void
+    {
+        $user = User::factory()->admin()->unverified()->create();
+        $verificationUrl = URL::temporarySignedRoute('verification.verify', now()->addHour(), [
+            'id' => $user->id, 'hash' => sha1($user->email),
+        ]);
+
+        $this->actingAs($user)->get($verificationUrl)
+            ->assertRedirect(route('dashboard', absolute: false).'?verified=1');
+    }
+
+    public function test_an_already_verified_member_can_continue_from_the_email_screen_to_identity(): void
+    {
+        $this->configureIdentity();
+        $user = User::factory()->create();
+
+        $this->withSession(['url.intended' => route('owner.dashboard')]);
+        Volt::actingAs($user)->test('pages.auth.verify-email')->call('sendVerification')
+            ->assertRedirect(route('identity.verify', absolute: false));
+    }
+
+    public function test_verified_member_continues_to_manual_review_without_an_api_provider(): void
+    {
+        config(['services.identity.client_id' => null]);
+        $user = User::factory()->create();
+
+        $this->withSession(['url.intended' => route('owner.dashboard')]);
+        Volt::actingAs($user)->test('pages.auth.verify-email')->call('sendVerification')
+            ->assertRedirect(route('identity.verify', absolute: false));
+    }
+
+    private function configureIdentity(): void
+    {
+        config(['services.identity' => [
+            'base_url' => 'https://identity.example.test', 'client_id' => 'test-client',
+            'client_secret' => 'test-secret', 'public_key' => 'test-public',
+            'sdk_url' => 'https://sdk.example.test/liveness.js', 'environment' => 'sandbox',
+        ]]);
     }
 
     public function test_email_is_not_verified_with_invalid_hash(): void

@@ -57,7 +57,7 @@
                                     </div>
                                 </td>
                                 <td class="px-5 py-4 font-medium text-slate-600">{{ $rental->renter->name }}</td>
-                                <td class="whitespace-nowrap px-5 py-4 text-slate-500">{{ $rental->start_date->format('M d') }} &ndash; {{ $rental->end_date->format('M d, Y') }}</td>
+                                <td class="whitespace-nowrap px-5 py-4 text-slate-500"><x-rental-period :booking="$rental" /></td>
                                 <td class="whitespace-nowrap px-5 py-4 font-bold text-slate-700">₱{{ number_format($rental->rental_fee, 2) }}</td>
                                 <td class="px-5 py-4">
                                     <x-badge :color="$rental->displayStatusColor()">{{ $rental->displayStatusLabel() }}</x-badge>

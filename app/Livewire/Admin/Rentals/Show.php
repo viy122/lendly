@@ -25,6 +25,16 @@ class Show extends Component
 
     public string $note = '';
 
+    public string $cancellation_review_notes = '';
+
+    public function reviewCancellation(bool $approve): void
+    {
+        $rental = Rental::findOrFail($this->rentalId);
+        $this->authorize('manage', $rental);
+        RentalLifecycle::reviewCancellation($rental, auth()->user(), $approve, $this->cancellation_review_notes);
+        $this->reset('cancellation_review_notes');
+    }
+
     public bool $funds_received = false;
 
     public function mount(Rental $rental): void
@@ -88,7 +98,7 @@ class Show extends Component
         $this->authorize('manage', $rental);
         RentalLifecycle::synchronizeRentalStatus($rental);
         $rental->refresh()->load([
-            'listing.images', 'owner', 'renter', 'rentalRequest', 'payment', 'securityDeposit',
+            'listing.images', 'owner', 'renter', 'rentalRequest.listing.owner', 'rentalRequest.renter', 'payment', 'securityDeposit',
             'exchangeSchedule.proposer', 'conditionRecords.photos', 'conditionRecords.recordedBy',
             'damageReport.photos', 'disputes.raisedBy', 'disputes.resolvedBy', 'reviews',
             'paymentSubmissions.reviewer',

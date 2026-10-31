@@ -16,6 +16,7 @@ use App\Models\Dispute;
 use App\Models\Rental;
 use App\Notifications\TalaNotification;
 use App\Services\RentalLifecycle;
+use App\Services\RentalPayments;
 use App\Services\RentalReviews;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +32,32 @@ class Show extends Component
     use WithFileUploads;
 
     public Rental $rental;
+
+    public bool $owner_funds_received = false;
+
+    public string $cancellation_review_notes = '';
+
+    public function advanceFulfillment(string $stage): void
+    {
+        RentalLifecycle::advanceFulfillment($this->rental, auth()->user(), $stage);
+        $this->rental->refresh();
+    }
+
+    public function reviewCancellation(bool $approve): void
+    {
+        RentalLifecycle::reviewCancellation($this->rental, auth()->user(), $approve, $this->cancellation_review_notes);
+        $this->reset('cancellation_review_notes');
+        $this->rental->refresh();
+    }
+
+    public function confirmPaymentReceipt(int $submissionId): void
+    {
+        $this->rental->refresh();
+        $this->authorize('view', $this->rental);
+        RentalPayments::confirmOwnerReceipt($this->rental, auth()->user(), $submissionId, $this->owner_funds_received);
+        $this->owner_funds_received = false;
+        session()->flash('status', 'Receipt acknowledged. The booking remains unpaid until an administrator verifies the payment.');
+    }
 
     public string $before_condition = 'good';
 
@@ -74,7 +101,7 @@ class Show extends Component
         $this->rental = $rental->load([
             'listing.images', 'owner', 'renter', 'payment', 'securityDeposit',
             'beforeConditionRecord.photos', 'afterConditionRecord.photos', 'damageReport.photos',
-            'reviewFromOwnerToRenter', 'disputes',
+            'reviewFromOwnerToRenter', 'disputes', 'paymentSubmissions',
         ]);
     }
 
@@ -266,7 +293,7 @@ class Show extends Component
         $this->rental->refresh()->load([
             'listing.images', 'owner', 'renter', 'payment', 'securityDeposit',
             'beforeConditionRecord.photos', 'afterConditionRecord.photos', 'damageReport.photos',
-            'reviewFromOwnerToRenter', 'disputes',
+            'reviewFromOwnerToRenter', 'disputes', 'paymentSubmissions',
         ]);
 
         return view('livewire.owner.rentals.show');

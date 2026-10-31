@@ -20,6 +20,9 @@
                         @endif
                         <p class="mb-2 mt-5 text-xs font-semibold uppercase tracking-wider text-blue-600">Community member</p>
                         <h2 id="member-name" class="break-words text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">{{ $user->name }}</h2>
+                        @if ($user->hasVerifiedIdentity())
+                            <span class="mt-3 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">{{ $user->identity_verification_environment === 'manual' ? 'ID reviewed' : 'Identity verified' }}</span>
+                        @endif
                         <p class="mt-3 flex items-center gap-2 text-sm text-slate-500"><x-icon name="user-circle" class="h-4 w-4 shrink-0" aria-hidden="true" /> Member since {{ $user->created_at->format('M Y') }}</p>
                     </div>
 

@@ -69,7 +69,8 @@ class Map extends Component
             return [
                 'id' => $listing->id,
                 'name' => $listing->name,
-                'price' => number_format($listing->price_per_day, 2),
+                'price' => number_format($listing->allows_daily_rentals ? $listing->price_per_day : $listing->price_per_hour, 2),
+                'priceUnit' => $listing->allows_daily_rentals ? 'day' : 'hour',
                 'image' => $listing->images->first()?->url(),
                 'lat' => (float) $listing->latitude,
                 'lng' => (float) $listing->longitude,

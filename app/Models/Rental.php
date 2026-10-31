@@ -21,6 +21,8 @@ class Rental extends Model
         'status' => 'payment_pending',
     ];
 
+    protected $hidden = ['payment_destination'];
+
     protected $fillable = [
         'rental_request_id',
         'listing_id',
@@ -29,6 +31,7 @@ class Rental extends Model
         'start_date',
         'end_date',
         'rental_days',
+        'rental_unit', 'rental_hours', 'starts_at', 'ends_at',
         'fulfillment_method',
         'rental_fee',
         'commission_rate',
@@ -48,11 +51,14 @@ class Rental extends Model
         'cancelled_at',
         'cancellation_reason',
         'cancellation_fee',
+        'fulfillment_stage', 'payment_due_at', 'cancellation_refund_amount',
     ];
 
     protected function casts(): array
     {
         return [
+            'payment_destination' => 'array',
+            'starts_at' => 'datetime', 'ends_at' => 'datetime', 'rental_hours' => 'integer',
             'start_date' => 'date',
             'end_date' => 'date',
             'fulfillment_method' => FulfillmentMethod::class,
@@ -65,6 +71,7 @@ class Rental extends Model
             'late_fee' => 'decimal:2',
             'cancellation_fee' => 'decimal:2',
             'paid_at' => 'datetime',
+            'payment_due_at' => 'datetime', 'cancellation_refund_amount' => 'decimal:2',
             'pickup_confirmed_by_owner_at' => 'datetime',
             'pickup_confirmed_by_renter_at' => 'datetime',
             'return_confirmed_by_owner_at' => 'datetime',
@@ -73,6 +80,18 @@ class Rental extends Model
             'archived_at' => 'datetime',
             'cancelled_at' => 'datetime',
         ];
+    }
+
+    public function cancellationRequest(): HasOne
+    {
+        return $this->hasOne(CancellationRequest::class)->latestOfMany();
+    }
+
+    public function periodLabel(): string
+    {
+        return $this->rental_unit === 'hour'
+            ? $this->starts_at->copy()->setTimezone('Asia/Manila')->format('M d, Y g:i A').' – '.$this->ends_at->copy()->setTimezone('Asia/Manila')->format('M d, Y g:i A').' (Philippine time)'
+            : $this->start_date->format('M d, Y').' – '.$this->end_date->format('M d, Y');
     }
 
     public function rentalRequest(): BelongsTo
@@ -205,7 +224,7 @@ class Rental extends Model
     public function isOverdue(): bool
     {
         return $this->status === RentalStatus::Overdue
-            || ($this->isActive() && $this->end_date->lt(today()));
+            || ($this->isActive() && ($this->rental_unit === 'hour' ? $this->ends_at->lt(now()) : $this->end_date->lt(today())));
     }
 
     public function currentOverdueDays(): int
@@ -217,6 +236,10 @@ class Rental extends Model
 
     public function currentLateFee(): float
     {
+        if ($this->rental_unit === 'hour' && $this->isOverdue()) {
+            return round((float) $this->rental_fee / max(1, $this->rental_hours) * max(0, (int) ceil($this->ends_at->diffInMinutes(now(), false) / 60)), 2);
+        }
+
         return $this->isOverdue()
             ? round($this->agreedDailyRate() * $this->currentOverdueDays(), 2)
             : (float) $this->late_fee;
@@ -298,8 +321,8 @@ class Rental extends Model
 
         return match ($status) {
             RentalStatus::Overdue->value => $query->where(fn ($q) => $q->where('status', RentalStatus::Overdue)
-                ->orWhere(fn ($active) => $active->where('status', RentalStatus::Active)->whereDate('end_date', '<', today()))),
-            RentalStatus::Active->value => $query->where('status', RentalStatus::Active)->whereDate('end_date', '>=', today()),
+                ->orWhere(fn ($active) => $active->where('status', RentalStatus::Active)->where(fn ($due) => $due->where(fn ($hourly) => $hourly->where('rental_unit', 'hour')->where('ends_at', '<', now()))->orWhere(fn ($daily) => $daily->where('rental_unit', 'day')->whereDate('end_date', '<', today()))))),
+            RentalStatus::Active->value => $query->where('status', RentalStatus::Active)->where(fn ($due) => $due->where(fn ($hourly) => $hourly->where('rental_unit', 'hour')->where('ends_at', '>=', now()))->orWhere(fn ($daily) => $daily->where('rental_unit', 'day')->whereDate('end_date', '>=', today()))),
             default => $query->where('status', $status),
         };
     }
@@ -312,13 +335,16 @@ class Rental extends Model
     public function isCancellableByRenter(): bool
     {
         return in_array($this->status, [RentalStatus::PaymentPending, RentalStatus::Paid], true)
+            && (! ($this->rentalRequest?->agreement_terms['cancellation_requires_review'] ?? false)
+                || ! in_array($this->fulfillment_stage, ['waiting_for_courier', 'shipped'], true))
             && $this->pickup_confirmed_by_owner_at === null
             && $this->pickup_confirmed_by_renter_at === null;
     }
 
     public function awaitingPickupConfirmation(): bool
     {
-        return in_array($this->status, [RentalStatus::Paid], true);
+        return in_array($this->status, [RentalStatus::Paid], true)
+            && $this->cancellationRequest?->status !== 'pending';
     }
 
     public function awaitingReturnConfirmation(): bool

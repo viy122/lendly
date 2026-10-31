@@ -2,6 +2,7 @@
 
 @php
 $paths = [
+    'cart' => '<path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l2.4 12h10.8l2-8H6M8 15l-1 3h12" /><circle cx="9" cy="21" r="1" /><circle cx="18" cy="21" r="1" />',
     'home' => '<path stroke-linecap="round" stroke-linejoin="round" d="M3 11.5 12 4l9 7.5M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9" />',
     'search' => '<circle cx="10.5" cy="10.5" r="6.5" /><path stroke-linecap="round" d="m20 20-4.8-4.8" />',
     'map-pin' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 21s7-7.2 7-12.5A7 7 0 1 0 5 8.5C5 13.8 12 21 12 21Z" /><circle cx="12" cy="8.5" r="2.25" />',

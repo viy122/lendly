@@ -111,6 +111,9 @@ new class extends Component
             <p class="flex items-center gap-1.5 px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wider text-indigo-400" x-show="!collapsed" x-cloak>
                 <span class="h-1.5 w-1.5 rounded-full bg-blue-400"></span> Renting
             </p>
+            <x-sidebar-link :href="route('renter.cart.index')" :active="request()->routeIs('renter.cart.*')" icon="cart" wire:navigate>
+                {{ __('My Cart') }}
+            </x-sidebar-link>
             <x-sidebar-link :href="route('renter.rental-requests.index')" :active="request()->routeIs('renter.rental-requests.*')" icon="inbox" wire:navigate>
                 {{ __('My Requests') }}
             </x-sidebar-link>
@@ -132,6 +135,9 @@ new class extends Component
             <x-sidebar-link :href="route('owner.rentals.index')" :active="request()->routeIs('owner.rentals.*')" icon="archive" wire:navigate>
                 {{ __('My Rentals') }}
             </x-sidebar-link>
+            <x-sidebar-link :href="route('owner.payments.settings')" :active="request()->routeIs('owner.payments.*')" icon="calculator" wire:navigate>
+                {{ __('Payment QR') }}
+            </x-sidebar-link>
             @endif
 
             @if (auth()->user()->isAdmin())
@@ -140,6 +146,9 @@ new class extends Component
             </p>
             <x-sidebar-link :href="route('admin.listings.index')" :active="request()->routeIs('admin.listings.*')" icon="list" wire:navigate>
                 {{ __('Listings') }}
+            </x-sidebar-link>
+            <x-sidebar-link :href="route('admin.identity-submissions.index')" :active="request()->routeIs('admin.identity-submissions.*')" icon="user-circle" wire:navigate>
+                {{ __('ID Reviews') }}
             </x-sidebar-link>
             <x-sidebar-link :href="route('admin.rentals.index')" :active="request()->routeIs('admin.rentals.*')" icon="archive" wire:navigate>
                 {{ __('Transactions') }}
