@@ -18,6 +18,10 @@ trait ListsThreads
     #[Url]
     public string $search = '';
 
+    public string $threadFilter = 'all';
+
+    public string $threadSort = 'latest';
+
     protected function threadsForCurrentUser(): Collection
     {
         $rentalThreads = RentalRequest::query()
@@ -83,7 +87,13 @@ trait ListsThreads
 
         return $rentalThreads->concat($listingThreads)
             ->when(trim($this->search) !== '', fn ($threads) => $threads->filter(fn ($thread) => Str::contains($thread['otherParty']->name.' '.$thread['listing']->name, trim($this->search), ignoreCase: true)))
-            ->sortByDesc(fn ($thread) => $thread['lastMessage']?->id)
+            ->filter(fn ($thread) => match ($this->threadFilter) {
+                'unread' => $thread['unreadCount'] > 0,
+                'rentals' => isset($thread['rentalRequest']),
+                'listings' => isset($thread['listingConversation']),
+                default => true,
+            })
+            ->sortBy(fn ($thread) => [$thread['lastMessage']?->created_at?->format('Y-m-d H:i:s.u'), $thread['lastMessage']?->id, (string) $thread['id']], SORT_REGULAR, $this->threadSort !== 'oldest')
             ->values();
     }
 }

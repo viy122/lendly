@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\RentalAdministration;
 use App\Services\RentalAgreement;
 use App\Services\RentalPayments;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -55,7 +56,7 @@ class OwnerWalletPaymentTest extends TestCase
         $this->assertDatabaseCount('payments', 0);
     }
 
-    public function test_submission_copies_frozen_destination_and_notifies_only_its_recipient_and_admin(): void
+    public function test_submission_copies_frozen_destination_and_notifies_only_its_recipient(): void
     {
         $rental = $this->rental();
         $this->wallet($rental->owner);
@@ -76,7 +77,7 @@ class OwnerWalletPaymentTest extends TestCase
         $this->assertDatabaseCount('payments', 0);
         $this->assertDatabaseCount('security_deposits', 0);
         $this->assertSame(1, $rental->owner->notifications()->where('data->type', 'payment_submitted')->count());
-        $this->assertSame(1, $admin->notifications()->where('data->type', 'payment_submitted')->count());
+        $this->assertSame(0, $admin->notifications()->where('data->type', 'payment_submitted')->count());
         $this->assertSame(0, $stranger->notifications()->count());
     }
 
@@ -189,7 +190,7 @@ class OwnerWalletPaymentTest extends TestCase
         $this->assertNull($submission->fresh()->recipient_confirmed_at);
     }
 
-    public function test_owner_must_explicitly_acknowledge_receipt_and_acknowledgement_never_pays(): void
+    public function test_owner_must_explicitly_confirm_receipt_to_finalize_payment(): void
     {
         $rental = $this->rental();
         $this->wallet($rental->owner);
@@ -200,45 +201,48 @@ class OwnerWalletPaymentTest extends TestCase
         RentalPayments::confirmOwnerReceipt($rental, $rental->owner, $submission->id, true);
 
         $this->assertNotNull($submission->fresh()->recipient_confirmed_at);
-        $this->assertSame('pending', $submission->fresh()->status);
-        $this->assertSame(RentalStatus::PaymentPending, $rental->fresh()->status);
-        $this->assertNull($rental->fresh()->paid_at);
-        $this->assertDatabaseCount('payments', 0);
-        $this->assertDatabaseCount('security_deposits', 0);
+        $this->assertSame('verified', $submission->fresh()->status);
+        $this->assertSame(RentalStatus::Paid, $rental->fresh()->status);
+        $this->assertNotNull($rental->fresh()->paid_at);
+        $this->assertDatabaseCount('payments', 1);
+        $this->assertDatabaseCount('security_deposits', 1);
         $confirmed = $submission->fresh()->recipient_confirmed_at;
         $this->travel(1)->minutes();
         RentalPayments::confirmOwnerReceipt($rental, $rental->owner, $submission->id, true);
         $this->assertTrue($confirmed->equalTo($submission->fresh()->recipient_confirmed_at));
     }
 
-    public function test_admin_wallet_approval_requires_owner_receipt_then_uses_existing_audited_review(): void
+    public function test_only_owner_confirmation_finalizes_wallet_payment_without_admin(): void
     {
         $rental = $this->rental();
         $this->wallet($rental->owner);
         $submission = $this->submit($rental);
         $admin = User::factory()->admin()->create();
 
-        $this->validationRejects(fn () => RentalAdministration::perform($rental, $admin, RentalAdminActionType::PaymentVerified, 'Matched wallet proof', $submission->id, true));
+        try {
+            RentalAdministration::perform($rental, $admin, RentalAdminActionType::PaymentVerified, 'Matched wallet proof', $submission->id, true);
+            $this->fail('Admin must not verify owner payments');
+        } catch (AuthorizationException) {
+        }
         $this->assertDatabaseCount('payments', 0);
         $this->assertDatabaseCount('rental_admin_actions', 0);
         RentalPayments::confirmOwnerReceipt($rental, $rental->owner, $submission->id, true);
-        RentalAdministration::perform($rental, $admin, RentalAdminActionType::PaymentVerified, 'Matched wallet receipt and proof', $submission->id, true);
 
         $this->assertSame(RentalStatus::Paid, $rental->fresh()->status);
         $this->assertSame('maya', $rental->fresh()->payment->method);
         $this->assertSame('verified', $submission->fresh()->status);
-        $this->assertDatabaseCount('rental_admin_actions', 1);
+        $this->assertDatabaseCount('rental_admin_actions', 0);
         $this->assertDatabaseCount('payments', 1);
         $this->assertDatabaseCount('security_deposits', 1);
     }
 
-    public function test_admin_can_reject_wallet_proof_without_owner_receipt(): void
+    public function test_owner_can_reject_wallet_proof_without_confirming_receipt(): void
     {
         $rental = $this->rental();
         $this->wallet($rental->owner);
         $submission = $this->submit($rental);
 
-        RentalAdministration::perform($rental, User::factory()->admin()->create(), RentalAdminActionType::PaymentRejected, 'Unreadable proof', $submission->id);
+        RentalPayments::rejectOwnerProof($rental, $rental->owner, $submission->id, 'Unreadable proof');
 
         $this->assertSame('rejected', $submission->fresh()->status);
         $this->assertDatabaseCount('payments', 0);
@@ -341,7 +345,7 @@ class OwnerWalletPaymentTest extends TestCase
             'commission_amount' => 30, 'security_deposit' => 500, 'total_amount' => 830,
         ];
         $request = RentalRequest::create($terms + ['status' => 'approved', 'renter_terms_accepted_at' => now(), 'owner_terms_accepted_at' => now()]);
-        $request->update(['agreement_terms' => RentalAgreement::termsFor($request)]);
+        $request->update(['agreement_terms' => ['payment_review' => 'platform_legacy'] + RentalAgreement::termsFor($request)]);
 
         return Rental::create($terms + ['rental_request_id' => $request->id, 'owner_id' => $owner->id]);
     }

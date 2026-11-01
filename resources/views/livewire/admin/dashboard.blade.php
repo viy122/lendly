@@ -7,7 +7,7 @@
             <x-stat-card label="Active listings" :value="$activeListingsCount" hint="{{ $pendingListingsCount }} pending approval" icon="list" accent="blue" />
             <x-stat-card label="Active rentals" :value="$activeRentalsCount" hint="{{ $overdueRentalsCount }} overdue" icon="archive" accent="emerald" />
             <x-stat-card label="Completed rentals" :value="$completedRentalsCount" icon="archive" accent="emerald" />
-            <x-stat-card label="Accrued platform fees" :value="'₱' . number_format($platformRevenue, 2)" hint="Earned fees; owner-wallet remittances are handled manually" icon="archive" accent="indigo" />
+            <x-stat-card label="Accrued processing fees" :value="'₱' . number_format($platformRevenue, 2)" hint="Earned fees; owner-wallet remittances are handled manually" icon="archive" accent="indigo" />
             <x-stat-card label="Open disputes" :value="$openDisputesCount" icon="scale" accent="rose" />
         </div>
 
@@ -19,7 +19,7 @@
                     </span>
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-wide text-blue-600">Trend</p>
-                        <h2 class="text-base font-bold text-slate-900">Accrued platform fees, last 6 months</h2>
+                        <h2 class="text-base font-bold text-slate-900">Accrued processing fees, last 6 months</h2>
                     </div>
                 </div>
                 <div class="mt-5">
@@ -76,12 +76,13 @@
                     <input
                         type="text"
                         wire:model.live.debounce.300ms="search"
-                        placeholder="Search by name or email..."
+                        aria-label="Search users" placeholder="Search by name or email..."
                         class="w-full rounded-lg border-slate-300 pl-9 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
                     >
                 </div>
             </div>
 
+            <x-record-controls :show-search="false" filter-model="userStatus" :filters="['all' => 'All accounts', 'active' => 'Active', 'suspended' => 'Suspended']" />
             <div class="mt-4 overflow-hidden overflow-x-auto rounded-xl border border-slate-200">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="border-b-2 border-indigo-100 bg-indigo-50">

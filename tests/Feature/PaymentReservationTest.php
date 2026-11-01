@@ -22,6 +22,7 @@ use App\Services\RentalAdministration;
 use App\Services\RentalAgreement;
 use App\Services\RentalLifecycle;
 use App\Services\RentalPayments;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
@@ -72,7 +73,7 @@ class PaymentReservationTest extends TestCase
             'status' => RentalRequestStatus::Approved,
             'owner_terms_accepted_at' => now(), 'renter_terms_accepted_at' => now(),
         ]);
-        $request->update(['agreement_terms' => RentalAgreement::termsFor($request)]);
+        $request->update(['agreement_terms' => ['payment_review' => 'platform_legacy'] + RentalAgreement::termsFor($request)]);
 
         return Rental::create([
             'rental_request_id' => $request->id, 'listing_id' => $listing->id,
@@ -169,11 +170,11 @@ class PaymentReservationTest extends TestCase
         $this->travelTo($rental->start_date->copy()->startOfDay());
         $this->assertSame(ListingAvailabilityStatus::Reserved, $listing->fresh()->availabilityStatus());
         $rental->update(['status' => RentalStatus::Active]);
-        $this->travelTo($rental->end_date->copy()->endOfDay());
+        $this->travelTo(Carbon::parse($rental->end_date->toDateString(), 'Asia/Manila')->endOfDay());
         $this->assertSame(ListingAvailabilityStatus::Reserved, $listing->fresh()->availabilityStatus());
         $this->assertTrue($listing->hasApprovedOverlap($rental->end_date, $rental->end_date));
 
-        $this->travelTo($rental->end_date->copy()->addDay()->startOfDay());
+        $this->travelTo(Carbon::parse($rental->end_date->toDateString(), 'Asia/Manila')->addDay()->startOfDay());
         $this->assertFalse($listing->paidReservations()->exists());
         $this->assertSame(ListingAvailabilityStatus::Rented, $listing->fresh()->availabilityStatus(), 'An unreturned item must not become Available when its reservation ends.');
     }
@@ -182,7 +183,7 @@ class PaymentReservationTest extends TestCase
     {
         [$owner, $renter, $admin, $listing, $rental] = $this->fixture();
         $this->verify($rental, $renter, $admin);
-        $this->travelTo($rental->end_date->copy()->addDay()->startOfDay());
+        $this->travelTo(Carbon::parse($rental->end_date->toDateString(), 'Asia/Manila')->addDay()->startOfDay());
 
         $this->assertSame(ListingAvailabilityStatus::Available, $listing->fresh()->availabilityStatus());
         $this->assertFalse($listing->paidReservations()->exists());
@@ -225,7 +226,8 @@ class PaymentReservationTest extends TestCase
 
         $this->assertSame(RentalStatus::Returned, $rental->fresh()->status);
         $this->assertNull($rental->fresh()->return_confirmed_by_renter_at);
-        $this->assertSame(ListingAvailabilityStatus::Available, $listing->fresh()->availabilityStatus());
+        $this->assertSame(ListingAvailabilityStatus::Unavailable, $listing->fresh()->availabilityStatus());
+        $this->assertTrue($listing->fresh()->reopen_required);
         $this->assertFalse($listing->hasApprovedOverlap($rental->start_date, $rental->end_date));
     }
 

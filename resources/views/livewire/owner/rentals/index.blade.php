@@ -1,5 +1,6 @@
 <div wire:poll.5s.keep-alive>
     <x-page-header eyebrow="Owning" title="My rentals" subtitle="View current rentals and your complete booking and transaction history." />
+    <div class="px-4 sm:px-6 lg:px-8"><x-record-controls /></div>
 
     <div class="w-full px-4 py-7 sm:px-6 lg:px-8 lg:py-8">
         <div class="mb-6 flex flex-wrap gap-2">
@@ -23,7 +24,7 @@
         </div>
 
         @if ($rentals->isEmpty())
-            <x-empty-state :title="$filter === 'all' ? 'No rentals yet' : 'Nothing here'" :message="$filter === 'all' ? 'Once both parties accept an approved rental agreement, the booking will appear here.' : 'No rentals match this status filter right now.'" />
+            <x-empty-state :title="$filter === 'all' ? 'No rentals yet' : 'Nothing here'" :message="$filter === 'all' ? 'Once both parties accept the rental agreement, the request is approved and the booking appears here.' : 'No rentals match this status filter right now.'" />
         @else
             <div class="overflow-hidden overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_14px_42px_rgba(15,45,95,0.07)]">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">

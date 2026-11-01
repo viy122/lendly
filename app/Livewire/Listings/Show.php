@@ -41,16 +41,17 @@ class Show extends Component
         // (see Listing::hasApprovedOverlap()) — only future/ongoing ones are
         // relevant to show on a "what's available" calendar.
         $bookedRanges = $this->listing->reservingRequests()
-            ->get(['start_date', 'end_date'])
+            ->get(['start_date', 'end_date', 'rental_unit', 'ends_at'])
             ->map(fn ($request) => [
                 'start' => $request->start_date->toDateString(),
-                'end' => $request->end_date->toDateString(),
+                'end' => $request->rental_unit === 'hour' && $request->ends_at ? $request->ends_at->copy()->setTimezone('Asia/Manila')->subMicrosecond()->toDateString() : $request->end_date->toDateString(),
             ])
             ->values();
 
-        $paidReservationRanges = $this->listing->paidReservations()->get(['start_date', 'end_date']);
+        $paidReservationRanges = $this->listing->paidReservations()->get(['start_date', 'end_date', 'rental_unit', 'ends_at']);
 
         return view('livewire.listings.show', [
+            'requestsOpen' => $this->listing->acceptsNewRequests(),
             'reviews' => $reviews,
             'averageRating' => $this->listing->averageRating(),
             'ownerAverageRating' => $this->listing->owner->averageRatingAsOwner(),
@@ -59,7 +60,7 @@ class Show extends Component
             'paidReservationRanges' => $paidReservationRanges,
             'reservedRanges' => $paidReservationRanges->map(fn ($rental) => [
                 'start' => $rental->start_date->toDateString(),
-                'end' => $rental->end_date->toDateString(),
+                'end' => $rental->rental_unit === 'hour' && $rental->ends_at ? $rental->ends_at->copy()->setTimezone('Asia/Manila')->subMicrosecond()->toDateString() : $rental->end_date->toDateString(),
             ])->values(),
         ]);
     }

@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Enums\NotificationType;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Models\IdentityVerificationAttempt;
 use App\Models\User;
+use App\Notifications\TalaNotification;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -150,6 +152,14 @@ class IdentityVerification
                 'identity_verification_environment' => $configuration['environment'],
             ])->save();
             $attempt->forceFill(['status' => 'verified'])->save();
+            $member->notify(new TalaNotification(
+                NotificationType::VerificationUpdate->value,
+                $configuration['environment'] === 'production' ? 'Identity verification complete' : 'Sandbox identity check complete',
+                $configuration['environment'] === 'production'
+                    ? 'Your identity verification is complete. You can rent and publish listings.'
+                    : 'The sandbox check completed. This test result does not unlock verified rental or listing access.',
+                route('identity.verify'),
+            ));
 
             return true;
         });

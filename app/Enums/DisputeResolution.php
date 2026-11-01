@@ -9,6 +9,7 @@ enum DisputeResolution: string
     case PartialCompensation = 'partial_compensation';
     case FullRefund = 'full_refund';
     case AccountWarning = 'account_warning';
+    case Other = 'other';
 
     public function label(): string
     {
@@ -18,6 +19,7 @@ enum DisputeResolution: string
             self::PartialCompensation => 'Partial compensation',
             self::FullRefund => 'Full refund to renter',
             self::AccountWarning => 'Account warning only',
+            self::Other => 'Other',
         };
     }
 }

@@ -224,14 +224,15 @@ class User extends Authenticatable implements MustVerifyEmail
                 ->where(fn ($query) => $query
                     ->whereNotIn('status', [RentalStatus::Completed, RentalStatus::Cancelled])
                     ->orWhereHas('disputes', fn ($dispute) => $dispute->where('status', '!=', DisputeStatus::Resolved))
-                    ->orWhereHas('securityDeposit', fn ($deposit) => $deposit->whereNotIn('status', [SecurityDepositStatus::Released, SecurityDepositStatus::Refunded, SecurityDepositStatus::Deducted]))
+                    ->orWhereHas('securityDeposit', fn ($deposit) => $deposit->whereNotIn('status', [SecurityDepositStatus::Released, SecurityDepositStatus::Refunded, SecurityDepositStatus::Deducted])
+                        ->orWhere(fn ($pendingReceipt) => $pendingReceipt->whereNotNull('released_at')->whereNull('received_at')->whereColumn('amount', '>', 'deducted_amount')))
                     ->orWhereHas('damageReport', fn ($damage) => $damage->whereNotIn('status', [DamageReportStatus::Accepted, DamageReportStatus::Rejected])))
                 ->exists();
             $hasOutstandingRequest = RentalRequest::query()
                 ->where(fn ($query) => $query->where('renter_id', $this->id)
                     ->orWhereHas('listing', fn ($listing) => $listing->withTrashed()->where('owner_id', $this->id)))
                 ->where(fn ($query) => $query->where('status', RentalRequestStatus::Requested)
-                    ->orWhere(fn ($approved) => $approved->where('status', RentalRequestStatus::Approved)->whereDoesntHave('rental')))
+                    ->orWhere(fn ($approved) => $approved->whereIn('status', [RentalRequestStatus::AwaitingAgreement, RentalRequestStatus::Approved])->whereDoesntHave('rental')))
                 ->exists();
 
             if ($hasOutstandingRental || $hasOutstandingRequest) {

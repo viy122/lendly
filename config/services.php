@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'listing_geocoder' => [
+        'url' => env('LISTING_GEOCODER_URL', 'https://photon.komoot.io/reverse'),
+    ],
 
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),

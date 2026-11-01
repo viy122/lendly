@@ -54,11 +54,11 @@ class RentalBookingRulesTest extends TestCase
         $this->assertSame('2026-11-03 04:00:00', $quote['attributes']['ends_at']);
     }
 
-    public function test_hourly_limits_are_enforced_on_the_server(): void
+    public function test_owner_maximum_days_is_enforced_instead_of_obsolete_hour_limits(): void
     {
         $listing = $this->listing(['max_rental_duration_hours' => 2]);
-        $this->expectException(ValidationException::class);
-        RentalRequestSubmission::preview(User::factory()->identityVerified()->create(), $listing->id, $this->hours());
+        $quote = RentalRequestSubmission::preview(User::factory()->identityVerified()->create(), $listing->id, $this->hours());
+        $this->assertSame(3, $quote['attributes']['rental_hours']);
     }
 
     public function test_fractional_hours_and_times_outside_owner_hours_are_rejected(): void
@@ -74,15 +74,13 @@ class RentalBookingRulesTest extends TestCase
         }
     }
 
-    public function test_adjacent_hourly_booking_is_allowed_but_overlap_is_rejected(): void
+    public function test_same_date_hourly_booking_is_blocked_even_when_the_times_are_adjacent(): void
     {
         $listing = $this->listing();
         $this->booking($listing, $this->hours());
         $renter = User::factory()->identityVerified()->create();
-        $next = RentalRequestSubmission::preview($renter, $listing->id, $this->hours(['start_time' => '12:00', 'end_time' => '14:00']));
-        $this->assertSame(100.0, $next['attributes']['rental_fee']);
         $this->expectException(ValidationException::class);
-        RentalRequestSubmission::preview($renter, $listing->id, $this->hours(['start_time' => '11:00', 'end_time' => '13:00']));
+        RentalRequestSubmission::preview($renter, $listing->id, $this->hours(['start_time' => '12:00', 'end_time' => '14:00']));
     }
 
     public function test_hourly_overdue_fee_is_charged_per_started_hour(): void
@@ -261,7 +259,7 @@ class RentalBookingRulesTest extends TestCase
         RentalLifecycle::reviewCancellation($rental, $rental->renter, true, 'Approve my request');
     }
 
-    public function test_owner_approval_does_not_reject_adjacent_hourly_requests(): void
+    public function test_owner_approval_protects_the_date_from_an_adjacent_hourly_request(): void
     {
         $listing = $this->listing();
         $first = RentalRequestSubmission::submit(User::factory()->identityVerified()->create(), $listing->id, $this->hours(), RentalRequestSubmission::termsFor($listing), true);
@@ -270,8 +268,8 @@ class RentalBookingRulesTest extends TestCase
             ->call('approve', $first->id)->assertHasNoErrors();
         $this->assertTrue($second->fresh()->isPending());
         Livewire::actingAs($listing->owner)->test(Index::class)
-            ->call('approve', $second->id)->assertHasNoErrors();
-        $this->assertTrue($second->fresh()->isApproved());
+            ->call('approve', $second->id)->assertHasErrors('approve');
+        $this->assertTrue($second->fresh()->isPending());
     }
 
     public function test_owner_can_review_cancellation_from_the_booking_screen(): void

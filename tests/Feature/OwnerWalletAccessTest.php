@@ -75,7 +75,7 @@ class OwnerWalletAccessTest extends TestCase
         $this->actingAs(User::factory()->create())->get($url)->assertForbidden();
     }
 
-    public function test_renter_payment_proof_owner_receipt_and_admin_approval_work_together(): void
+    public function test_renter_payment_proof_and_owner_confirmation_finalize_without_admin_approval(): void
     {
         Storage::fake('local');
         $rental = $this->rental();
@@ -93,14 +93,14 @@ class OwnerWalletAccessTest extends TestCase
             ->assertSee('Confirm funds received');
         $owner->call('confirmPaymentReceipt', $submission->id)->assertHasErrors('funds_received');
         $owner->set('owner_funds_received', true)->call('confirmPaymentReceipt', $submission->id)
-            ->assertHasNoErrors()->assertSee('Final admin review is still required');
+            ->assertHasNoErrors()->assertDontSee('Final admin review is still required');
         $this->assertNotNull($submission->fresh()->recipient_confirmed_at);
-        $this->assertSame('payment_pending', $rental->fresh()->status->value);
-        $this->assertDatabaseCount('payments', 0);
+        $this->assertSame('paid', $rental->fresh()->status->value);
+        $this->assertDatabaseCount('payments', 1);
 
         Livewire::actingAs(User::factory()->admin()->create())->test(AdminShow::class, ['rental' => $rental])
             ->set('reason', 'Receipt and full amount checked with receiving owner')
-            ->set('funds_received', true)->call('verifyPayment', $submission->id)->assertHasNoErrors();
+            ->set('funds_received', true)->call('verifyPayment', $submission->id)->assertForbidden();
 
         $this->assertSame('paid', $rental->fresh()->status->value);
         $this->assertDatabaseHas('payments', ['rental_id' => $rental->id, 'method' => 'maya', 'amount' => 830]);

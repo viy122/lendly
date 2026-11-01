@@ -1,9 +1,10 @@
 <div wire:poll.5s.keep-alive>
     <x-page-header eyebrow="Renting" title="My rentals" subtitle="View current rentals and your complete booking and transaction history." />
+    <div class="px-4 sm:px-6 lg:px-8"><x-record-controls :filters="['all' => 'All statuses'] + collect(\App\Enums\RentalStatus::cases())->mapWithKeys(fn ($status) => [$status->value => $status->label()])->all()" /></div>
 
     <div class="w-full px-4 py-8 sm:px-6 lg:px-8">
         @if ($rentals->isEmpty())
-            <x-empty-state title="No rentals yet" message="Once both parties accept an approved rental agreement, the booking will appear here for payment." />
+            <x-empty-state title="No rentals yet" message="Once both parties accept the rental agreement, the request is approved and the booking appears here for payment." />
         @else
             <div class="space-y-4">
                 @foreach ($rentals as $rental)
@@ -35,7 +36,7 @@
                             <a href="{{ route('renter.rentals.show', $rental) }}" wire:navigate class="group inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#075cf5] px-5 py-2.5 text-sm font-bold text-white shadow-[0_8px_20px_rgba(7,92,245,0.22)] transition duration-200 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_12px_26px_rgba(7,92,245,0.30)] focus:outline-none focus:ring-4 focus:ring-blue-100">
                                 <span>
                                     @if ($rental->isPaymentPending())
-                                        Pay now
+                                        {{ $rental->paymentSubmissions->contains('status', 'pending') ? 'Awaiting payment confirmation' : 'Pay now' }}
                                     @elseif ($rental->awaitingPickupConfirmation())
                                         Confirm pickup
                                     @elseif ($rental->awaitingReturnConfirmation())

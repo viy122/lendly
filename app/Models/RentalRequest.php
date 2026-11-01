@@ -97,6 +97,11 @@ class RentalRequest extends Model
         return $this->status === RentalRequestStatus::Approved;
     }
 
+    public function canReviewAgreement(): bool
+    {
+        return in_array($this->status, [RentalRequestStatus::AwaitingAgreement, RentalRequestStatus::Approved], true);
+    }
+
     /** A request without a booking has no handover to block cancellation. */
     public function isCancellableByRenter(): bool
     {
@@ -104,14 +109,15 @@ class RentalRequest extends Model
             return $this->isApproved() && $this->rental->isCancellableByRenter();
         }
 
-        return in_array($this->status, [RentalRequestStatus::Requested, RentalRequestStatus::Approved], true);
+        return in_array($this->status, [RentalRequestStatus::Requested, RentalRequestStatus::AwaitingAgreement, RentalRequestStatus::Approved], true);
     }
 
     public function notifyStatus(?Rental $rental = null): void
     {
         [$type, $title, $message] = match ($this->status) {
             RentalRequestStatus::Requested => [NotificationType::RentalRequestSubmitted, 'Rental request pending', 'The rental request is pending owner approval.'],
-            RentalRequestStatus::Approved => [NotificationType::RequestApproved, 'Request approved', 'The owner approved the request. Both parties must accept the saved agreement to confirm the booking.'],
+            RentalRequestStatus::AwaitingAgreement => [NotificationType::AgreementReady, 'Rental agreement ready', 'The dates are on hold while both parties review and accept the saved agreement.'],
+            RentalRequestStatus::Approved => [NotificationType::RequestApproved, 'Request approved', 'Both parties accepted the saved agreement and the booking is confirmed.'],
             RentalRequestStatus::Rejected => [NotificationType::RequestRejected, 'Request declined', $this->rejection_reason ?: 'The owner declined the request.'],
             RentalRequestStatus::Cancelled => [NotificationType::RentalCancelled, 'Rental request cancelled', 'The renter cancelled the request.'],
         };

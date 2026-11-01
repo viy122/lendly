@@ -24,7 +24,7 @@
 
         @if ($canSend)
             <form wire:submit="send" class="mt-4 flex gap-2 border-t border-slate-100 pt-4">
-                <label for="inquiry-body" class="sr-only">Message</label>
+                <label for="inquiry-body" class="text-xs font-medium text-slate-600">Message <x-required-mark /></label>
                 <input id="inquiry-body" type="text" wire:model="body" maxlength="2000" placeholder="Type a message..." class="min-w-0 flex-1 rounded-lg border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                 <x-primary-button>Send</x-primary-button>
             </form>

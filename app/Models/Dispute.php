@@ -23,6 +23,7 @@ class Dispute extends Model
         'status',
         'resolution',
         'resolution_notes',
+        'other_resolution',
         'resolved_by',
         'resolved_at',
     ];
@@ -60,5 +61,10 @@ class Dispute extends Model
     public function isOpen(): bool
     {
         return $this->status === DisputeStatus::Open;
+    }
+
+    public function resolutionLabel(): ?string
+    {
+        return $this->resolution === DisputeResolution::Other ? ($this->other_resolution ?: 'Other') : $this->resolution?->label();
     }
 }

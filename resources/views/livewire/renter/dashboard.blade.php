@@ -1,6 +1,7 @@
 <div>
     <x-page-header eyebrow="Renter interface" title="Renter dashboard" subtitle="Find items to rent and keep track of your requests and rentals." />
     <div class="w-full space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+        <x-dashboard-progress :interface="$interface" :request-progress="$requestProgress" :member-rentals-by-status="$memberRentalsByStatus" :awaiting-agreement-count="$awaitingAgreementCount" :identity-progress="$identityProgress" :proofs-under-review-count="$proofsUnderReviewCount" />
         <div class="flex flex-wrap justify-end gap-3">
             <a href="{{ route('listings.index') }}" wire:navigate class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">
                 <x-icon name="search" class="h-4 w-4" /> Browse items to rent

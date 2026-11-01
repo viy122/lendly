@@ -37,7 +37,7 @@ class DemoAccountSwitchTest extends TestCase
         } catch (ValidationException) {
         }
 
-        Volt::actingAs($admin)->test('layout.sidebar')->call('switchDemoUser', 'owner')->assertHasErrors('account');
+        Volt::actingAs($admin)->test('layout.sidebar')->call('switchDemoUser', 'owner')->assertForbidden();
         $this->assertAuthenticatedAs($admin);
         $this->travel(15)->minutes();
         $target->update(['status' => 'suspended']);

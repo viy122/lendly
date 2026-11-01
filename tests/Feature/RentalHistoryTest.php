@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Enums\ListingStatus;
 use App\Enums\DisputeResolution;
+use App\Enums\ListingStatus;
 use App\Enums\RentalRequestStatus;
 use App\Enums\RentalStatus;
 use App\Livewire\Owner\RentalRequests\Index as OwnerRequestsIndex;
@@ -191,8 +191,9 @@ class RentalHistoryTest extends TestCase
         $rental = $this->archivedRental($owner, $renter);
         if ($target !== 'listing') {
             $this->actingAs($owner);
-            RentalLifecycle::releaseDeposit($rental);
             RentalLifecycle::resolveDispute($rental->disputes()->sole(), DisputeResolution::AccountWarning, 'Reviewed and settled', User::factory()->admin()->create());
+            RentalLifecycle::releaseDeposit($rental);
+            RentalLifecycle::confirmDepositReceipt($rental, $renter);
             $rental->refresh();
         }
         $saved = $rental->getAttributes();

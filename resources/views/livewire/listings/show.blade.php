@@ -1,9 +1,6 @@
 <div class="listing-detail-page min-h-screen bg-slate-50" wire:poll.15s.visible x-data="{ previousBodyOverflow: '' }">
     <x-page-header eyebrow="Lendly marketplace" :title="$listing->name" :subtitle="$listing->location" />
-    <x-identity-review-notice />
-    @if (! $listing->owner->hasVerifiedIdentity())
-        <p role="status" class="mx-4 my-3 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">The owner must complete their ID review before this item can receive new rental requests.</p>
-    @endif
+    <x-identity-review-notice :owner="$listing->owner" id="listing-identity-notice" />
 
     <div class="listing-detail-content w-full px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         @if (session('status'))
@@ -80,6 +77,12 @@
                         @if ($listing->model)
                             <div><dt class="text-xs font-medium text-slate-500">Model</dt><dd class="mt-2 font-semibold text-slate-800">{{ $listing->model }}</dd></div>
                         @endif
+                        @if ($listing->purchase_year)
+                            <div><dt class="text-xs font-medium text-slate-500">Purchase year</dt><dd class="mt-2 font-semibold text-slate-800">{{ $listing->purchase_year }}</dd></div>
+                        @endif
+                        @if ($listing->estimated_original_price !== null)
+                            <div><dt class="text-xs font-medium text-slate-500">Original price (owner estimate)</dt><dd class="mt-2 font-semibold text-slate-800">₱{{ number_format($listing->estimated_original_price, 2) }}</dd></div>
+                        @endif
                     </dl>
                     @if ($listing->rental_rules)
                         <div class="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:p-5">
@@ -138,7 +141,8 @@
                             @endif
                             <div class="flex flex-wrap justify-between gap-x-4 gap-y-1 border-t border-slate-100 pt-4"><dt class="text-slate-500">Security deposit</dt><dd class="font-semibold text-slate-800">₱{{ number_format($listing->security_deposit, 2) }}</dd></div>
                         </dl>
-                        @if (! $listing->is_available || ! $listing->hasRequestableDates() || ! $listing->isPublished())
+                        <p class="mt-4 text-xs leading-5 text-slate-500">{{ $listing->allows_daily_rentals ? 'Daily rentals count both selected dates.' : 'Daily rentals are not offered for this item.' }} @if ($listing->price_per_hour) Hourly rentals use whole hours at the hourly rate. @endif Final charges are shown before you send a request.</p>
+                        @if (! $requestsOpen)
                             <button type="button" disabled class="mt-6 min-h-12 w-full cursor-not-allowed rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-500">Currently unavailable</button>
                             <p class="mt-3 text-center text-xs leading-5 text-slate-500">This item is paused or has no upcoming available dates.</p>
                         @elseif (! auth()->check())
@@ -168,7 +172,18 @@
                     @if ($listing->available_from && $listing->available_until)
                         <p class="mt-4 text-sm font-medium text-slate-700">Available {{ $listing->available_from->format('M d, Y') }} – {{ $listing->available_until->format('M d, Y') }}</p>
                     @endif
-                    <div class="mt-5" wire:key="availability-calendar-{{ $listing->id }}-{{ md5($bookedRanges->toJson().$reservedRanges->toJson().$listing->available_from?->toDateString().$listing->available_until?->toDateString().now()->toDateString()) }}" x-data="availabilityCalendar(@js($bookedRanges), @js($reservedRanges), @js($listing->available_from?->toDateString()), @js($listing->available_until?->toDateString()), @js(max(now()->addDay()->toDateString(), $listing->available_from?->toDateString() ?? '')))">
+                    <dl class="mt-4 rounded-xl bg-slate-50 p-3 text-sm">
+                        <dt class="font-semibold text-slate-700">Pickup & return hours (Philippine time)</dt>
+                        <dd class="mt-1 text-slate-600">{{ \Carbon\Carbon::createFromFormat('H:i', $listing->available_time_from)->format('g:i A') }} – {{ \Carbon\Carbon::createFromFormat('H:i', $listing->available_time_until)->format('g:i A') }}</dd>
+                    </dl>
+                    <p class="mt-3 text-sm text-slate-600">Date availability only. Select exact start and return times in your request. Maximum {{ $listing->max_rental_duration_days }} rental days.</p>
+                    @unless ($requestsOpen)<p role="status" class="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Requests are paused while this item is unavailable or awaiting return, inspection, and owner reopening.</p>@endunless
+                    <div class="mt-5" wire:key="availability-calendar-{{ $listing->id }}-{{ md5($bookedRanges->toJson().$reservedRanges->toJson().$listing->available_from?->toDateString().$listing->available_until?->toDateString().now('Asia/Manila')->toDateString().$listing->max_rental_duration_days.(int) $requestsOpen) }}" x-data="availabilityCalendar(@js($bookedRanges), @js($reservedRanges), @js($listing->available_from?->toDateString()), @js($listing->available_until?->toDateString()), @js(max(now('Asia/Manila')->toDateString(), $listing->available_from?->toDateString() ?? '')), @js($listing->max_rental_duration_days), @js($requestsOpen), @js($listing->allows_daily_rentals ? 'day' : 'hour'))">
+                        @if ($listing->price_per_hour && $listing->allows_daily_rentals)
+                            <label class="mb-3 block text-sm font-medium text-slate-700">Calendar rental unit
+                                <select x-model="rentalUnit" @change="selectedStart = null; selectedEnd = null; selectionError = ''" class="mt-1 w-full rounded-lg border-slate-300"><option value="day">Daily rental</option><option value="hour">Hourly rental</option></select>
+                            </label>
+                        @endif
                         <div class="flex items-center justify-between gap-2">
                             <button type="button" @click="prevMonth" aria-label="Previous month" class="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100"><x-icon name="chevron-down" class="h-4 w-4 rotate-90" aria-hidden="true" /></button>
                             <p class="text-center text-sm font-semibold text-slate-800" x-text="monthLabel" aria-live="polite"></p>
@@ -210,7 +225,7 @@
                             @endif
                             <span class="flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full bg-slate-200" aria-hidden="true"></span> Outside available dates</span>
                         </div>
-                        <p class="mt-3 text-xs text-slate-500">Approved requests hold dates. A recorded payment reserves the item for the agreed rental dates.</p>
+                        <p class="mt-3 text-xs text-slate-500">Requests awaiting agreement hold dates. Approval follows both parties accepting; a recorded payment reserves the item for the agreed rental dates.</p>
                         @if ($paidReservationRanges->isNotEmpty())
                             <p class="mt-3 text-xs font-semibold text-amber-700">Reserved dates</p>
                             <ul class="mt-3 space-y-1 text-xs font-medium text-amber-700" aria-label="Paid reservation dates">
@@ -241,7 +256,7 @@
         </div>
     </div>
 
-    @if ($listing->isPublished() && $listing->is_available && $listing->hasRequestableDates() && auth()->check() && auth()->id() !== $listing->owner_id && auth()->user()->isRenter() && auth()->user()->activeInterface() === 'renter')
+    @if ($requestsOpen && auth()->check() && auth()->id() !== $listing->owner_id && auth()->user()->isRenter() && auth()->user()->activeInterface() === 'renter')
         <dialog
             id="rental-request-modal"
             x-ref="rentalRequestModal"

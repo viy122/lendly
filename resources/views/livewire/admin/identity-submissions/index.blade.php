@@ -1,5 +1,6 @@
 <div>
     <x-page-header eyebrow="Administration" title="ID reviews" subtitle="Review National ID photos and selfies before enabling renting and listing." />
+    <div class="px-4 sm:px-6 lg:px-8"><x-record-controls /></div>
 
     <div class="w-full space-y-6 px-4 py-8 sm:px-6 lg:px-8">
         @if (session('status'))
@@ -71,18 +72,17 @@
 
                             <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
                                 <p>Use the submitted QR image in the official checker, then compare its result with the ID and the account details above. A Lendly approval records your administrator review; it must not be described as a government-issued badge.</p>
-                                <a href="https://everify.gov.ph/check" target="_blank" rel="noopener noreferrer" class="mt-3 inline-flex min-h-11 items-center rounded-lg border border-blue-200 bg-white px-4 py-2 font-semibold text-blue-700 hover:bg-blue-100 focus:outline-none focus:ring-4 focus:ring-blue-200">Open official National ID Check <span class="sr-only">(opens in a new tab)</span></a>
                             </div>
 
                             <form wire:submit="review('approved')" class="space-y-5 border-t border-slate-100 pt-5">
                                 <fieldset class="space-y-3">
                                     <legend class="mb-3 font-bold text-slate-900">Required checks for approval</legend>
-                                    <label class="flex items-start gap-3 text-sm leading-6 text-slate-700"><input type="checkbox" wire:model="qrChecked" class="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500" /><span>I checked the submitted National ID QR code with the official checker and it passed.</span></label>
-                                    <label class="flex items-start gap-3 text-sm leading-6 text-slate-700"><input type="checkbox" wire:model="detailsMatch" class="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500" /><span>The official result, submitted ID details and current Lendly account name match.</span></label>
-                                    <label class="flex items-start gap-3 text-sm leading-6 text-slate-700"><input type="checkbox" wire:model="faceReviewed" class="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500" /><span>I visually compared the ID portrait and selfie and reviewed the face similarity result.</span></label>
+                                    <label class="flex items-start gap-3 text-sm leading-6 text-slate-700"><input type="checkbox" wire:model="qrChecked" class="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500" /><span>I checked the submitted National ID QR code with the official checker and it passed.</span><x-required-mark /></label>
+                                    <label class="flex items-start gap-3 text-sm leading-6 text-slate-700"><input type="checkbox" wire:model="detailsMatch" class="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500" /><span>The official result, submitted ID details and current Lendly account name match.</span><x-required-mark /></label>
+                                    <label class="flex items-start gap-3 text-sm leading-6 text-slate-700"><input type="checkbox" wire:model="faceReviewed" class="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500" /><span>I visually compared the ID portrait and selfie and reviewed the face similarity result.</span><x-required-mark /></label>
                                 </fieldset>
                                 <div>
-                                    <x-input-label for="identity-review-notes" value="Review notes (required when rejecting)" />
+                                    <x-input-label required for="identity-review-notes" value="Review notes (required when rejecting)" />
                                     <textarea id="identity-review-notes" wire:model="notes" maxlength="1000" rows="3" class="mt-2 block w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500" aria-describedby="identity-review-notes-help"></textarea>
                                     <p id="identity-review-notes-help" class="mt-2 text-xs leading-5 text-slate-500">Give a clear reason the member can address. Rejection notes are shown to them. Up to 1,000 characters.</p>
                                 </div>

@@ -85,7 +85,7 @@ new #[Layout('layouts.guest')] class extends Component
     <form wire:submit="register" class="space-y-5">
         <div class="grid gap-5 sm:grid-cols-2">
             <div>
-                <label for="name" class="mb-2 block text-sm font-semibold text-slate-700">Full name</label>
+                <label for="name" class="mb-2 block text-sm font-semibold text-slate-700">Full name <x-required-mark /></label>
                 <div class="group relative">
                     <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400 transition group-focus-within:text-blue-600">
                         <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="6.5" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 16c.45-3 2.28-4.5 5.5-4.5s5.05 1.5 5.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -109,7 +109,7 @@ new #[Layout('layouts.guest')] class extends Component
         </div>
 
         <div>
-            <label for="email" class="mb-2 block text-sm font-semibold text-slate-700">Gmail address</label>
+            <label for="email" class="mb-2 block text-sm font-semibold text-slate-700">Gmail address <x-required-mark /></label>
             <div class="group relative">
                 <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400 transition group-focus-within:text-blue-600">
                     <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 5.75A1.75 1.75 0 0 1 4.75 4h10.5A1.75 1.75 0 0 1 17 5.75v8.5A1.75 1.75 0 0 1 15.25 16H4.75A1.75 1.75 0 0 1 3 14.25v-8.5Z" stroke="currentColor" stroke-width="1.5"/><path d="m4 6 5.06 3.65a1.6 1.6 0 0 0 1.88 0L16 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -122,7 +122,7 @@ new #[Layout('layouts.guest')] class extends Component
 
         <div class="grid gap-5 sm:grid-cols-2">
             <div x-data="passwordStrength($wire, 'password')">
-                <label for="password" class="mb-2 block text-sm font-semibold text-slate-700">Password</label>
+                <label for="password" class="mb-2 block text-sm font-semibold text-slate-700">Password <x-required-mark /></label>
                 <div class="group relative">
                     <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400 transition group-focus-within:text-blue-600">
                         <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="4" y="8" width="12" height="9" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M6.75 8V6.25a3.25 3.25 0 0 1 6.5 0V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -137,7 +137,7 @@ new #[Layout('layouts.guest')] class extends Component
             </div>
 
             <div>
-                <label for="password_confirmation" class="mb-2 block text-sm font-semibold text-slate-700">Confirm password</label>
+                <label for="password_confirmation" class="mb-2 block text-sm font-semibold text-slate-700">Confirm password <x-required-mark /></label>
                 <div class="group relative">
                     <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400 transition group-focus-within:text-blue-600">
                         <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="4" y="8" width="12" height="9" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M6.75 8V6.25a3.25 3.25 0 0 1 6.5 0V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>

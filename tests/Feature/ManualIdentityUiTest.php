@@ -55,7 +55,7 @@ class ManualIdentityUiTest extends TestCase
         $admin = User::factory()->admin()->create();
         $this->actingAs($admin)->get(route('admin.identity-submissions.index'))->assertOk()->assertSee($member->name);
         Livewire::actingAs($admin)->test(AdminReviews::class)->call('selectSubmission', $submission->id)
-            ->assertSee('0.6300')->assertSee('https://everify.gov.ph/check', false)
+            ->assertSee('0.6300')->assertDontSee('https://everify.gov.ph/check', false)->assertSee('Required checks for approval')
             ->call('review', 'approved')->assertHasErrors(['qr_checked', 'details_match', 'face_reviewed'])
             ->set('qrChecked', true)->set('detailsMatch', true)->set('faceReviewed', true)
             ->call('review', 'approved')->assertHasNoErrors()->assertSee('Review photos are no longer available');

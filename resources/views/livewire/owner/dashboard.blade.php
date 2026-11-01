@@ -1,6 +1,7 @@
 <div>
     <x-page-header eyebrow="Owner interface" title="Owner dashboard" subtitle="Manage your listings, rental requests, and earnings." />
     <div class="w-full space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+        <x-dashboard-progress :interface="$interface" :request-progress="$requestProgress" :member-rentals-by-status="$memberRentalsByStatus" :awaiting-agreement-count="$awaitingAgreementCount" :identity-progress="$identityProgress" :proofs-under-review-count="$proofsUnderReviewCount" />
         <div class="flex justify-end">
             <a href="{{ route('owner.listings.create') }}" wire:navigate class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">
                 <x-icon name="tag" class="h-4 w-4" /> New listing
@@ -25,7 +26,7 @@
 
             <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <x-stat-card label="Completed rentals" :value="$completedRentalsCount" icon="archive" accent="emerald" />
-                <x-stat-card label="Completed rental earnings" :value="'₱' . number_format($completedRentalEarnings, 2)" hint="Excludes deposits and platform fees" icon="calculator" accent="indigo" />
+                <x-stat-card label="Completed rental earnings" :value="'₱' . number_format($completedRentalEarnings, 2)" hint="Excludes deposits and processing fees" icon="calculator" accent="indigo" />
             </div>
 
             <div class="mt-6">
@@ -87,7 +88,7 @@
             <div class="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                 <p class="text-xs font-semibold uppercase tracking-wide text-blue-600">Trend</p>
                 <h3 class="mt-0.5 text-base font-bold text-slate-900">Earnings, last 6 months</h3>
-                <p class="mt-1 text-xs text-slate-500">Net earnings by payment month, adjusted for rental refunds and cancellations. Deposits and platform fees are excluded.</p>
+                <p class="mt-1 text-xs text-slate-500">Net earnings by payment month, adjusted for rental refunds and cancellations. Deposits and processing fees are excluded.</p>
                 <div class="mt-5">
                     <x-line-chart :data="$monthlyEarnings" color="#2563eb" />
                 </div>

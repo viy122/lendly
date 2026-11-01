@@ -5,6 +5,8 @@ namespace App\Livewire\Member;
 use App\Enums\ListingStatus;
 use App\Enums\RentalRequestStatus;
 use App\Enums\RentalStatus;
+use App\Models\IdentitySubmission;
+use App\Models\PaymentSubmission;
 use App\Models\Rental;
 use App\Models\RentalRequest;
 use Illuminate\Contracts\View\View;
@@ -27,9 +29,36 @@ class Dashboard extends Component
         $interface = auth()->user()->activeInterface();
 
         return view('livewire.member.dashboard', array_merge(
-            ['interface' => $interface],
+            ['interface' => $interface] + $this->progressData($interface),
             $interface === 'owner' ? $this->ownerData() : $this->renterData(),
         ));
+    }
+
+    private function progressData(string $interface): array
+    {
+        $requests = RentalRequest::query()->when($interface === 'owner',
+            fn ($query) => $query->whereHas('listing', fn ($listing) => $listing->where('owner_id', auth()->id())),
+            fn ($query) => $query->where('renter_id', auth()->id()));
+        $counts = (clone $requests)->selectRaw('status, COUNT(*) AS total')->groupBy('status')->pluck('total', 'status');
+        $palette = ['requested' => '#d97706', 'awaiting_agreement' => '#2563eb', 'approved' => '#059669', 'rejected' => '#e11d48', 'cancelled' => '#64748b'];
+        $requestProgress = collect(RentalRequestStatus::cases())->map(fn ($status) => [
+            'label' => $status->label(), 'value' => (int) ($counts[$status->value] ?? 0), 'color' => $palette[$status->value],
+        ]);
+        $memberRentalsByStatus = collect(RentalStatus::cases())->map(fn ($status) => [
+            'label' => $status->label(),
+            'value' => Rental::where($interface === 'owner' ? 'owner_id' : 'renter_id', auth()->id())->withCurrentStatus($status)->count(),
+            'color' => match ($status->badgeColor()) {
+                'amber' => '#d97706', 'teal' => '#2563eb', 'green' => '#059669', 'red' => '#e11d48', default => '#64748b'
+            },
+        ])->filter(fn ($row) => $row['value'] > 0)->values();
+
+        return [
+            'requestProgress' => $requestProgress,
+            'memberRentalsByStatus' => $memberRentalsByStatus,
+            'awaitingAgreementCount' => (int) ($counts[RentalRequestStatus::AwaitingAgreement->value] ?? 0),
+            'identityProgress' => auth()->user()->hasVerifiedIdentity() ? 'approved' : (IdentitySubmission::where('user_id', auth()->id())->latest('id')->value('status') ?? 'not submitted'),
+            'proofsUnderReviewCount' => PaymentSubmission::where('status', 'pending')->whereHas('rental', fn ($rental) => $rental->where($interface === 'owner' ? 'owner_id' : 'renter_id', auth()->id()))->count(),
+        ];
     }
 
     private function ownerData(): array
@@ -174,6 +203,7 @@ class Dashboard extends Component
 
         $rentalsAwaitingPayment = auth()->user()->rentalsAsRenter()
             ->where('status', RentalStatus::PaymentPending)
+            ->whereDoesntHave('paymentSubmissions', fn ($query) => $query->where('status', 'pending'))
             ->with('listing')
             ->get();
 

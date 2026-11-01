@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\NotificationType;
+use App\Notifications\TalaNotification;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
@@ -47,7 +49,23 @@ class IdentitySubmission extends Model
     {
         static::where('user_id', $userId)->where('status', 'pending')->get()->each(function ($submission) {
             $submission->update(['status' => 'cancelled']);
+            $submission->notifyProgress();
             $submission->purgeDocuments();
         });
+    }
+
+    public function notifyProgress(): void
+    {
+        if (! $this->user || $this->user->trashed()) {
+            return;
+        }
+        $message = match ($this->status) {
+            'approved' => 'Your identity review was approved. You can rent and publish listings.',
+            'rejected' => 'Your identity review needs a new submission.'.($this->review_notes ? ' '.$this->review_notes : ''),
+            'cancelled' => 'Your pending review expired or your account details changed. Review your details and submit again.',
+            default => 'Your documents were received and are awaiting administrator review.',
+        };
+        $this->user->notify(new TalaNotification(NotificationType::VerificationUpdate->value,
+            'Identity review '.($this->status === 'pending' ? 'pending' : $this->status), $message, route('identity.verify')));
     }
 }

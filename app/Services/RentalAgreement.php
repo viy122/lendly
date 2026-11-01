@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\NotificationType;
+use App\Enums\RentalRequestStatus;
 use App\Models\CommissionSetting;
 use App\Models\Listing;
 use App\Models\Rental;
@@ -21,6 +22,7 @@ class RentalAgreement
         $settings = CommissionSetting::current()->refresh();
 
         return [
+            'payment_review' => 'owner',
             'rental_unit' => $request->rental_unit ?? 'day',
             'rental_hours' => $request->rental_hours,
             'starts_at' => $request->starts_at?->toIso8601String(),
@@ -48,7 +50,7 @@ class RentalAgreement
                     'title' => 'Scope and duration of the rental',
                     'paragraphs' => [
                         'This agreement concerns the temporary rental of the item identified above between the owner and the renter associated with this request. The owner retains ownership of the item. Neither payment of the rental fee nor payment of the security deposit transfers ownership, creates a purchase option, or permits the renter to sell, pledge, or dispose of the item.',
-                        'Daily rentals include both dates shown in the particulars. Hourly rentals use the exact start and return times shown in Philippine time, billed in whole hours. The recorded item, dates, fulfillment method, charges, and item-specific rules form part of this agreement. Each party must review these details and raise any error before accepting. Owner approval of a request reserves the dates but does not finalize the booking until both parties accept.',
+                        'Daily rentals include both dates shown in the particulars. Hourly rentals use the exact start and return times shown in Philippine time, billed in whole hours. The recorded item, dates, fulfillment method, charges, and item-specific rules form part of this agreement. Each party must review these details and raise any error before accepting. Sending a request for agreement holds the dates. The request becomes Approved and the booking is finalized only when both parties explicitly accept this saved agreement.',
                     ],
                 ],
                 [
@@ -89,8 +91,8 @@ class RentalAgreement
                 [
                     'title' => 'Payment verification and financial records',
                     'paragraphs' => [
-                        'Payment follows both parties accepting this agreement and must cover the rental fee, processing/platform fee charged once, and refundable security deposit shown above. Submit payment proof within the saved payment window or before the rental start reference, whichever is earlier. Unpaid reservations expire without a fee; pending proof pauses expiry during review. The renter must follow the payment instructions published for the booking, provide the correct transaction reference, and submit genuine payment proof. A screenshot, uploaded receipt, or pending submission does not by itself mark the booking as paid.',
-                        'An administrator must verify that the full amount was actually received before payment is confirmed and the paid booking is available for hand-over. If proof is rejected, the renter should review the stated reason and submit corrected proof where permitted. Payment, refund, deposit, and late-fee records show the recorded handling of the transaction; changing a status does not itself send money, initiate a refund, or confirm that an additional charge has been collected.',
+                        'Payment follows both parties accepting this agreement and must cover the rental fee, processing fee charged once, and refundable security deposit shown above. Submit payment proof within the saved payment window or before the rental start reference, whichever is earlier. Unpaid reservations expire without a fee; pending proof pauses expiry during review. The renter must follow the payment instructions published for the booking, provide the correct transaction reference, and submit genuine payment proof. A screenshot, uploaded receipt, or pending submission does not by itself mark the booking as paid.',
+                        'The owner must confirm that the full amount reached the saved owner payment account before the booking is marked paid and available for hand-over. Admin approval is not required for this owner-wallet payment. The owner may reject incorrect proof with a reason so the renter can correct it within the payment window. If proof is rejected, the renter should review the stated reason and submit corrected proof where permitted. Payment, refund, deposit, and late-fee records show the recorded handling of the transaction; changing a status does not itself send money, initiate a refund, or confirm that an additional charge has been collected.',
                     ],
                 ],
                 [
@@ -112,7 +114,7 @@ class RentalAgreement
                 [
                     'title' => 'Damage claims and security deposit settlement',
                     'paragraphs' => [
-                        'The security deposit is recorded separately from the rental and platform fees and remains subject to return inspection and any unresolved damage claim. A proposed deduction must identify the reported damage and estimated repair cost. The platform’s damage deduction process limits a proposed deposit deduction to the deposit amount; that workflow limit does not determine the full extent of either party’s rights or liability under applicable law.',
+                        'The security deposit is recorded separately from the rental and processing fees and remains subject to return inspection and any unresolved damage claim. A proposed deduction must identify the reported damage and estimated repair cost. The platform’s damage deduction process limits a proposed deposit deduction to the deposit amount; that workflow limit does not determine the full extent of either party’s rights or liability under applicable law.',
                         'The renter may accept the claim or dispute it with an explanation. An accepted claim or administrative decision may record a deduction, while rejection of a damage claim makes the deposit eligible for return under the applicable workflow. A completed rental or a return-eligible deposit status does not itself confirm that funds have been received by the renter. The parties must coordinate the actual deposit settlement and retain payment evidence; no fixed inspection or settlement deadline is represented by this agreement.',
                     ],
                 ],
@@ -127,7 +129,7 @@ class RentalAgreement
                     'title' => 'Communication, personal information and saved terms',
                     'paragraphs' => [
                         'The parties should use the rental conversation to record material arrangements, problems, and proposed changes. Contact details and exchange addresses received for the rental must be used only as needed to coordinate it or address a related issue, and must not be published or used for unrelated contact. Upload only relevant evidence and remove unrelated personal or financial details. Never share account passwords, payment passwords, or one-time security codes with the other party.',
-                        'After completion, reviews are optional and are displayed publicly on the relevant profile or listing. Reviews should describe the rental honestly and must not disclose private contact or payment information. The detailed terms saved with this approved request are the terms presented for acceptance; later edits to a listing or the platform’s agreement template do not rewrite that saved wording. Each party must review the full document and explicitly accept it from their own account. The recorded acceptance dates below show the acceptance state of this request.',
+                        'After completion, reviews are optional and are displayed publicly on the relevant profile or listing. Reviews should describe the rental honestly and must not disclose private contact or payment information. The detailed terms saved with this request are the terms presented for acceptance; later edits to a listing or the platform’s agreement template do not rewrite that saved wording. Each party must review the full document and explicitly accept it from their own account. The recorded acceptance dates below show the acceptance state of this request.',
                     ],
                 ],
             ],
@@ -147,7 +149,7 @@ class RentalAgreement
                 ->lockForUpdate()->findOrFail($request->id);
 
             Gate::forUser($user)->authorize('acceptAgreement', $request);
-            abort_unless($request->isApproved(), 403, 'Only approved requests can accept the rental agreement.');
+            abort_unless($request->canReviewAgreement(), 403, 'Only requests awaiting agreement or already approved can accept the rental agreement.');
 
             // Retrying acceptance must never create another booking or notice.
             if ($request->rental) {
@@ -163,13 +165,18 @@ class RentalAgreement
                 ]);
             }
 
-            if ($request->start_date->lt(today()) || $request->starts_at?->lte(now()) || $request->listing->hasApprovedOverlap($request->start_date, $request->end_date, $request->id, $request->starts_at, $request->ends_at)) {
+            if ($request->listing->reopen_required || $request->listing->hasPhysicalBlocker() || $request->start_date->toDateString() < now('Asia/Manila')->toDateString() || $request->starts_at?->lte(now()) || $request->listing->hasApprovedOverlap($request->start_date, $request->end_date, $request->id, $request->starts_at, $request->ends_at)) {
                 throw ValidationException::withMessages(['agreement' => 'These dates are no longer available. Cancel this request and submit new dates.']);
             }
 
             $field = $user->id === $request->renter_id
                 ? 'renter_terms_accepted_at'
                 : 'owner_terms_accepted_at';
+
+            // Normalize legacy unfinalized requests without changing their saved terms.
+            if ($request->isApproved()) {
+                $request->update(['status' => RentalRequestStatus::AwaitingAgreement]);
+            }
 
             if ($request->$field === null) {
                 $request->update([$field => now()]);
@@ -181,6 +188,8 @@ class RentalAgreement
             if ($request->renter_terms_accepted_at === null || $request->owner_terms_accepted_at === null) {
                 return null;
             }
+
+            $request->update(['status' => RentalRequestStatus::Approved]);
 
             $rental = Rental::create([
                 'rental_request_id' => $request->id,

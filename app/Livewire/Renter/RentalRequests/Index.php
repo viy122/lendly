@@ -4,6 +4,7 @@ namespace App\Livewire\Renter\RentalRequests;
 
 use App\Enums\NotificationType;
 use App\Enums\RentalRequestStatus;
+use App\Livewire\Concerns\FiltersRecords;
 use App\Models\Listing;
 use App\Models\Rental;
 use App\Models\RentalRequest;
@@ -11,12 +12,14 @@ use App\Notifications\TalaNotification;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
 #[Layout('layouts.app')]
 class Index extends Component
 {
+    use FiltersRecords;
     use WithPagination;
 
     public ?int $cancelling = null;
@@ -72,14 +75,22 @@ class Index extends Component
         $this->reset('cancelling', 'cancellation_reason');
     }
 
+    #[Url]
+    public string $filter = 'all';
+
+    public function updatingFilter(): void
+    {
+        $this->resetPage();
+    }
+
     public function render(): View
     {
-        $rentalRequests = RentalRequest::query()
+        $rentalRequests = $this->filterRecords(RentalRequest::query()
             ->where('renter_id', auth()->id())
+            ->when($this->filter !== 'all', fn ($query) => $query->where('status', $this->filter))
             ->with(['listing.images', 'listing.owner', 'rental'])
             ->orderByDesc('created_at')
-            ->orderByDesc('id')
-            ->paginate(10);
+            ->orderByDesc('id'), ['id'], ['listing' => ['name'], 'listing.owner' => ['name']])->paginate(10);
 
         return view('livewire.renter.rental-requests.index', ['rentalRequests' => $rentalRequests]);
     }

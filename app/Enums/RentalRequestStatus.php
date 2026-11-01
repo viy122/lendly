@@ -5,6 +5,7 @@ namespace App\Enums;
 enum RentalRequestStatus: string
 {
     case Requested = 'requested';
+    case AwaitingAgreement = 'awaiting_agreement';
     case Approved = 'approved';
     case Rejected = 'rejected';
     case Cancelled = 'cancelled';
@@ -13,6 +14,7 @@ enum RentalRequestStatus: string
     {
         return match ($this) {
             self::Requested => 'Requested',
+            self::AwaitingAgreement => 'Awaiting agreement',
             self::Approved => 'Approved',
             self::Rejected => 'Rejected',
             self::Cancelled => 'Cancelled',
@@ -23,6 +25,7 @@ enum RentalRequestStatus: string
     {
         return match ($this) {
             self::Requested => 'amber',
+            self::AwaitingAgreement => 'blue',
             self::Approved => 'green',
             self::Rejected => 'red',
             self::Cancelled => 'slate',

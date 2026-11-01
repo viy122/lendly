@@ -11,6 +11,7 @@ use App\Models\Listing;
 use App\Models\RentalRequest;
 use App\Models\User;
 use App\Services\RentalCart;
+use App\Services\RentalPeriod;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -304,7 +305,7 @@ class RentalCartTest extends TestCase
     {
         $renter = User::factory()->identityVerified()->create();
         $item = RentalCart::save($renter, $this->listing()->id, $this->details());
-        $reviewed = [$item->id => array_reverse($this->details() + ['terms' => $item->terms], preserve_keys: true)];
+        $reviewed = [$item->id => array_reverse(RentalPeriod::details($item) + ['terms' => $item->terms], preserve_keys: true)];
         $item->update(['terms' => array_reverse($item->terms, preserve_keys: true)]);
         $ids = RentalCart::checkout($renter, [$item->id], true, $reviewed);
         $this->assertCount(1, $ids);

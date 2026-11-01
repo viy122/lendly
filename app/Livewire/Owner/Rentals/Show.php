@@ -35,6 +35,15 @@ class Show extends Component
 
     public bool $owner_funds_received = false;
 
+    public string $payment_rejection_reason = '';
+
+    public function rejectPaymentProof(int $submissionId): void
+    {
+        RentalPayments::rejectOwnerProof($this->rental, auth()->user(), $submissionId, $this->payment_rejection_reason);
+        $this->reset('payment_rejection_reason');
+        $this->rental->refresh();
+    }
+
     public string $cancellation_review_notes = '';
 
     public function advanceFulfillment(string $stage): void
@@ -56,7 +65,8 @@ class Show extends Component
         $this->authorize('view', $this->rental);
         RentalPayments::confirmOwnerReceipt($this->rental, auth()->user(), $submissionId, $this->owner_funds_received);
         $this->owner_funds_received = false;
-        session()->flash('status', 'Receipt acknowledged. The booking remains unpaid until an administrator verifies the payment.');
+        $this->rental->refresh();
+        session()->flash('status', 'Payment confirmed. The booking is paid and ready for handover arrangements.');
     }
 
     public string $before_condition = 'good';
@@ -244,6 +254,10 @@ class Show extends Component
 
     public function createDispute(): void
     {
+        $this->rental->refresh();
+        $this->authorize('view', $this->rental);
+        abort_unless(auth()->id() === $this->rental->owner_id, 403);
+
         $this->validate([
             'dispute_reason' => ['required', Rule::enum(DisputeReason::class)],
             'dispute_description' => ['required', 'string', 'max:1000'],

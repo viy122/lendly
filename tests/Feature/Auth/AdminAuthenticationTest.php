@@ -43,28 +43,17 @@ class AdminAuthenticationTest extends TestCase
         ];
     }
 
-    public function test_local_admin_can_switch_only_to_allowed_verified_demo_accounts(): void
+    public function test_local_admin_cannot_impersonate_even_verified_demo_accounts(): void
     {
         $this->app->detectEnvironment(fn () => 'local');
         $admin = User::factory()->admin()->create();
-        $target = User::factory()->create(['email' => 'owner@tala.test']);
-
-        Volt::actingAs($admin)->test('layout.sidebar')->assertSee('Demo: switch user');
-        foreach (['renter', 'unknown'] as $role) {
+        User::factory()->create(['email' => 'owner@tala.test']);
+        Volt::actingAs($admin)->test('layout.sidebar')->assertDontSee('Demo: switch user');
+        foreach (['owner', 'renter', 'admin', 'unknown'] as $role) {
             Volt::test('layout.sidebar')->call('switchDemoUser', $role)->assertForbidden();
             $this->assertAuthenticatedAs($admin);
         }
-
-        $target->forceFill(['email_verified_at' => null])->save();
-        Volt::test('layout.sidebar')->call('switchDemoUser', 'owner')->assertForbidden();
         $this->assertAuthenticatedAs($admin);
-
-        $target->forceFill(['email_verified_at' => now()])->save();
-        $sessionId = session()->getId();
-        Volt::test('layout.sidebar')->call('switchDemoUser', 'owner')
-            ->assertHasNoErrors()->assertRedirect(route($target->dashboardRouteName()));
-        $this->assertAuthenticatedAs($target);
-        $this->assertNotSame($sessionId, session()->getId());
     }
 
     public function test_forged_livewire_switch_call_cannot_promote_a_member_to_seeded_admin(): void

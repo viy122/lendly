@@ -1,5 +1,6 @@
 <div>
     <x-page-header eyebrow="Renting" title="My rental requests" subtitle="View current and past rental requests." />
+    <div class="px-4 sm:px-6 lg:px-8"><x-record-controls :filters="['all' => 'All statuses'] + collect(\App\Enums\RentalRequestStatus::cases())->mapWithKeys(fn ($status) => [$status->value => $status->label()])->all()" /></div>
 
     <div class="w-full px-4 py-8 sm:px-6 lg:px-8">
         @if (session('status'))
@@ -64,7 +65,7 @@
                             </a>
                             @if ($request->rental)
                                 <a href="{{ route('renter.rentals.show', $request->rental) }}" wire:navigate class="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">View booking</a>
-                            @elseif ($request->isApproved())
+                            @elseif ($request->canReviewAgreement())
                                 <a href="{{ route('renter.rental-requests.agreement', $request) }}" wire:navigate class="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">Review rental agreement</a>
                             @endif
                             @if (! $request->rental && $request->isCancellableByRenter())

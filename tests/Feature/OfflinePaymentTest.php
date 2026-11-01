@@ -60,7 +60,7 @@ class OfflinePaymentTest extends TestCase
             'commission_amount' => 30, 'security_deposit' => 500, 'total_amount' => 830,
         ];
         $request = RentalRequest::create($terms + ['status' => 'approved', 'renter_terms_accepted_at' => now(), 'owner_terms_accepted_at' => now()]);
-        $request->update(['agreement_terms' => RentalAgreement::termsFor($request)]);
+        $request->update(['agreement_terms' => ['payment_review' => 'platform_legacy'] + RentalAgreement::termsFor($request)]);
 
         return Rental::create($terms + ['rental_request_id' => $request->id, 'owner_id' => $owner->id]);
     }

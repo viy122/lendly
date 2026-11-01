@@ -28,13 +28,13 @@
             <form wire:submit="propose" class="mt-5 space-y-4 border-t border-slate-100 pt-4">
                 <p class="text-sm text-slate-600">{{ $schedule ? 'Changing the schedule requires fresh confirmation from both parties.' : 'Propose the arrangements for this booking.' }}</p>
                 <div>
-                    <x-input-label for="exchange-time-{{ $rentalId }}" value="Pickup or delivery date and time (Asia/Manila)" />
+                    <x-input-label required for="exchange-time-{{ $rentalId }}" value="Pickup or delivery date and time (Asia/Manila)" />
                     <x-text-input id="exchange-time-{{ $rentalId }}" wire:model="exchange_time" type="datetime-local" required class="mt-1 block w-full" />
                     <p class="mt-1 text-xs text-slate-500">Choose a future time during {{ $rental->start_date->format('M d, Y') }} &ndash; {{ $rental->end_date->format('M d, Y') }}.</p>
                     <x-input-error :messages="$errors->get('exchange_time')" class="mt-2" />
                 </div>
                 <div>
-                    <x-input-label for="exchange-address-{{ $rentalId }}" :value="$rental->fulfillment_method->label().' address'" />
+                    <x-input-label required for="exchange-address-{{ $rentalId }}" :value="$rental->fulfillment_method->label().' address'" />
                     <textarea id="exchange-address-{{ $rentalId }}" wire:model="address" required maxlength="500" rows="2" class="mt-1 block w-full rounded-lg border-slate-300"></textarea>
                     <x-input-error :messages="$errors->get('address')" class="mt-2" />
                 </div>

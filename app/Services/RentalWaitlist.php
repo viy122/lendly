@@ -13,6 +13,18 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class RentalWaitlist
 {
+    public static function canJoin(User $renter, int $listingId, array $details): bool
+    {
+        try {
+            $quote = RentalRequestSubmission::preview($renter, $listingId, $details, allowOverlap: true);
+            $period = $quote['attributes'];
+
+            return $quote['listing']->hasApprovedOverlap($period['start_date'], $period['end_date'], startsAt: $period['starts_at'], endsAt: $period['ends_at']);
+        } catch (ValidationException|HttpException) {
+            return false;
+        }
+    }
+
     public static function join(User $renter, int $listingId, array $details): RentalWaitlistEntry
     {
         return DB::transaction(function () use ($renter, $listingId, $details) {

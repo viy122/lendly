@@ -5,12 +5,13 @@
     </a>
     <h1 class="mt-4 text-xl font-semibold text-slate-900">Review rental agreement</h1>
     <p class="mt-2 text-sm text-slate-600">Owner: {{ $request->listing->owner->name }} &middot; Renter: {{ $request->renter->name }}</p>
+    <div class="mt-3"><x-badge :color="$request->status->badgeColor()">{{ $request->status->label() }}</x-badge></div>
 
     <x-input-error :messages="$errors->get('agreement')" class="mt-4" role="alert" />
     <x-input-error :messages="$errors->get('identity')" class="mt-4" role="alert" />
     @unless ($request->rental)<x-identity-review-notice />@endunless
 
-    @if (! $request->isApproved())
+    @if (! $request->canReviewAgreement())
         <p class="mt-6 rounded-lg bg-rose-50 p-4 text-sm text-rose-700" role="alert">This request is {{ strtolower($request->status->label()) }}. Its agreement can no longer be accepted.</p>
     @else
         @if ($request->agreement_terms)
@@ -35,7 +36,7 @@
                     <label class="flex items-start gap-2 text-sm text-slate-700">
                         <input type="checkbox" wire:model="accept_terms" class="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
                         <span>I have read and accept this rental agreement and all its terms and conditions, including the cancellation policy and fees, item rules and deposit conditions.</span>
-                    </label>
+                    <x-required-mark /></label>
                     <x-input-error :messages="$errors->get('accept_terms')" class="mt-2" role="alert" />
                     <x-primary-button class="mt-4" wire:loading.attr="disabled" wire:target="acceptTerms">Accept rental agreement</x-primary-button>
                 </form>

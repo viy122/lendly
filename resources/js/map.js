@@ -60,6 +60,11 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('locationPicker', (initialLat, initialLng) => ({
         map: null,
         marker: null,
+        locating: false,
+        addressLoading: false,
+        locationError: '',
+        locationStatus: '',
+        pinVersion: 0,
 
         init() {
             const hasLocation = hasCoordinates(initialLat, initialLng);
@@ -90,15 +95,53 @@ document.addEventListener('alpine:init', () => {
             setTimeout(() => this.map.invalidateSize(), 200);
         },
 
-        reportPosition(latlng) {
-            this.$wire.set('latitude', Number(latlng.lat.toFixed(7)));
-            this.$wire.set('longitude', Number(latlng.lng.toFixed(7)));
+        async reportPosition(latlng) {
+            const latitude = Number(latlng.lat.toFixed(7));
+            const longitude = Number(latlng.lng.toFixed(7));
+            const version = ++this.pinVersion;
+            this.locationError = '';
+            this.locationStatus = 'Pin updated.';
+            this.$wire.set('latitude', latitude, false);
+            this.$wire.set('longitude', longitude, false);
+            if (typeof this.$wire.resolvePinnedAddress !== 'function') return;
+            const previousAddress = this.$wire.get('location');
+            this.addressLoading = true;
+            try {
+                const result = await this.$wire.resolvePinnedAddress(latitude, longitude);
+                if (version !== this.pinVersion) return;
+                if (this.$wire.get('location') !== previousAddress) {
+                    this.locationStatus = 'Pin updated. Your edited address was kept.';
+                } else if (result?.address) {
+                    this.$wire.set('location', result.address);
+                    this.locationStatus = 'Pin and address updated. You can refine the Location field.';
+                } else {
+                    this.locationStatus = 'Pin saved. Address lookup is unavailable; enter the address manually or retry.';
+                }
+            } catch {
+                if (version === this.pinVersion) this.locationStatus = 'Pin saved. Enter the address manually or retry.';
+            } finally {
+                if (version === this.pinVersion) this.addressLoading = false;
+            }
+        },
+
+        retryAddress() {
+            if (this.marker && !this.addressLoading) this.reportPosition(this.marker.getLatLng());
         },
 
         useMyLocation() {
-            if (!navigator.geolocation) return;
+            if (this.locating) return;
+            this.locationError = '';
+            this.locationStatus = '';
+            if (!navigator.geolocation) {
+                this.locationError = 'This browser cannot share your location. Place a pin on the map instead.';
+                return;
+            }
+            this.locating = true;
+            const version = this.pinVersion;
 
             navigator.geolocation.getCurrentPosition((position) => {
+                this.locating = false;
+                if (version !== this.pinVersion) return;
                 const latlng = { lat: position.coords.latitude, lng: position.coords.longitude };
                 this.map.setView(latlng, 14);
 
@@ -110,7 +153,14 @@ document.addEventListener('alpine:init', () => {
                 }
 
                 this.reportPosition(latlng);
-            });
+                this.locating = false;
+            }, (error) => {
+                this.locating = false;
+                if (version !== this.pinVersion) return;
+                this.locationError = error.code === 1
+                    ? 'Location access was denied. You can still place the pin on the map.'
+                    : 'Your location could not be found. Place a pin on the map or try again.';
+            }, { timeout: 10000, maximumAge: 60000 });
         },
     }));
 
@@ -128,6 +178,7 @@ document.addEventListener('alpine:init', () => {
         showMyLocation: true,
         latestMarkers: markers,
         latestLocation: hasCoordinates(centerLat, centerLng) ? [centerLat, centerLng] : null,
+        locationNotice: '',
 
         init() {
             const hasLocation = hasCoordinates(centerLat, centerLng);
@@ -160,6 +211,7 @@ document.addEventListener('alpine:init', () => {
             }
 
             this.latestLocation = null;
+            this.locationNotice = '';
             if (this.locationMarker) {
                 this.map.removeLayer(this.locationMarker);
                 this.locationMarker = null;
@@ -233,6 +285,7 @@ document.addEventListener('alpine:init', () => {
             if (this.locating) return;
 
             this.locationError = '';
+            this.locationNotice = '';
             if (!navigator.geolocation) {
                 this.locationError = 'This browser cannot share your location. You can still search by keyword and category, or browse by city or area in the list view.';
                 return;
@@ -243,6 +296,12 @@ document.addEventListener('alpine:init', () => {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     const { latitude, longitude } = position.coords;
+                    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
+                        this.locating = false;
+                        this.locationError = 'Your location could not be found. Try again, or keep searching by keyword and category.';
+                        return;
+                    }
+                    this.locationError = '';
 
                     this.map.setView([latitude, longitude], 14);
                     this.setLocationMarker(latitude, longitude);
@@ -252,6 +311,7 @@ document.addEventListener('alpine:init', () => {
                     this.$wire.set('centerLat', latitude, false);
                     this.$wire.set('centerLng', longitude);
                     this.locating = false;
+                    this.locationNotice = 'Location updated. Nearby listings are sorted by distance.';
                     window.dispatchEvent(new CustomEvent('location-found'));
                 },
                 (error) => {
@@ -259,7 +319,6 @@ document.addEventListener('alpine:init', () => {
                     this.locationError = error.code === 1
                         ? 'Location access was denied. Allow location access in your browser and try again, or keep searching by keyword and category.'
                         : 'Your location could not be found. Try again, or keep searching by keyword and category.';
-                    window.dispatchEvent(new CustomEvent('location-found'));
                 },
                 { timeout: 10000, maximumAge: 60000 }
             );

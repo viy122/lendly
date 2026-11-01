@@ -97,10 +97,10 @@ class NotificationsAndChatTest extends TestCase
             ->call('approve', $request->id)
             ->assertHasNoErrors();
 
-        $this->assertSame(RentalRequestStatus::Approved, $request->fresh()->status);
+        $this->assertSame(RentalRequestStatus::AwaitingAgreement, $request->fresh()->status);
         $this->assertNull($request->fresh()->rental);
-        $ownerData = $this->assertStatusNotification($owner, 'request_approved', 'approved', route('owner.rental-requests.agreement', $request));
-        $renterData = $this->assertStatusNotification($renter, 'request_approved', 'approved', route('renter.rental-requests.agreement', $request));
+        $ownerData = $this->assertStatusNotification($owner, 'agreement_ready', 'agreement', route('owner.rental-requests.agreement', $request));
+        $renterData = $this->assertStatusNotification($renter, 'agreement_ready', 'agreement', route('renter.rental-requests.agreement', $request));
         $this->assertStringContainsString($renter->name, $ownerData['message']);
         $this->assertStringContainsString('review and accept the rental agreement', $renterData['message']);
 
@@ -167,7 +167,7 @@ class NotificationsAndChatTest extends TestCase
         Livewire::actingAs($owner)->test(OwnerRentalRequestsIndex::class)
             ->call('approve', $requests[0]->id)->assertHasNoErrors();
 
-        $this->assertSame(RentalRequestStatus::Approved, $requests[0]->fresh()->status);
+        $this->assertSame(RentalRequestStatus::AwaitingAgreement, $requests[0]->fresh()->status);
         $this->assertSame(RentalRequestStatus::Rejected, $requests[1]->fresh()->status);
         $this->assertSame(RentalRequestStatus::Requested, $requests[2]->fresh()->status);
         $ownerData = $this->assertStatusNotification($owner, 'request_rejected', 'automatically declined', route('owner.rental-requests.index'));

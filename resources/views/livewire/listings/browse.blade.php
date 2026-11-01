@@ -43,7 +43,7 @@
     <x-page-header
         eyebrow="Lendly marketplace"
         title="Find what you need to rent"
-        :subtitle="$listings->total() . ' item' . ($listings->total() === 1 ? '' : 's') . ' accepting rental requests.'"
+        :subtitle="$listings->total() . ' item' . ($listings->total() === 1 ? '' : 's') . ' found. Check each item’s availability.'"
     />
 
     <div class="w-full px-4 py-6 sm:px-6 lg:px-8">

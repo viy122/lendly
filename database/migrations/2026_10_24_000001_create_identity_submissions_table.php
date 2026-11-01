@@ -20,7 +20,7 @@ return new class extends Migration
             $table->foreignId('reviewed_by')->nullable()->constrained('users');
             $table->timestamp('reviewed_at')->nullable();
             $table->text('review_notes')->nullable();
-            $table->timestamp('consented_at');
+            $table->dateTime('consented_at');
             $table->timestamps();
             $table->index(['user_id', 'status']);
         });

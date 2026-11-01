@@ -185,7 +185,7 @@
                                                 <p class="whitespace-pre-line">{{ $submission->review_notes }}</p>
                                             @endif
                                             @if ($submission->status === 'pending')
-                                                <x-input-label :for="'payment-review-'.$submission->id" value="Verification notes or rejection reason (shared with both parties)" />
+                                                <x-input-label required :for="'payment-review-'.$submission->id" value="Verification notes or rejection reason (shared with both parties)" />
                                                 <textarea id="payment-review-{{ $submission->id }}" wire:model="reason" maxlength="1000" rows="3" class="w-full rounded-lg border-slate-300">
                                                 </textarea>
                                                 <x-input-error :messages="$errors->get('reason')" />
@@ -195,7 +195,7 @@
                                                     @else
                                                     <label class="flex items-start gap-2">
                                                         <input type="checkbox" wire:model="funds_received" class="mt-1 rounded border-slate-300">
-                                                        <span>I matched this reference and proof to the collection records and confirmed the full ₱{{ number_format($rental->total_amount, 2) }} was received, including the platform fee and security deposit.</span>
+                                                        <span>I matched this reference and proof to the collection records and confirmed the full ₱{{ number_format($rental->total_amount, 2) }} was received, including the processing fee and security deposit.</span>
                                                     </label>
                                                     <x-input-error :messages="$errors->get('funds_received')" />
                                                     <button type="button" wire:click="verifyPayment({{ $submission->id }})" wire:confirm="Confirm receipt of the full amount and mark this booking paid?" wire:loading.attr="disabled" class="rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white">Verify received payment</button>
@@ -302,7 +302,7 @@
                                         <p class="mt-2 text-xs text-slate-500">Resolved by {{ $dispute->resolvedBy?->name ?? 'Not recorded' }} on {{ $dispute->resolved_at?->format('M d, Y g:i A') ?? 'Not recorded' }}</p>
                                     @endif
                                     @if ($dispute->resolution)
-                                        <p class="mt-2 text-slate-600">Resolution: {{ $dispute->resolution->label() }} · {{ $dispute->resolution_notes }}</p>
+                                        <p class="mt-2 text-slate-600">Resolution: {{ $dispute->resolutionLabel() }} · {{ $dispute->resolution_notes }}</p>
                                     @endif
                                 </div>
                             @empty
@@ -324,7 +324,7 @@
                             <p class="mt-4 text-sm text-slate-600">Available actions follow the recorded payment, hand-over, return and inspection history. Each change records the administrator and reason.</p>
                             @if (auth()->user()->can('adminCancel', $rental) || auth()->user()->can('adminCompleteInspection', $rental) || auth()->user()->can('adminReleaseDeposit', $rental))
                                 <div class="mt-4 space-y-3">
-                                    <x-input-label for="admin-reason" value="Reason (shared with both parties)" />
+                                    <x-input-label required for="admin-reason" value="Reason (shared with both parties)" />
                                     <textarea id="admin-reason" wire:model="reason" rows="3" maxlength="1000" class="block w-full rounded-lg border-slate-300 text-sm"></textarea>
                                     <x-input-error :messages="$errors->get('reason')" />
                                     @can('adminCancel', $rental)
@@ -348,7 +348,7 @@
                         </x-rental-panel>
                         <x-rental-panel title="Private admin note" icon="pencil" subtitle="Keep internal context attached to this transaction.">
                             <form wire:submit="addNote" class="mt-5 space-y-3">
-                                <x-input-label for="admin-note" value="Admin note (visible to admins only)" />
+                                <x-input-label required for="admin-note" value="Admin note (visible to admins only)" />
                                 <textarea id="admin-note" wire:model="note" rows="5" maxlength="1000" placeholder="Add context for the next administrator…" class="block w-full rounded-xl border-slate-300 bg-slate-50 text-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
                                 <x-input-error :messages="$errors->get('note')" />
                                 <x-primary-button wire:loading.attr="disabled">Save admin note</x-primary-button>

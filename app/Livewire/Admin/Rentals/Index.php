@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin\Rentals;
 
 use App\Enums\RentalStatus;
+use App\Livewire\Concerns\FiltersRecords;
 use App\Models\Rental;
 use App\Services\RentalLifecycle;
 use Illuminate\Contracts\View\View;
@@ -14,6 +15,7 @@ use Livewire\WithPagination;
 #[Layout('layouts.app')]
 class Index extends Component
 {
+    use FiltersRecords;
     use WithPagination;
 
     #[Url]
@@ -48,11 +50,10 @@ class Index extends Component
         $this->authorize('viewAny', Rental::class);
         RentalLifecycle::markOverdueRentals();
 
-        $rentals = $this->baseQuery()
+        $rentals = $this->filterRecords($this->baseQuery()
             ->with(['listing', 'owner', 'renter'])
             ->orderByDesc('created_at')
-            ->orderByDesc('id')
-            ->paginate(15);
+            ->orderByDesc('id'), [], [])->paginate(15);
 
         return view('livewire.admin.rentals.index', [
             'rentals' => $rentals,

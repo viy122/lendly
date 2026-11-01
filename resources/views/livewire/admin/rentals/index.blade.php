@@ -20,6 +20,9 @@
                 </select>
             </div>
 
+            <label class="text-xs font-semibold text-slate-600">Sort records
+                <select aria-label="Sort records" wire:model.live="recordSort" class="mt-1 min-h-11 rounded-lg border-slate-300 text-sm"><option value="default">Default order</option><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select>
+            </label>
             <button type="button" aria-haspopup="dialog" aria-controls="offline-payment-modal" x-on:click="previousBodyOverflow = document.body.style.overflow; $refs.offlinePaymentModal.showModal(); document.body.style.overflow = 'hidden'" class="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm transition hover:border-blue-500 hover:bg-blue-100 focus:outline-none focus:ring-4 focus:ring-blue-100 sm:w-auto">
                 <x-icon name="cog" class="h-4 w-4 shrink-0" aria-hidden="true" />
                 <span>Configure offline payment instructions</span>

@@ -15,6 +15,10 @@
                 </div>
             </div>
 
+            <div class="grid grid-cols-2 gap-2 px-4 pb-3">
+                <label class="text-xs text-slate-600">Filter chats<select wire:model.live="threadFilter" class="mt-1 w-full rounded-lg border-slate-300 text-xs"><option value="all">All chats</option><option value="unread">Unread</option><option value="rentals">Rental requests</option><option value="listings">Item inquiries</option></select></label>
+                <label class="text-xs text-slate-600">Sort chats<select wire:model.live="threadSort" class="mt-1 w-full rounded-lg border-slate-300 text-xs"><option value="latest">Latest activity</option><option value="oldest">Oldest activity</option></select></label>
+            </div>
             <div class="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 pb-3">
                 @forelse ($threads as $thread)
                     <a
@@ -61,7 +65,7 @@
                                 <button type="button" wire:click="$set('search', '')" class="mt-3 rounded-lg px-3 py-2 text-xs font-semibold text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500">Clear search</button>
                             </div>
                         @else
-                            <x-empty-state title="No conversations yet" message="Messages about items and rental requests will show up here." />
+                            <x-empty-state title="No matching conversations" message="Messages will appear here. Adjust the filters if you cannot find a chat." />
                         @endif
                     </div>
                 @endforelse

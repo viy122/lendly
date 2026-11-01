@@ -1,5 +1,6 @@
 <div wire:poll.15s.visible>
     <x-page-header eyebrow="Owning" title="My listings" subtitle="Manage the items you've listed for rent." />
+    <div class="px-4 sm:px-6 lg:px-8"><x-record-controls :filters="['all' => 'All statuses'] + collect(\App\Enums\ListingStatus::cases())->mapWithKeys(fn ($status) => [$status->value => $status->label()])->all()" /></div>
 
     <div class="w-full px-4 py-8 sm:px-6 lg:px-8">
         <div class="mb-4 flex justify-end">
@@ -78,22 +79,28 @@
                                     @if ($listing->available_from && $listing->available_until)
                                         <p class="mb-1 whitespace-nowrap text-xs text-slate-500">Available {{ $listing->available_from->format('M d, Y') }} – {{ $listing->available_until->format('M d, Y') }}</p>
                                     @endif
-                                    @foreach ($listing->paidReservations as $reservation)
-                                        <p class="mb-1 whitespace-nowrap text-xs text-slate-500">Reserved {{ $reservation->start_date->format('M d, Y') }} – {{ $reservation->end_date->format('M d, Y') }}</p>
+                                    <p class="mb-2 text-xs text-slate-500">Opening hours: {{ $listing->available_time_from }}–{{ $listing->available_time_until }} · Philippine time</p>
+                                    <p class="mb-2 max-w-xs text-xs text-slate-600">Unbooked periods today: {{ implode(', ', \App\Services\ListingAvailability::freePeriodsToday($listing)) ?: 'None within the opening window.' }} Return, inspection, and reopening are still required before reuse.</p>
+                                    @foreach ($listing->rentalRequests as $reservation)
+                                        <p class="mb-1 text-xs text-slate-500">{{ $listing->paidReservations->contains('rental_request_id', $reservation->id) ? 'Reserved' : 'On hold' }} {{ $reservation->starts_at?->copy()->setTimezone('Asia/Manila')->format('M d, Y H:i') ?? $reservation->start_date->format('M d, Y') }} – {{ $reservation->ends_at?->copy()->setTimezone('Asia/Manila')->format('M d, Y H:i') ?? $reservation->end_date->format('M d, Y') }}</p>
                                     @endforeach
+                                    @if ($listing->reopen_required)
+                                        <p class="mb-2 max-w-xs text-xs font-medium text-amber-800">Return and inspection must be complete before you reopen requests.</p>
+                                        <button type="button" wire:click="setAvailability({{ $listing->id }}, true)" wire:loading.attr="disabled" class="mb-2 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800">Reopen after inspection</button>
+                                    @endif
                                     <button
                                         type="button"
                                         role="switch"
-                                        aria-checked="{{ $listing->is_available ? 'true' : 'false' }}"
+                                        aria-checked="{{ $listing->is_available && ! $listing->reopen_required ? 'true' : 'false' }}"
                                         aria-label="{{ $listing->name }} availability"
-                                        wire:click="setAvailability({{ $listing->id }}, {{ $listing->is_available ? 'false' : 'true' }})"
+                                        wire:click="setAvailability({{ $listing->id }}, {{ $listing->is_available && ! $listing->reopen_required ? 'false' : 'true' }})"
                                         wire:loading.attr="disabled"
                                         wire:target="setAvailability"
                                         class="inline-flex min-h-10 items-center gap-2.5 whitespace-nowrap rounded-lg px-1 text-xs font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-wait disabled:opacity-60">
                                         <span aria-hidden="true" @class(['relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors', 'bg-blue-600' => $listing->is_available, 'bg-slate-300' => ! $listing->is_available])>
                                             <span @class(['h-5 w-5 rounded-full bg-white shadow-sm transition-transform', 'translate-x-5' => $listing->is_available, 'translate-x-0.5' => ! $listing->is_available])></span>
                                         </span>
-                                        <span>{{ $listing->is_available ? 'Accepting requests' : 'Requests paused' }}</span>
+                                        <span>{{ $listing->is_available && ! $listing->reopen_required ? 'Accepting requests' : 'Requests paused' }}</span>
                                     </button>
                                 </td>
                             </tr>

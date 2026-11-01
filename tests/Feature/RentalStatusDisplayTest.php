@@ -15,6 +15,7 @@ use App\Models\RentalRequest;
 use App\Models\SecurityDeposit;
 use App\Models\User;
 use App\Services\RentalLifecycle;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -155,7 +156,7 @@ class RentalStatusDisplayTest extends TestCase
         $this->assertSame(RentalStatus::Active, $rental->fresh()->status);
 
         // The item remains due soon through the whole agreed end date.
-        $this->travelTo($rental->end_date->copy()->endOfDay());
+        $this->travelTo(Carbon::parse($rental->end_date->toDateString(), 'Asia/Manila')->endOfDay());
         $page->call('$refresh')->assertSee('Due Soon');
         $this->assertSame(RentalStatus::Active, $rental->fresh()->status);
 

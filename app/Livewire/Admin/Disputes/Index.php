@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin\Disputes;
 
 use App\Enums\DisputeResolution;
+use App\Livewire\Concerns\FiltersRecords;
 use App\Models\Dispute;
 use App\Services\RentalLifecycle;
 use Illuminate\Contracts\View\View;
@@ -15,6 +16,7 @@ use Livewire\WithPagination;
 #[Layout('layouts.app')]
 class Index extends Component
 {
+    use FiltersRecords;
     use WithPagination;
 
     #[Url]
@@ -39,6 +41,8 @@ class Index extends Component
 
     public ?float $partial_amount = null;
 
+    public string $other_resolution = '';
+
     public function updatingFilter(): void
     {
         $this->resetPage();
@@ -50,6 +54,7 @@ class Index extends Component
         $this->resolution = '';
         $this->resolution_notes = '';
         $this->partial_amount = null;
+        $this->other_resolution = '';
     }
 
     public function confirmResolve(): void
@@ -60,6 +65,7 @@ class Index extends Component
         $rules = [
             'resolution' => ['required', Rule::enum(DisputeResolution::class)],
             'resolution_notes' => ['nullable', 'string', 'max:1000'],
+            'other_resolution' => ['required_if:resolution,other', 'nullable', 'string', 'max:1000'],
         ];
 
         if ($dispute->damage_report_id && $this->resolution === DisputeResolution::PartialCompensation->value) {
@@ -74,21 +80,21 @@ class Index extends Component
             $this->resolution_notes,
             auth()->user(),
             $this->partial_amount,
+            $this->other_resolution,
         );
 
         $this->resolving = null;
-        $this->reset('resolution', 'resolution_notes', 'partial_amount');
+        $this->reset('resolution', 'resolution_notes', 'partial_amount', 'other_resolution');
     }
 
     public function render(): View
     {
         abort_unless(auth()->user()?->isAdmin(), 403);
-        $disputes = Dispute::query()
+        $disputes = $this->filterRecords(Dispute::query()
             ->when(($this->rentalId ?? $this->rental) !== null, fn ($query) => $query->where('rental_id', $this->rentalId ?? $this->rental))
             ->when($this->filter !== 'all', fn ($query) => $query->where('status', $this->filter))
             ->with(['rental.listing', 'rental.owner', 'rental.renter', 'raisedBy', 'damageReport.photos'])
-            ->orderByDesc('created_at')
-            ->paginate(10);
+            ->orderByDesc('created_at'), ['description', 'other_resolution', 'resolution_notes'], ['rental.listing' => ['name'], 'raisedBy' => ['name'], 'rental.owner' => ['name'], 'rental.renter' => ['name']])->paginate(10);
 
         return view('livewire.admin.disputes.index', ['disputes' => $disputes]);
     }

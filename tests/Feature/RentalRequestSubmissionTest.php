@@ -34,7 +34,7 @@ class RentalRequestSubmissionTest extends TestCase
 
         $this->assertTrue($preview['listing']->is($listing));
         $this->assertSame(['price_per_day' => '125.25', 'price_per_hour' => null, 'allows_daily_rentals' => true,
-            'min_rental_duration_hours' => 1, 'max_rental_duration_hours' => 24, 'available_time_from' => '00:00', 'available_time_until' => '23:59', 'security_deposit' => '250.50', 'rental_rules' => 'Keep it clean', 'commission_rate' => '12.50'], $preview['terms']);
+            'max_rental_duration_days' => 10, 'available_time_from' => '00:00', 'available_time_until' => '23:59', 'security_deposit' => '250.50', 'rental_rules' => 'Keep it clean', 'commission_rate' => '12.50'], $preview['terms']);
         $this->assertSame($renter->id, $preview['attributes']['renter_id']);
         $this->assertSame($listing->id, $preview['attributes']['listing_id']);
         $this->assertSame(3, $preview['attributes']['rental_days']);

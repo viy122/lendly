@@ -42,7 +42,7 @@ class RentalQueueTest extends TestCase
         Livewire::actingAs($owner)->test(Index::class)->call('approve', $later->id)
             ->assertHasNoErrors()->assertRedirect(route('owner.rental-requests.agreement', $later));
 
-        $this->assertSame('approved', $later->fresh()->status->value);
+        $this->assertSame('awaiting_agreement', $later->fresh()->status->value);
         $this->assertSame('rejected', $earlier->fresh()->status->value);
         $this->assertDatabaseCount('rentals', 0);
     }

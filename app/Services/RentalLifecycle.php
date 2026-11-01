@@ -137,6 +137,7 @@ class RentalLifecycle
                 : 'pickup_confirmed_by_renter_at';
 
             $rental->update([$field => now()]);
+            $rental->listing()->update(['reopen_required' => true]);
 
             $otherParty = $confirmingUser->id === $rental->owner_id ? $rental->renter : $rental->owner;
             $method = $rental->fulfillment_method->label();
@@ -167,6 +168,10 @@ class RentalLifecycle
                 ];
             }
             $rental->update($confirmation);
+
+            if ($isOwner) {
+                $rental->listing()->update(['reopen_required' => true]);
+            }
 
             $otherParty = $isOwner ? $rental->renter : $rental->owner;
             self::notify($otherParty, NotificationType::ReturnConfirmed, 'Return confirmed', "{$confirmingUser->name} confirmed the return of \"{$rental->listing->name}\".", self::urlFor($otherParty, $rental));
@@ -199,6 +204,7 @@ class RentalLifecycle
             }
 
             $completedAt = now();
+            $rental->listing()->update(['reopen_required' => true]);
             $rental->update([
                 'status' => RentalStatus::Completed,
                 'completed_at' => $completedAt,
@@ -244,11 +250,25 @@ class RentalLifecycle
         DB::transaction(function () use ($rental, $admin) {
             $rental = Rental::lockForUpdate()->findOrFail($rental->id);
             $admin ? Gate::forUser($admin)->authorize('adminReleaseDeposit', $rental) : Gate::authorize('releaseDeposit', $rental);
-            $rental->securityDeposit->update(['status' => SecurityDepositStatus::Released]);
+            $rental->securityDeposit->update(['status' => SecurityDepositStatus::Released, 'released_at' => now()]);
 
             if (! $admin) {
                 self::notify($rental->renter, NotificationType::DepositUpdate, 'Deposit released', "Your security deposit for \"{$rental->listing->name}\" has been fully released.", self::urlFor($rental->renter, $rental));
             }
+        });
+    }
+
+    public static function confirmDepositReceipt(Rental $rental, User $renter): void
+    {
+        DB::transaction(function () use ($rental, $renter) {
+            $rental = Rental::lockForUpdate()->findOrFail($rental->id);
+            $deposit = $rental->securityDeposit()->lockForUpdate()->firstOrFail();
+            $rental->setRelation('securityDeposit', $deposit);
+            $renter = User::withTrashed()->findOrFail($renter->id);
+            Gate::forUser($renter)->authorize('confirmDepositReceipt', $rental);
+            $deposit->update(['received_at' => now()]);
+            self::notify($rental->owner, NotificationType::DepositUpdate, 'Deposit receipt confirmed',
+                'The renter confirmed receiving the refundable deposit balance for booking #'.$rental->id.'.', self::urlFor($rental->owner, $rental));
         });
     }
 
@@ -292,52 +312,64 @@ class RentalLifecycle
      * dispute it just records the decision, since there's no automatic
      * financial remedy for reasons like "item not as described".
      */
-    public static function resolveDispute(Dispute $dispute, DisputeResolution $resolution, ?string $notes, User $admin, ?float $partialAmount = null): void
+    public static function resolveDispute(Dispute $dispute, DisputeResolution $resolution, ?string $notes, User $admin, ?float $partialAmount = null, ?string $otherResolution = null): void
     {
-        $dispute->update([
-            'status' => DisputeStatus::Resolved,
-            'resolution' => $resolution,
-            'resolution_notes' => $notes,
-            'resolved_by' => $admin->id,
-            'resolved_at' => now(),
-        ]);
+        DB::transaction(function () use ($dispute, $resolution, $notes, $admin, $partialAmount, $otherResolution) {
+            $admin = User::findOrFail($admin->id);
+            abort_unless($admin->isAdmin() && ! $admin->isSuspended() && $admin->hasVerifiedEmail(), 403);
+            Rental::whereKey($dispute->rental_id)->lockForUpdate()->firstOrFail();
+            $dispute = Dispute::lockForUpdate()->findOrFail($dispute->id);
+            abort_unless($dispute->isOpen(), 403);
+            validator(['other_resolution' => trim($otherResolution ?? '')], [
+                'other_resolution' => [$resolution === DisputeResolution::Other ? 'required' : 'nullable', 'string', 'max:1000'],
+            ])->validate();
+            $dispute->update([
+                'status' => DisputeStatus::Resolved,
+                'resolution' => $resolution,
+                'resolution_notes' => $notes,
+                'other_resolution' => $resolution === DisputeResolution::Other ? trim($otherResolution) : null,
+                'resolved_by' => $admin->id,
+                'resolved_at' => now(),
+            ]);
 
-        if ($dispute->damage_report_id) {
-            $damageReport = $dispute->damageReport;
-            $deposit = $dispute->rental->securityDeposit;
+            if ($dispute->damage_report_id) {
+                $damageReport = $dispute->damageReport;
+                $deposit = $dispute->rental->securityDeposit;
 
-            switch ($resolution) {
-                case DisputeResolution::ApprovedClaim:
-                    $damageReport->update(['status' => DamageReportStatus::Accepted]);
-                    $deposit?->update([
-                        'status' => SecurityDepositStatus::Deducted,
-                        'deducted_amount' => $damageReport->proposed_deduction,
-                    ]);
-                    break;
+                switch ($resolution) {
+                    case DisputeResolution::ApprovedClaim:
+                        $damageReport->update(['status' => DamageReportStatus::Accepted]);
+                        $deposit?->update([
+                            'status' => SecurityDepositStatus::Deducted,
+                            'deducted_amount' => $damageReport->proposed_deduction,
+                        ]);
+                        break;
 
-                case DisputeResolution::RejectedClaim:
-                case DisputeResolution::FullRefund:
-                    $damageReport->update(['status' => DamageReportStatus::Rejected]);
-                    $deposit?->update(['status' => SecurityDepositStatus::ReturnEligible, 'deducted_amount' => 0]);
-                    break;
+                    case DisputeResolution::RejectedClaim:
+                    case DisputeResolution::FullRefund:
+                        $damageReport->update(['status' => DamageReportStatus::Rejected]);
+                        $deposit?->update(['status' => SecurityDepositStatus::ReturnEligible, 'deducted_amount' => 0]);
+                        break;
 
-                case DisputeResolution::PartialCompensation:
-                    $damageReport->update(['status' => DamageReportStatus::Accepted]);
-                    $deposit?->update([
-                        'status' => SecurityDepositStatus::Deducted,
-                        'deducted_amount' => min($partialAmount ?? 0, (float) $deposit->amount),
-                    ]);
-                    break;
+                    case DisputeResolution::PartialCompensation:
+                        $damageReport->update(['status' => DamageReportStatus::Accepted]);
+                        $deposit?->update([
+                            'status' => SecurityDepositStatus::Deducted,
+                            'deducted_amount' => min($partialAmount ?? 0, (float) $deposit->amount),
+                        ]);
+                        break;
 
-                case DisputeResolution::AccountWarning:
-                    break;
+                    case DisputeResolution::AccountWarning:
+                    case DisputeResolution::Other:
+                        break;
+                }
             }
-        }
 
-        $rental = $dispute->rental;
-        $message = "Your dispute for \"{$rental->listing->name}\" was resolved: {$resolution->label()}.";
-        self::notify($rental->renter, NotificationType::DisputeUpdate, 'Dispute resolved', $message, self::urlFor($rental->renter, $rental));
-        self::notify($rental->owner, NotificationType::DisputeUpdate, 'Dispute resolved', $message, self::urlFor($rental->owner, $rental));
+            $rental = $dispute->rental;
+            $message = "Your dispute for \"{$rental->listing->name}\" was resolved: ".($resolution === DisputeResolution::Other ? trim($otherResolution) : $resolution->label()).'.';
+            self::notify($rental->renter, NotificationType::DisputeUpdate, 'Dispute resolved', $message, self::urlFor($rental->renter, $rental));
+            self::notify($rental->owner, NotificationType::DisputeUpdate, 'Dispute resolved', $message, self::urlFor($rental->owner, $rental));
+        });
     }
 
     /**
@@ -352,7 +384,7 @@ class RentalLifecycle
 
         ($query ?? Rental::query())
             ->whereIn('status', [RentalStatus::Active, RentalStatus::Overdue])
-            ->where(fn ($due) => $due->where(fn ($hourly) => $hourly->where('rental_unit', 'hour')->where('ends_at', '<', now()))->orWhere(fn ($daily) => $daily->where('rental_unit', 'day')->where('end_date', '<', now()->startOfDay())))
+            ->pastReturnTime()
             ->each(function (Rental $rental) use (&$newlyOverdue) {
                 if (self::synchronizeRentalStatus($rental)) {
                     $newlyOverdue++;
@@ -372,12 +404,12 @@ class RentalLifecycle
             $rental = Rental::lockForUpdate()->findOrFail($rental->id);
 
             if (! in_array($rental->status, [RentalStatus::Active, RentalStatus::Overdue], true)
-                || ($rental->rental_unit === 'hour' ? $rental->ends_at->gte(now()) : $rental->end_date->gte(today()))) {
+                || ! $rental->returnTimeHasPassed()) {
                 return false;
             }
 
             $newlyOverdue = $rental->status !== RentalStatus::Overdue;
-            $daysOverdue = (int) $rental->end_date->diffInDays(now()->startOfDay());
+            $daysOverdue = $rental->currentOverdueDays();
             $rental->fill([
                 'status' => RentalStatus::Overdue,
                 'days_overdue' => $daysOverdue,

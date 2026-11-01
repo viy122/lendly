@@ -104,6 +104,13 @@ class Show extends Component
         $this->rental->refresh();
     }
 
+    public function confirmDepositReceipt(): void
+    {
+        RentalLifecycle::confirmDepositReceipt($this->rental, auth()->user());
+        $this->rental->refresh();
+        session()->flash('status', 'Deposit receipt confirmed.');
+    }
+
     public function confirmReturn(): void
     {
         $this->authorize('confirmReturn', $this->rental);
@@ -170,6 +177,10 @@ class Show extends Component
 
     public function createDispute(): void
     {
+        $this->rental->refresh();
+        $this->authorize('view', $this->rental);
+        abort_unless(auth()->id() === $this->rental->renter_id, 403);
+
         $this->validate([
             'dispute_reason' => ['required', Rule::enum(DisputeReason::class)],
             'dispute_description' => ['required', 'string', 'max:1000'],

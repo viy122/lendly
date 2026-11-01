@@ -1,37 +1,21 @@
 <?php
 
 use App\Livewire\Actions\Logout;
-use App\Models\User;
-use App\Support\AccountLockout;
-use Illuminate\Support\Facades\Auth;
 use Livewire\Volt\Component;
 
 new class extends Component
 {
+    // Reject calls from stale pages; demo account impersonation is retired.
+    public function switchDemoUser(string $role): void
+    {
+        abort(403);
+    }
+
     public function logout(Logout $logout): void
     {
         $logout();
 
         $this->redirect('/', navigate: true);
-    }
-
-    /** Local administrators can switch between seeded demo accounts. */
-    public function switchDemoUser(string $role): void
-    {
-        abort_unless(app()->environment('local') && Auth::user()?->isAdmin(), 403);
-        abort_unless(in_array($role, ['admin', 'owner'], true), 403);
-
-        $user = User::where('email', "{$role}@tala.test")->first();
-        if (! $user) {
-            return;
-        }
-
-        abort_if($user->isSuspended() || ! $user->hasVerifiedEmail(), 403);
-        AccountLockout::ensureNotLocked($user->email, 'account');
-
-        Auth::login($user);
-        session()->regenerate();
-        $this->redirect(route($user->dashboardRouteName()), navigate: true);
     }
 }; ?>
 
@@ -72,19 +56,18 @@ new class extends Component
             <x-icon name="chevron-down" class="h-3.5 w-3.5 transition-transform" x-bind:class="{ '-rotate-90': !collapsed, 'rotate-90': collapsed }" />
         </button>
 
-        @if (app()->environment('local') && auth()->user()?->isAdmin())
-            <div class="border-b border-indigo-900 px-3 py-3" x-show="!collapsed" x-cloak>
-                <p class="pb-2 text-xs font-semibold uppercase tracking-wider text-indigo-400">Demo: switch user</p>
-                <div class="grid grid-cols-2 gap-2">
-                    <button type="button" wire:click="switchDemoUser('admin')" class="min-h-10 rounded-lg bg-indigo-800 px-3 text-sm text-white">Admin</button>
-                    <button type="button" wire:click="switchDemoUser('owner')" class="min-h-10 rounded-lg bg-indigo-800 px-3 text-sm text-white">Member</button>
-                </div>
-                <x-input-error :messages="$errors->get('account')" class="mt-2" />
-            </div>
+        @if (auth()->check() && ! auth()->user()->isAdmin())
+            <form method="POST" action="{{ route('interface.switch') }}" class="border-b border-indigo-900 px-3 py-3">
+                @csrf
+                <input type="hidden" name="interface" value="{{ auth()->user()->activeInterface() === 'owner' ? 'renter' : 'owner' }}" />
+                <button type="submit" class="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-indigo-600 bg-indigo-800 px-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60" aria-label="Switch to {{ auth()->user()->activeInterface() === 'owner' ? 'renter' : 'owner' }} interface" title="Switch interface">
+                    <span aria-hidden="true">⇄</span><span x-show="!collapsed" x-cloak>Switch to {{ auth()->user()->activeInterface() === 'owner' ? 'renter' : 'owner' }}</span>
+                </button>
+            </form>
         @endif
 
         <nav class="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-3 py-4">
-            @if (! auth()->check() || auth()->user()->isAdmin() || auth()->user()->activeInterface() === 'renter')
+            @if (! auth()->check() || (! auth()->user()->isAdmin() && auth()->user()->activeInterface() === 'renter'))
             <x-sidebar-link :href="route('listings.index')" :active="request()->routeIs('listings.*') && ! request()->routeIs('listings.message', 'listings.contact')" icon="search" wire:navigate>
                 {{ __('Browse') }}
             </x-sidebar-link>

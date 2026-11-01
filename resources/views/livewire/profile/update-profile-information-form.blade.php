@@ -223,12 +223,12 @@ new class extends Component
                     <legend class="mb-4 text-sm font-bold text-slate-800">Account information</legend>
                     <div class="account-profile-fields">
                         <div>
-                            <x-input-label for="name" :value="__('Name')" />
+                            <x-input-label required for="name" :value="__('Name')" />
                             <x-text-input wire:model="name" id="name" name="name" type="text" class="mt-2 block min-h-11 w-full bg-slate-50/50" required autocomplete="name" />
                             <x-input-error class="mt-2" :messages="$errors->get('name')" />
                         </div>
                         <div>
-                            <x-input-label for="email" :value="__('Email')" />
+                            <x-input-label required for="email" :value="__('Email')" />
                             <x-text-input wire:model="email" id="email" name="email" type="email" class="mt-2 block min-h-11 w-full bg-slate-50/50" required autocomplete="username" />
                             <x-input-error class="mt-2" :messages="$errors->get('email')" />
                         </div>

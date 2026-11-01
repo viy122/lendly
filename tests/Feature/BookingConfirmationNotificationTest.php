@@ -99,7 +99,7 @@ class BookingConfirmationNotificationTest extends TestCase
         $this->assertSame(0, Rental::count());
         $this->assertSame(0, $this->confirmationCount());
         foreach ([$owner, $renter] as $user) {
-            $this->assertSame(1, $user->notifications()->where('data->type', NotificationType::RequestApproved->value)->count());
+            $this->assertSame(1, $user->notifications()->where('data->type', NotificationType::AgreementReady->value)->count());
         }
 
         $first = $ownerFirst ? $owner : $renter;

@@ -236,7 +236,7 @@ class ListingManagementFlowTest extends TestCase
         $expired = $this->listing($owner, [
             'name' => 'Expired Camera',
             'available_from' => now()->subDays(3)->toDateString(),
-            'available_until' => now()->toDateString(),
+            'available_until' => now()->subDay()->toDateString(),
         ]);
         $upcoming = $this->listing($owner, ['name' => 'Upcoming Camera']);
         Livewire::test(Browse::class)->assertSee('Upcoming Camera')->assertDontSee('Expired Camera');

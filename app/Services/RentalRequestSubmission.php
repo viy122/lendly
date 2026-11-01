@@ -20,7 +20,7 @@ class RentalRequestSubmission
 {
     public static function termsFor(Listing $listing): array
     {
-        return $listing->only(['price_per_day', 'price_per_hour', 'allows_daily_rentals', 'min_rental_duration_hours', 'max_rental_duration_hours', 'available_time_from', 'available_time_until', 'security_deposit', 'rental_rules'])
+        return $listing->only(['price_per_day', 'price_per_hour', 'allows_daily_rentals', 'max_rental_duration_days', 'available_time_from', 'available_time_until', 'security_deposit', 'rental_rules'])
             // A current read sees rates committed while this transaction waited for participant locks.
             + ['commission_rate' => CommissionSetting::query()->sharedLock()->firstOrCreate([], ['commission_rate' => 10.00])->commission_rate];
     }
@@ -53,7 +53,7 @@ class RentalRequestSubmission
             }
             $listing = Listing::withTrashed()->whereKey($listingId)->lockForUpdate()->first();
             abort_unless($listing && $listing->owner_id === $owner->id, 403);
-            if ($listing->trashed() || ! $listing->isPublished() || ! $listing->is_available || ! $listing->hasRequestableDates()) {
+            if (! $listing->acceptsNewRequests()) {
                 throw ValidationException::withMessages(['listing' => 'This item is no longer available for rent. Please choose another item.']);
             }
             $period = RentalPeriod::attributes($listing, $details);

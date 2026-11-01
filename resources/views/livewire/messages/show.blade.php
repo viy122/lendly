@@ -58,7 +58,8 @@
         </div>
 
         <form wire:submit="send" class="flex shrink-0 items-center gap-3 border-t border-slate-100 bg-white px-5 py-4">
-            <input type="text" wire:model="body" aria-label="Message" maxlength="2000" placeholder="Type a message..." autocomplete="off" class="min-w-0 flex-1 rounded-full border-0 bg-slate-100 px-5 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500">
+            <label for="chat-message-body" class="text-xs font-medium text-slate-600">Message <x-required-mark /></label>
+            <input id="chat-message-body" type="text" wire:model="body" aria-label="Message" maxlength="2000" placeholder="Type a message..." autocomplete="off" class="min-w-0 flex-1 rounded-full border-0 bg-slate-100 px-5 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500">
             <button type="submit" aria-label="Send message" title="Send message" wire:loading.attr="disabled" wire:target="send" class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm transition hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:opacity-50"><x-icon name="paper-airplane" class="h-5 w-5" aria-hidden="true" /></button>
         </form>
         <x-input-error :messages="$errors->get('body')" class="mx-4 mb-3" />

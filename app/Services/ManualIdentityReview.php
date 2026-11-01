@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\NotificationType;
 use App\Models\IdentitySubmission;
 use App\Models\User;
+use App\Notifications\TalaNotification;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
@@ -30,6 +32,7 @@ class ManualIdentityReview
                 IdentitySubmission::where('user_id', $member->id)->where('status', 'pending')->where('created_at', '<=', now()->subDays(30))
                     ->get()->each(function ($expired) {
                         $expired->update(['status' => 'cancelled']);
+                        $expired->notifyProgress();
                         $expired->purgeDocuments();
                     });
             });
@@ -67,10 +70,19 @@ class ManualIdentityReview
                     throw ValidationException::withMessages(['identity' => 'Your account or review status changed. Refresh the page and try again.']);
                 }
 
-                return IdentitySubmission::create([
+                $submission = IdentitySubmission::create([
                     'user_id' => $fresh->id, 'status' => 'pending', ...$paths, 'profile_hash' => $fingerprint,
                     'face_similarity' => $score, 'consented_at' => now(),
                 ]);
+                $submission->notifyProgress();
+                foreach (User::where('role', 'admin')->whereNotNull('email_verified_at')->get() as $reviewer) {
+                    if (! $reviewer->isSuspended()) {
+                        $reviewer->notify(new TalaNotification(NotificationType::VerificationUpdate->value,
+                            'Identity review awaiting action', 'A member submitted an identity review. Open the private review queue to inspect it.', route('admin.identity-submissions.index')));
+                    }
+                }
+
+                return $submission;
             });
         } catch (Throwable $exception) {
             Storage::disk('local')->delete($paths);
@@ -122,6 +134,7 @@ class ManualIdentityReview
                     'identity_reference' => 'manual-review:'.$submission->id])->save();
             }
             $submission->update(['status' => $decision, 'reviewed_by' => $reviewer->id, 'reviewed_at' => now(), 'review_notes' => trim($notes) ?: null]);
+            $submission->notifyProgress();
             $submission->purgeDocuments();
 
             return $submission->refresh();

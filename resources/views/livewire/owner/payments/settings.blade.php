@@ -8,7 +8,7 @@
 
         <div class="rounded-2xl border border-blue-100 bg-blue-50 p-5 text-sm leading-6 text-blue-900">
             <p class="font-semibold">Your wallet, your payment QR</p>
-            <p class="mt-1">Upload the payment QR from your own wallet app and check the recipient name. Renters pay outside Lendly and submit proof. You must confirm the funds arrived before the final admin review; uploading a QR or proof does not mark a rental paid.</p>
+            <p class="mt-1">Upload the payment QR from your own wallet app and check the recipient name. Renters pay outside Lendly and submit proof. You must check your wallet and confirm the funds arrived; uploading a QR or proof does not mark a rental paid.</p>
         </div>
 
         <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
@@ -25,7 +25,7 @@
                         </div>
                     @endif
                     <div>
-                        <x-input-label for="owner-payment-provider" value="E-wallet" />
+                        <x-input-label required for="owner-payment-provider" value="E-wallet" />
                         <select id="owner-payment-provider" wire:model="provider" class="mt-2 min-h-11 w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500" aria-invalid="{{ $errors->has('provider') ? 'true' : 'false' }}">
                             <option value="maya">Maya</option>
                             <option value="gcash">GCash</option>
@@ -33,7 +33,7 @@
                         <x-input-error :messages="$errors->get('provider')" class="mt-2" />
                     </div>
                     <div>
-                        <x-input-label for="owner-payment-account-name" value="Wallet account name" />
+                        <x-input-label required for="owner-payment-account-name" value="Wallet account name" />
                         <x-text-input id="owner-payment-account-name" wire:model="account_name" type="text" maxlength="120" required autocomplete="name" class="mt-2 min-h-11 w-full" aria-describedby="owner-payment-name-help" aria-invalid="{{ $errors->has('account_name') ? 'true' : 'false' }}" />
                         <p id="owner-payment-name-help" class="mt-2 text-xs leading-5 text-slate-500">Enter the recipient name renters should see in their wallet app.</p>
                         <x-input-error :messages="$errors->get('account_name')" class="mt-2" />
@@ -45,7 +45,7 @@
                         <x-input-error :messages="$errors->get('instructions')" class="mt-2" />
                     </div>
                     <div>
-                        <x-input-label for="owner-payment-qr" value="Your payment QR image" />
+                        <x-input-label :required="$enabled && ! $settings?->qr_path" for="owner-payment-qr" value="Your payment QR image" />
                         <input id="owner-payment-qr" wire:model="qr_image" type="file" accept="image/jpeg,image/png" class="mt-2 block w-full rounded-lg border border-slate-300 bg-white text-sm text-slate-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-blue-50 file:px-4 file:py-3 file:font-semibold file:text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100" aria-describedby="owner-payment-qr-help" aria-invalid="{{ $errors->has('qr_image') ? 'true' : 'false' }}" />
                         <p id="owner-payment-qr-help" class="mt-2 text-xs leading-5 text-slate-500">JPG or PNG, up to 5 MB and 4096 × 4096 pixels. Use a clear QR image from your own Maya or GCash wallet.</p>
                         <p wire:loading wire:target="qr_image" role="status" class="mt-2 text-sm text-blue-700">Uploading your QR image…</p>
@@ -58,7 +58,7 @@
                         <input wire:model="enabled" type="checkbox" class="mt-0.5 h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" aria-describedby="owner-payment-enabled-help" />
                         <span class="text-sm font-semibold leading-6 text-slate-700">Use this wallet for new booking payment instructions</span>
                     </label>
-                    <p id="owner-payment-enabled-help" class="text-xs leading-6 text-slate-500">When disabled, new payment instructions use the platform’s available payment method. Bookings that already received payment instructions keep their original recipient and QR, including after replacement or removal.</p>
+                    <p id="owner-payment-enabled-help" class="text-xs leading-6 text-slate-500">When disabled, new owner-wallet bookings cannot receive payment instructions until your wallet is enabled. Bookings that already received payment instructions keep their original recipient and QR, including after replacement or removal.</p>
                     <x-input-error :messages="$errors->get('enabled')" />
                     <div class="flex justify-end border-t border-slate-100 pt-5">
                         <x-primary-button class="min-h-11" wire:loading.attr="disabled" wire:target="save,removeQr,qr_image">Save payment QR settings</x-primary-button>
@@ -82,7 +82,7 @@
                         <p class="mt-2 text-xs leading-5 text-slate-500">Choose your wallet image and save it to see a preview here.</p>
                     </div>
                 @endif
-                <p class="mt-5 border-t border-slate-100 pt-4 text-xs leading-6 text-slate-500">For wallet payments, you receive the full booking total, including the platform fee and refundable deposit. Platform-fee remittance and deposit refunds remain manual.</p>
+                <p class="mt-5 border-t border-slate-100 pt-4 text-xs leading-6 text-slate-500">For wallet payments, you receive the full booking total, including the processing fee and refundable deposit. Processing-fee remittance and deposit refunds remain manual.</p>
             </x-rental-panel>
         </div>
     </div>

@@ -103,7 +103,7 @@ new #[Layout('layouts.guest')] class extends Component
 
     <form wire:submit="login" class="space-y-5">
         <div>
-            <label for="email" class="mb-2 block text-sm font-semibold text-slate-700">Email address</label>
+            <label for="email" class="mb-2 block text-sm font-semibold text-slate-700">Email address <x-required-mark /></label>
             <div class="group relative">
                 <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400 transition group-focus-within:text-blue-600">
                     <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 5.75A1.75 1.75 0 0 1 4.75 4h10.5A1.75 1.75 0 0 1 17 5.75v8.5A1.75 1.75 0 0 1 15.25 16H4.75A1.75 1.75 0 0 1 3 14.25v-8.5Z" stroke="currentColor" stroke-width="1.5"/><path d="m4 6 5.06 3.65a1.6 1.6 0 0 0 1.88 0L16 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -115,7 +115,7 @@ new #[Layout('layouts.guest')] class extends Component
 
         <div>
             <div class="mb-2 flex items-center justify-between gap-4">
-                <label for="password" class="block text-sm font-semibold text-slate-700">Password</label>
+                <label for="password" class="block text-sm font-semibold text-slate-700">Password <x-required-mark /></label>
                 @if (Route::has('password.request'))
                     <a href="{{ route('password.request') }}" wire:navigate class="text-xs font-semibold text-blue-600 transition hover:text-blue-800">Forgot password?</a>
                 @endif

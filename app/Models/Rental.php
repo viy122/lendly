@@ -9,6 +9,7 @@ use App\Enums\FulfillmentMethod;
 use App\Enums\RentalRequestStatus;
 use App\Enums\RentalStatus;
 use App\Enums\ReviewType;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -224,13 +225,24 @@ class Rental extends Model
     public function isOverdue(): bool
     {
         return $this->status === RentalStatus::Overdue
-            || ($this->isActive() && ($this->rental_unit === 'hour' ? $this->ends_at->lt(now()) : $this->end_date->lt(today())));
+            || ($this->isActive() && $this->returnTimeHasPassed());
+    }
+
+    public function returnTimeHasPassed(): bool
+    {
+        return $this->ends_at ? $this->ends_at->lt(now()) : $this->end_date->toDateString() < now('Asia/Manila')->toDateString();
+    }
+
+    public function scopePastReturnTime(Builder $query): Builder
+    {
+        return $query->where(fn ($due) => $due->where('ends_at', '<', now())
+            ->orWhere(fn ($legacy) => $legacy->whereNull('ends_at')->whereDate('end_date', '<', today('Asia/Manila'))));
     }
 
     public function currentOverdueDays(): int
     {
         return $this->isOverdue()
-            ? max(0, (int) $this->end_date->diffInDays(today(), false))
+            ? ($this->ends_at ? max(0, (int) ceil($this->ends_at->diffInMinutes(now(), false) / 1440)) : max(0, (int) $this->end_date->diffInDays(Carbon::parse(now('Asia/Manila')->toDateString()), false)))
             : (int) $this->days_overdue;
     }
 
@@ -321,8 +333,8 @@ class Rental extends Model
 
         return match ($status) {
             RentalStatus::Overdue->value => $query->where(fn ($q) => $q->where('status', RentalStatus::Overdue)
-                ->orWhere(fn ($active) => $active->where('status', RentalStatus::Active)->where(fn ($due) => $due->where(fn ($hourly) => $hourly->where('rental_unit', 'hour')->where('ends_at', '<', now()))->orWhere(fn ($daily) => $daily->where('rental_unit', 'day')->whereDate('end_date', '<', today()))))),
-            RentalStatus::Active->value => $query->where('status', RentalStatus::Active)->where(fn ($due) => $due->where(fn ($hourly) => $hourly->where('rental_unit', 'hour')->where('ends_at', '>=', now()))->orWhere(fn ($daily) => $daily->where('rental_unit', 'day')->whereDate('end_date', '>=', today()))),
+                ->orWhere(fn ($active) => $active->where('status', RentalStatus::Active)->pastReturnTime())),
+            RentalStatus::Active->value => $query->where('status', RentalStatus::Active)->where(fn ($due) => $due->where('ends_at', '>=', now())->orWhere(fn ($legacy) => $legacy->whereNull('ends_at')->whereDate('end_date', '>=', today('Asia/Manila')))),
             default => $query->where('status', $status),
         };
     }

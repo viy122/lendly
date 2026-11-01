@@ -57,7 +57,7 @@ new class extends Component
                 @if (auth()->user()->google_id)
                     <p class="mb-4 text-sm leading-6 text-slate-600">If you only sign in with Google, sign out and use <strong>Forgot password?</strong> on the login page to set a Lendly password before confirming deletion.</p>
                 @endif
-                <x-input-label for="delete_account_password" value="{{ __('Password') }}" />
+                <x-input-label required for="delete_account_password" value="{{ __('Password') }}" />
 
                 <x-password-input
                     wire:model="password"

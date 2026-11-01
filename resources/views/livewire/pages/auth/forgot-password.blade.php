@@ -28,7 +28,7 @@ new #[Layout('layouts.guest')] class extends Component
 
     <form wire:submit="sendPasswordResetCode">
         <div>
-            <x-input-label for="email" :value="__('Email')" />
+            <x-input-label required for="email" :value="__('Email')" />
             <x-text-input wire:model="email" id="email" class="block mt-1 w-full" type="email" name="email" required autofocus autocomplete="username" />
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>

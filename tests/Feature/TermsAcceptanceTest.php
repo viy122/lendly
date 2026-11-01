@@ -84,12 +84,12 @@ class TermsAcceptanceTest extends TestCase
         Livewire::actingAs($owner)->test(OwnerRequests::class)->call('approve', $request->id)->assertHasNoErrors();
         $request->refresh();
 
-        $this->assertSame(RentalRequestStatus::Approved, $request->status);
+        $this->assertSame(RentalRequestStatus::AwaitingAgreement, $request->status);
         $this->assertNull($request->renter_terms_accepted_at);
         $this->assertNull($request->owner_terms_accepted_at);
         $this->assertNotNull($request->agreement_terms);
         $this->assertSame(0, Rental::count());
-        Livewire::actingAs($owner)->test(OwnerRequests::class)->set('filter', 'approved')->assertSee('Review rental agreement');
+        Livewire::actingAs($owner)->test(OwnerRequests::class)->set('filter', 'awaiting_agreement')->assertSee('Review rental agreement');
         Livewire::actingAs($renter)->test(RenterRequests::class)->assertSee('Review rental agreement');
     }
 

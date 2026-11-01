@@ -7,6 +7,7 @@ use App\Enums\ListingStatus;
 use App\Enums\RentalStatus;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
+use App\Livewire\Concerns\FiltersRecords;
 use App\Models\Dispute;
 use App\Models\Listing;
 use App\Models\Rental;
@@ -20,10 +21,18 @@ use Livewire\WithPagination;
 #[Layout('layouts.app')]
 class Dashboard extends Component
 {
+    use FiltersRecords;
     use WithPagination;
 
     #[Url]
     public string $search = '';
+
+    public string $userStatus = 'all';
+
+    public function updatingUserStatus(): void
+    {
+        $this->resetPage();
+    }
 
     public function updatingSearch(): void
     {
@@ -48,13 +57,13 @@ class Dashboard extends Component
     public function render(): View
     {
         abort_unless(auth()->user()?->isAdmin(), 403);
-        $users = User::query()
+        $users = $this->filterRecords(User::query()
+            ->when($this->userStatus !== 'all', fn ($query) => $query->where('status', $this->userStatus))
             ->when($this->search, fn ($query) => $query->where(fn ($q) => $q
                 ->where('name', 'like', "%{$this->search}%")
                 ->orWhere('email', 'like', "%{$this->search}%")
             ))
-            ->orderByDesc('created_at')
-            ->paginate(10);
+            ->orderByDesc('created_at'), [], [])->paginate(10);
 
         $paidRentals = Rental::query()->whereNotNull('paid_at');
 

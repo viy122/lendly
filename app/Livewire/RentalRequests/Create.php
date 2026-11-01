@@ -9,6 +9,7 @@ use App\Services\RentalCart;
 use App\Services\RentalPeriod;
 use App\Services\RentalRequestSubmission;
 use App\Services\RentalWaitlist;
+use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -43,14 +44,21 @@ class Create extends Component
     public function mount(Listing $listing, bool $modal = false): void
     {
         $this->authorizeRenter();
-        abort_unless(! $listing->trashed() && $listing->isPublished() && $listing->is_available && $listing->hasRequestableDates(), 404);
+        abort_unless($listing->acceptsNewRequests(), 404);
         abort_if($listing->owner_id === auth()->id(), 403, 'You cannot rent your own listing.');
 
         $this->listing = $listing;
         $this->presentedTerms = RentalRequestSubmission::termsFor($listing);
         $this->modal = $modal;
-        $this->start_date = max(now()->addDay()->toDateString(), $listing->available_from?->toDateString() ?? '');
+        $nextStart = now('Asia/Manila')->startOfHour()->addHour();
+        if ($nextStart->format('H:i') >= $listing->available_time_until) {
+            $nextStart->addDay()->startOfDay();
+        }
+        $this->start_date = max($nextStart->toDateString(), $listing->available_from?->toDateString() ?? '');
         $this->end_date = $this->start_date;
+        $this->start_time = $this->start_date === now('Asia/Manila')->toDateString()
+            ? max($nextStart->format('H:i'), $listing->available_time_from) : $listing->available_time_from;
+        $this->end_time = min(Carbon::parse($this->start_time)->addHour()->format('H:i'), $listing->available_time_until);
         $this->rental_unit = $listing->allows_daily_rentals ? 'day' : 'hour';
 
         $this->fulfillment_method = $listing->pickup_available
@@ -70,6 +78,22 @@ class Create extends Component
             return RentalPeriod::attributes($this->listing, $this->details())['rental_hours'] ?? 0;
         } catch (ValidationException) {
             return 0;
+        }
+    }
+
+    public function latestEndDate(): ?string
+    {
+        try {
+            $limit = Carbon::createFromFormat('!Y-m-d', $this->start_date)->addDays(
+                max(0, $this->listing->max_rental_duration_days - ($this->rental_unit === 'hour' ? 0 : 1))
+            );
+            if ($this->listing->available_until && $limit->gt($this->listing->available_until)) {
+                $limit = $this->listing->available_until;
+            }
+
+            return $limit->toDateString();
+        } catch (\Throwable) {
+            return $this->listing->available_until?->toDateString();
         }
     }
 
@@ -169,6 +193,8 @@ class Create extends Component
 
     public function render(): View
     {
-        return view('livewire.rental-requests.create');
+        return view('livewire.rental-requests.create', [
+            'canJoinWaitlist' => auth()->check() && RentalWaitlist::canJoin(auth()->user(), $this->listing->id, $this->details()),
+        ]);
     }
 }

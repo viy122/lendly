@@ -1,0 +1,64 @@
+{
+  "owner": [
+    {
+      "url": "http://127.0.0.1:8123/owner/listings",
+      "ok": true,
+      "headings": [
+        "My listings"
+      ]
+    },
+    {
+      "url": "http://127.0.0.1:8123/owner/rental-requests",
+      "ok": true,
+      "headings": [
+        "Rental requests"
+      ]
+    },
+    {
+      "url": "http://127.0.0.1:8123/owner/payments",
+      "ok": true,
+      "headings": [
+        "Payment QR settings",
+        "E-wallet payment details",
+        "Saved payment QR"
+      ]
+    }
+  ],
+  "admin": [
+    {
+      "url": "http://127.0.0.1:8123/admin/listings",
+      "ok": true,
+      "headings": [
+        "Listings"
+      ]
+    },
+    {
+      "url": "http://127.0.0.1:8123/admin/identity-submissions",
+      "ok": true,
+      "headings": [
+        "ID reviews"
+      ]
+    },
+    {
+      "url": "http://127.0.0.1:8123/admin/rentals",
+      "ok": true,
+      "headings": [
+        "Transactions"
+      ]
+    },
+    {
+      "url": "http://127.0.0.1:8123/admin/damage-reports",
+      "ok": true,
+      "headings": [
+        "Damage reports"
+      ]
+    },
+    {
+      "url": "http://127.0.0.1:8123/admin/disputes",
+      "ok": true,
+      "headings": [
+        "Disputes"
+      ]
+    }
+  ]
+}

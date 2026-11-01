@@ -18,7 +18,7 @@ class Agreement extends Component
     public function mount(RentalRequest $rentalRequest): void
     {
         $this->authorize('acceptAgreement', $rentalRequest);
-        abort_unless($rentalRequest->isApproved(), 403);
+        abort_unless($rentalRequest->canReviewAgreement(), 403);
         $this->rentalRequest = $rentalRequest;
     }
 

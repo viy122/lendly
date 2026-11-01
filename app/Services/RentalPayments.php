@@ -88,6 +88,9 @@ class RentalPayments
                     'qr_path' => $settings->qr_path,
                 ];
             } else {
+                if (($rental->rentalRequest?->agreement_terms['payment_review'] ?? null) === 'owner') {
+                    return null;
+                }
                 $platform = OfflinePaymentSetting::current();
                 if (! $platform?->enabled || trim($platform->instructions ?? '') === '') {
                     return null;
@@ -135,7 +138,7 @@ class RentalPayments
                     'amount' => $rental->total_amount, 'proof_path' => $path, 'status' => 'pending',
                 ]);
                 $submission->forceFill(['payment_destination' => $destination])->save();
-                foreach (User::where('role', 'admin')->whereNotNull('email_verified_at')->get() as $admin) {
+                foreach (($destination['source'] === 'platform' ? User::where('role', 'admin')->whereNotNull('email_verified_at')->get() : collect()) as $admin) {
                     if (Gate::forUser($admin)->allows('viewAny', Rental::class)) {
                         $admin->notify(new TalaNotification(NotificationType::PaymentSubmitted->value, 'Payment proof awaiting verification',
                             'Review payment proof for booking #'.$rental->id.'.', route('admin.rentals.show', $rental)));
@@ -168,17 +171,52 @@ class RentalPayments
             abort_unless($submission, 404);
             $destination = $submission->payment_destination;
             abort_unless(self::activeMember($owner) && ($destination['source'] ?? null) === 'owner_wallet'
-                && ($destination['payee_user_id'] ?? null) === $owner->id, 403);
+                && ($destination['payee_user_id'] ?? null) === $owner->id && $rental->owner_id === $owner->id, 403);
+            if ($submission->status === 'verified' && $submission->recipient_confirmed_at && $rental->payment()->where('payment_submission_id', $submission->id)->exists()) {
+                return;
+            }
             abort_unless($submission->status === 'pending' && $rental->isPaymentPending()
                 && $rental->paid_at === null && $rental->hasAcceptedAgreement()
                 && ! $rental->payment()->exists() && ! $rental->securityDeposit()->exists(), 403);
             validator(['funds_received' => $fundsReceived], ['funds_received' => ['accepted']])->validate();
-            if ($submission->amount !== $rental->total_amount || ! self::storedFile($submission->proof_path)) {
+            if ($submission->amount !== $rental->total_amount || ! self::storedFile($submission->proof_path)
+                || Payment::where('external_reference', $submission->external_reference)->exists()) {
                 throw ValidationException::withMessages(['funds_received' => 'The full booking amount and stored payment proof are required before acknowledging receipt.']);
             }
-            if ($submission->recipient_confirmed_at === null) {
-                $submission->forceFill(['recipient_confirmed_at' => now()])->save();
+            $paidAt = now();
+            Payment::create(['rental_id' => $rental->id, 'transaction_reference' => Payment::generateReference(),
+                'amount' => $rental->total_amount, 'status' => 'paid', 'paid_at' => $paidAt,
+                'method' => $submission->method, 'external_reference' => $submission->external_reference,
+                'payment_submission_id' => $submission->id, 'verified_by' => $owner->id]);
+            SecurityDeposit::create(['rental_id' => $rental->id, 'amount' => $rental->security_deposit]);
+            $submission->forceFill(['recipient_confirmed_at' => $paidAt, 'status' => 'verified',
+                'reviewed_by' => $owner->id, 'reviewed_at' => $paidAt, 'review_notes' => 'Owner confirmed receipt of the full booking amount.'])->save();
+            $rental->update(['status' => RentalStatus::Paid, 'paid_at' => $paidAt]);
+            foreach ([$rental->renter, $rental->owner] as $party) {
+                if (self::activeMember($party)) {
+                    $party->notify(new TalaNotification(NotificationType::PaymentConfirmed->value, 'Payment confirmed',
+                        'The owner confirmed the full payment for booking #'.$rental->id.'. The booking is paid.',
+                        route(($party->id === $rental->owner_id ? 'owner' : 'renter').'.rentals.show', $rental)));
+                }
             }
+        });
+    }
+
+    public static function rejectOwnerProof(Rental $rental, User $owner, int $submissionId, string $reason): void
+    {
+        DB::transaction(function () use ($rental, $owner, $submissionId, $reason) {
+            $owner = User::withTrashed()->find($owner->id);
+            $rental = Rental::lockForUpdate()->findOrFail($rental->id);
+            $submission = $rental->paymentSubmissions()->lockForUpdate()->findOrFail($submissionId);
+            abort_unless(self::activeMember($owner) && $owner->id === $rental->owner_id
+                && ($submission->payment_destination['source'] ?? null) === 'owner_wallet'
+                && ($submission->payment_destination['payee_user_id'] ?? null) === $owner->id
+                && $submission->status === 'pending' && $submission->recipient_confirmed_at === null
+                && $rental->isPaymentPending() && ! $rental->payment()->exists(), 403);
+            validator(['payment_rejection_reason' => trim($reason)], ['payment_rejection_reason' => ['required', 'string', 'max:1000']])->validate();
+            $submission->update(['status' => 'rejected', 'reviewed_by' => $owner->id, 'reviewed_at' => now(), 'review_notes' => trim($reason)]);
+            $rental->renter->notify(new TalaNotification(NotificationType::PaymentRejected->value, 'Payment proof needs correction',
+                trim($reason), route('renter.rentals.show', $rental)));
         });
     }
 

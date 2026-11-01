@@ -131,7 +131,7 @@ class RentalRequirementsFixTest extends TestCase
             app('events')->forget('eloquent.creating: '.Rental::class);
         }
 
-        $this->assertSame('approved', $request->fresh()->status->value);
+        $this->assertSame('awaiting_agreement', $request->fresh()->status->value);
         $this->assertNotNull($request->fresh()->owner_terms_accepted_at);
         $this->assertNull($request->fresh()->renter_terms_accepted_at);
         $this->assertSame(0, Rental::count());
@@ -177,6 +177,7 @@ class RentalRequirementsFixTest extends TestCase
         $rental = $this->booking($owner, $renter);
         Storage::fake('local');
         OfflinePaymentSetting::create(['method' => 'bank_transfer', 'instructions' => 'Test payment instructions', 'enabled' => true]);
+        $rental->rentalRequest->update(['agreement_terms' => ['payment_review' => 'platform_legacy'] + $rental->rentalRequest->agreement_terms]);
         $submission = RentalPayments::submit($rental, $renter, 'TRANSFER-STALE', $this->paymentProof());
         $admin = User::factory()->admin()->create();
         $first = $rental->fresh();
@@ -203,7 +204,7 @@ class RentalRequirementsFixTest extends TestCase
         $interleaved = false;
 
         RentalRequest::updating(function (RentalRequest $request) use ($first, $second, &$interleaved) {
-            if ($request->id === $first->id && $request->status->value === 'approved' && ! $interleaved) {
+            if ($request->id === $first->id && $request->status->value === 'awaiting_agreement' && ! $interleaved) {
                 $interleaved = true;
                 $otherAction = app(Approvals::class);
                 $otherAction->approve($second->id);
@@ -218,9 +219,10 @@ class RentalRequirementsFixTest extends TestCase
         }
 
         $this->assertTrue($interleaved, 'The controlled interleaving did not run.');
-        $approved = RentalRequest::where('listing_id', $listing->id)->where('status', 'approved')->sole();
+        $approved = RentalRequest::where('listing_id', $listing->id)->where('status', 'awaiting_agreement')->sole();
         RentalAgreement::accept($approved, $owner);
         RentalAgreement::accept($approved, $approved->renter);
+        $this->assertSame('approved', $approved->fresh()->status->value);
         $this->assertSame(1, Rental::where('listing_id', $listing->id)->count());
     }
 

@@ -37,7 +37,7 @@
                 <h3><span>02.</span> Fees and payment</h3>
                 <dl class="rental-agreement-charges">
                     <dt>Rental fee</dt><dd>₱{{ number_format($terms['rental_fee'], 2) }}</dd>
-                    <dt>Platform fee (processing · {{ $terms['commission_rate'] }}%)</dt><dd>₱{{ number_format($terms['commission_amount'], 2) }}</dd>
+                    <dt>Processing fee ( {{ $terms['commission_rate'] }}%)</dt><dd>₱{{ number_format($terms['commission_amount'], 2) }}</dd>
                     <dt>Refundable security deposit</dt><dd>₱{{ number_format($terms['security_deposit'], 2) }}</dd>
                     <dt class="rental-agreement-total">Total due</dt><dd class="rental-agreement-total">₱{{ number_format($terms['total_amount'], 2) }}</dd>
                 </dl>
@@ -60,7 +60,7 @@
                     before the rental start date is free. Cancellation less than {{ $terms['cancellation_window_hours'] }} hours before
                     the start date incurs {{ $terms['cancellation_fee_percentage'] }}% of the rental fee
                     (₱{{ number_format($terms['rental_fee'] * $terms['cancellation_fee_percentage'] / 100, 2) }}).
-                    The fee is calculated from the rental fee, excluding the platform fee and security deposit.
+                    The fee is calculated from the rental fee, excluding the processing fee and security deposit.
                 </p>
                 @endif
             </section>

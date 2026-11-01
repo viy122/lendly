@@ -6,17 +6,16 @@ use App\Enums\ListingStatus;
 use App\Models\Listing;
 
 /**
- * Basic, database-driven market price insight (spec section 8) — no price
- * prediction model, just descriptive stats over existing similar listings.
+ * Daily-rate comparisons and an original-price-based suggestion.
  */
 class MarketInsight
 {
     /**
-     * @return array{count: int, average: ?float, min: ?float, max: ?float, suggested: ?float}
+     * @return array{count: int, average: ?float, min: ?float, max: ?float, suggested: ?float, basis: string, ratio: ?float, ratio_count: int}
      */
-    public static function forListing(int $categoryId, ?int $subcategoryId, ?int $excludingListingId = null): array
+    public static function forListing(?int $categoryId, ?int $subcategoryId, ?int $excludingListingId = null, ?float $originalPrice = null): array
     {
-        $similar = Listing::query()
+        $listings = Listing::query()
             ->where('status', ListingStatus::Published)
             ->where(function ($query) use ($categoryId, $subcategoryId) {
                 $query->where('category_id', $categoryId);
@@ -25,12 +24,24 @@ class MarketInsight
                     $query->orWhere('subcategory_id', $subcategoryId);
                 }
             })
+            ->when(! $categoryId, fn ($query) => $query->whereRaw('1 = 0'))
             ->when($excludingListingId, fn ($query) => $query->whereKeyNot($excludingListingId))
-            ->pluck('price_per_day')
-            ->map(fn ($price) => (float) $price);
+            ->get(['price_per_day', 'estimated_original_price']);
+        $similar = $listings->pluck('price_per_day')->map(fn ($price) => (float) $price);
+
+        $ratios = $listings->filter(fn ($listing) => $listing->estimated_original_price > 0 && $listing->price_per_day > 0)
+            ->map(fn ($listing) => (float) $listing->price_per_day / (float) $listing->estimated_original_price);
+        $hasOriginal = $originalPrice !== null && is_finite($originalPrice) && $originalPrice > 0;
+        $ratio = $hasOriginal ? ($ratios->isNotEmpty() ? (float) $ratios->median() : 0.01) : null;
+        $estimate = $hasOriginal ? round(max(0.01, $originalPrice * $ratio), 2) : null;
+        $explanation = [
+            'basis' => $hasOriginal ? ($ratios->isNotEmpty() ? 'original-price-ratio' : 'starting-estimate') : ($similar->isNotEmpty() ? 'market-average' : 'none'),
+            'ratio' => $ratio,
+            'ratio_count' => $hasOriginal ? $ratios->count() : 0,
+        ];
 
         if ($similar->isEmpty()) {
-            return ['count' => 0, 'average' => null, 'min' => null, 'max' => null, 'suggested' => null];
+            return ['count' => 0, 'average' => null, 'min' => null, 'max' => null, 'suggested' => $estimate] + $explanation;
         }
 
         $average = round($similar->avg(), 2);
@@ -40,8 +51,8 @@ class MarketInsight
             'average' => $average,
             'min' => round($similar->min(), 2),
             'max' => round($similar->max(), 2),
-            'suggested' => $average,
-        ];
+            'suggested' => $estimate ?? $average,
+        ] + $explanation;
     }
 
     /**

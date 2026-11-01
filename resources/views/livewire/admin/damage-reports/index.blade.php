@@ -1,5 +1,6 @@
 <div>
     <x-page-header eyebrow="Administration" title="Damage reports" subtitle="Review damage claims filed by owners. Disputed claims await resolution in a later phase." />
+    <div class="px-4 sm:px-6 lg:px-8"><x-record-controls /></div>
 
     <div class="w-full px-4 py-8 sm:px-6 lg:px-8">
         <div class="flex flex-wrap gap-2">

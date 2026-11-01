@@ -20,7 +20,7 @@
         </div>
         @if ($reviewer && $cancellation->status === 'pending')
             <form wire:submit="reviewCancellation(true)" class="space-y-3">
-                <x-input-label for="cancellation-review-notes" value="Cancellation review notes" />
+                <x-input-label required for="cancellation-review-notes" value="Cancellation review notes" />
                 <textarea id="cancellation-review-notes" wire:model="cancellation_review_notes" required maxlength="1000" rows="3" class="w-full rounded-lg border-slate-300"></textarea>
                 <x-input-error :messages="$errors->get('review_notes')" />
                 <div class="flex flex-wrap gap-3">

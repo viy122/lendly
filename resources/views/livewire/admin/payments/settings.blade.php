@@ -20,24 +20,24 @@
         <x-rental-panel title="Processing fees and reservation rules" icon="calculator" subtitle="These rates apply to future quotes and agreements. Previously accepted agreements keep their saved terms.">
             <form wire:submit="saveFees" class="mt-4 space-y-4">
                 <div class="grid gap-4 sm:grid-cols-2">
-                    <div><x-input-label for="processing-rate" value="Processing fee (%)" /><x-text-input id="processing-rate" type="number" min="0" max="100" step="0.01" wire:model="commission_rate" class="mt-1 w-full" /><x-input-error :messages="$errors->get('commission_rate')" /></div>
-                    <div><x-input-label for="cancellation-rate" value="Cancellation fee (%)" /><x-text-input id="cancellation-rate" type="number" min="0" max="100" step="0.01" wire:model="cancellation_fee_percentage" class="mt-1 w-full" /><x-input-error :messages="$errors->get('cancellation_fee_percentage')" /></div>
-                    <div><x-input-label for="cancellation-hours" value="Late cancellation window (hours)" /><x-text-input id="cancellation-hours" type="number" min="1" max="168" wire:model="cancellation_window_hours" class="mt-1 w-full" /><x-input-error :messages="$errors->get('cancellation_window_hours')" /></div>
-                    <div><x-input-label for="payment-hours" value="Payment reservation limit (hours)" /><x-text-input id="payment-hours" type="number" min="1" max="168" wire:model="payment_window_hours" class="mt-1 w-full" /><x-input-error :messages="$errors->get('payment_window_hours')" /></div>
+                    <div><x-input-label required for="processing-rate" value="Processing fee (%)" /><x-text-input id="processing-rate" type="number" min="0" max="100" step="0.01" wire:model="commission_rate" class="mt-1 w-full" /><x-input-error :messages="$errors->get('commission_rate')" /></div>
+                    <div><x-input-label required for="cancellation-rate" value="Cancellation fee (%)" /><x-text-input id="cancellation-rate" type="number" min="0" max="100" step="0.01" wire:model="cancellation_fee_percentage" class="mt-1 w-full" /><x-input-error :messages="$errors->get('cancellation_fee_percentage')" /></div>
+                    <div><x-input-label required for="cancellation-hours" value="Late cancellation window (hours)" /><x-text-input id="cancellation-hours" type="number" min="1" max="168" wire:model="cancellation_window_hours" class="mt-1 w-full" /><x-input-error :messages="$errors->get('cancellation_window_hours')" /></div>
+                    <div><x-input-label required for="payment-hours" value="Payment reservation limit (hours)" /><x-text-input id="payment-hours" type="number" min="1" max="168" wire:model="payment_window_hours" class="mt-1 w-full" /><x-input-error :messages="$errors->get('payment_window_hours')" /></div>
                 </div>
-                <p class="text-sm text-slate-500">Both percentage fees use the rental charge only. The processing fee is the existing platform fee, charged once. Approved cancellations return the processing fee and deposit as part of the manual refund, less the rental-only cancellation fee. Unpaid reservations expire without a fee.</p>
+                <p class="text-sm text-slate-500">Both percentage fees use the rental charge only. The processing fee is charged once on the rental charge. Approved cancellations return the processing fee and deposit as part of the manual refund, less the rental-only cancellation fee. Unpaid reservations expire without a fee.</p>
                 <x-primary-button wire:loading.attr="disabled" wire:target="saveFees">Save fee rules</x-primary-button>
             </form>
         </x-rental-panel>
         <x-rental-panel title="Supported payment method" icon="calculator">
             <form wire:submit="save" class="mt-4 space-y-4">
                 <div>
-                    <x-input-label for="payment-method" value="Payment method" />
+                    <x-input-label required for="payment-method" value="Payment method" />
                     <select id="payment-method" wire:model="method" class="mt-1 w-full rounded-lg border-slate-300"><option value="bank_transfer">Bank transfer</option><option value="cash">Cash collection</option></select>
                     <x-input-error :messages="$errors->get('method')" />
                 </div>
                 <div>
-                    <x-input-label for="payment-instructions" value="Payment instructions" />
+                    <x-input-label required for="payment-instructions" value="Payment instructions" />
                     <p class="mt-1 text-sm text-slate-500">For bank transfers, include the bank, account name and account number. For cash, include the collection location, hours and how to obtain an official receipt. State how the full booking total is collected.</p>
                     <textarea id="payment-instructions" wire:model="instructions" rows="7" maxlength="3000" class="mt-2 w-full rounded-lg border-slate-300"></textarea>
                     <x-input-error :messages="$errors->get('instructions')" />

@@ -18,6 +18,8 @@ class SecurityDeposit extends Model
         'amount',
         'deducted_amount',
         'status',
+        'released_at',
+        'received_at',
     ];
 
     protected function casts(): array
@@ -26,6 +28,8 @@ class SecurityDeposit extends Model
             'status' => SecurityDepositStatus::class,
             'amount' => 'decimal:2',
             'deducted_amount' => 'decimal:2',
+            'released_at' => 'datetime',
+            'received_at' => 'datetime',
         ];
     }
 

@@ -56,19 +56,19 @@ new class extends Component
         @endif
         <div class="account-profile-fields account-profile-password-fields">
             <div class="account-profile-current-password">
-                <x-input-label for="update_password_current_password" :value="__('Current Password')" />
+                <x-input-label required for="update_password_current_password" :value="__('Current Password')" />
                 <x-password-input wire:model="current_password" id="update_password_current_password" name="current_password" type="password" class="mt-2 block min-h-11 w-full bg-slate-50/50" autocomplete="current-password" required />
                 <x-input-error :messages="$errors->get('current_password')" class="mt-2" />
             </div>
 
             <div>
-                <x-input-label for="update_password_password" :value="__('New Password')" />
+                <x-input-label required for="update_password_password" :value="__('New Password')" />
                 <x-password-input wire:model="password" id="update_password_password" name="password" type="password" class="mt-2 block min-h-11 w-full bg-slate-50/50" autocomplete="new-password" required strength />
                 <x-input-error :messages="$errors->get('password')" class="mt-2" />
             </div>
 
             <div>
-                <x-input-label for="update_password_password_confirmation" :value="__('Confirm Password')" />
+                <x-input-label required for="update_password_password_confirmation" :value="__('Confirm Password')" />
                 <x-password-input wire:model="password_confirmation" id="update_password_password_confirmation" name="password_confirmation" type="password" class="mt-2 block min-h-11 w-full bg-slate-50/50" autocomplete="new-password" required />
                 <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
             </div>

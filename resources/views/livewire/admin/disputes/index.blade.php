@@ -1,5 +1,6 @@
 <div>
     <x-page-header eyebrow="Administration" title="Disputes" subtitle="Review and resolve disputes raised by renters and owners." />
+    <div class="px-4 sm:px-6 lg:px-8"><x-record-controls /></div>
 
     <div class="w-full px-4 py-8 sm:px-6 lg:px-8">
         @if ($rentalId !== null)
@@ -61,7 +62,7 @@
 
                                     @if ($dispute->status->value === 'resolved')
                                         <p class="mt-2 text-sm text-blue-700">
-                                            Resolved: {{ $dispute->resolution?->label() }} by {{ $dispute->resolvedBy?->name }} on {{ $dispute->resolved_at?->format('M d, Y') }}
+                                            Resolved: {{ $dispute->resolutionLabel() }} by {{ $dispute->resolvedBy?->name }} on {{ $dispute->resolved_at?->format('M d, Y') }}
                                         </p>
                                         @if ($dispute->resolution_notes)
                                             <p class="mt-1 text-sm text-slate-500">{{ $dispute->resolution_notes }}</p>
@@ -79,7 +80,7 @@
                             @if ($resolving === $dispute->id)
                                 <form wire:submit="confirmResolve" class="mt-4 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
                                     <div>
-                                        <x-input-label for="resolution" value="Resolution" />
+                                        <x-input-label required for="resolution" value="Resolution" />
                                         <select wire:model.live="resolution" id="resolution" class="mt-1 block w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                             <option value="">Select a resolution</option>
                                             @foreach (\App\Enums\DisputeResolution::cases() as $option)
@@ -91,9 +92,18 @@
 
                                     @if ($dispute->damage_report_id && $resolution === 'partial_compensation')
                                         <div>
-                                            <x-input-label for="partial_amount" value="Deduction amount (₱)" />
+                                            <x-input-label required for="partial_amount" value="Deduction amount (₱)" />
                                             <x-text-input wire:model="partial_amount" id="partial_amount" type="number" step="0.01" min="0" :max="$dispute->rental->securityDeposit?->amount" class="mt-1 block w-40" />
                                             <x-input-error :messages="$errors->get('partial_amount')" class="mt-2" />
+                                        </div>
+                                    @endif
+
+                                    @if ($resolution === 'other')
+                                        <div>
+                                            <x-input-label required for="other-resolution" value="Specify resolution" />
+                                            <textarea id="other-resolution" wire:model="other_resolution" required maxlength="1000" rows="3" class="mt-1 w-full rounded-lg border-slate-300"></textarea>
+                                            <x-input-error :messages="$errors->get('other_resolution')" />
+                                            <p class="mt-1 text-xs text-slate-500">This explanation is shared with both parties. Choose a listed financial resolution when a refund or damage deduction is required.</p>
                                         </div>
                                     @endif
 

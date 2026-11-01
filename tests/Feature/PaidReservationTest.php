@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Services\RentalAgreement;
 use App\Services\RentalLifecycle;
 use App\Services\RentalPayments;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
@@ -55,7 +56,7 @@ class PaidReservationTest extends TestCase
             'commission_amount' => 30, 'security_deposit' => 500, 'total_amount' => 830,
             'status' => 'approved', 'owner_terms_accepted_at' => now(), 'renter_terms_accepted_at' => now(),
         ]);
-        $request->update(['agreement_terms' => RentalAgreement::termsFor($request)]);
+        $request->update(['agreement_terms' => ['payment_review' => 'platform_legacy'] + RentalAgreement::termsFor($request)]);
         $rental = RentalAgreement::accept($request, $renter);
         OfflinePaymentSetting::create([
             'id' => 1, 'enabled' => true, 'method' => 'bank_transfer',
@@ -167,9 +168,9 @@ class PaidReservationTest extends TestCase
     {
         [, $renter, $admin, $listing, $rental] = $this->bookingFixture();
         $this->recordPayment($rental, $renter, $admin);
-        $this->travelTo($rental->end_date->copy()->endOfDay());
+        $this->travelTo(Carbon::parse($rental->end_date->toDateString(), 'Asia/Manila')->endOfDay());
         $this->assertAvailability($listing, ListingAvailabilityStatus::Reserved);
-        $this->travelTo($rental->end_date->copy()->addDay()->startOfDay());
+        $this->travelTo(Carbon::parse($rental->end_date->toDateString(), 'Asia/Manila')->addDay()->startOfDay());
         $this->assertAvailability($listing, ListingAvailabilityStatus::Available);
         $this->assertSame(0, $listing->paidReservations()->count());
         $this->assertNotNull($rental->fresh()->payment);
@@ -185,7 +186,7 @@ class PaidReservationTest extends TestCase
         $request->owner_terms_accepted_at = now();
         $request->renter_terms_accepted_at = now();
         $request->save();
-        $request->update(['agreement_terms' => RentalAgreement::termsFor($request)]);
+        $request->update(['agreement_terms' => ['payment_review' => 'platform_legacy'] + RentalAgreement::termsFor($request)]);
         $second = RentalAgreement::accept($request, $renter);
         $this->recordPayment($second, $renter, $admin);
         $this->actingAs($renter);
@@ -210,7 +211,7 @@ class PaidReservationTest extends TestCase
         [, $renter, $admin, $listing, $rental] = $this->bookingFixture();
         $this->recordPayment($rental, $renter, $admin);
         $rental->update(['status' => $status]);
-        $this->assertAvailability($listing, ListingAvailabilityStatus::Available);
+        $this->assertAvailability($listing, $status === 'returned' ? ListingAvailabilityStatus::Unavailable : ListingAvailabilityStatus::Available);
         $this->assertSame(0, $listing->paidReservations()->count());
     }
 
@@ -223,7 +224,7 @@ class PaidReservationTest extends TestCase
         $this->assertSame(RentalStatus::Paid, $rental->fresh()->status);
         RentalLifecycle::confirmPickup($rental, $renter);
         $this->assertAvailability($listing, ListingAvailabilityStatus::Reserved);
-        $this->travelTo($rental->end_date->copy()->addDay()->startOfDay());
+        $this->travelTo(Carbon::parse($rental->end_date->toDateString(), 'Asia/Manila')->addDay()->startOfDay());
         $this->assertAvailability($listing, ListingAvailabilityStatus::Rented);
     }
 }

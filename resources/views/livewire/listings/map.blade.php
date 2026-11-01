@@ -9,6 +9,11 @@
         <div x-ref="map" class="h-full w-full"></div>
     </div>
 
+    <div x-cloak x-show="locationNotice" x-transition role="status" aria-live="polite" class="absolute left-4 top-48 z-[540] flex max-w-sm items-start gap-3 rounded-xl border border-emerald-200 bg-white p-4 text-sm text-emerald-900 shadow-lg md:top-24">
+        <p x-text="locationNotice"></p>
+        <button type="button" @click="locationNotice = ''" aria-label="Dismiss location update" class="shrink-0 rounded px-1 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500">×</button>
+    </div>
+
     <div class="pointer-events-none absolute inset-x-0 top-0 z-[500] flex items-start justify-between gap-4 p-3 sm:p-4">
         <div class="pointer-events-auto flex w-full max-w-2xl flex-col gap-2 sm:flex-row">
              <button type="button" @click="$dispatch('toggle-sidebar')" aria-label="Open navigation" class="grid h-11 w-11 shrink-0 place-items-center rounded-md border border-slate-300 bg-white text-slate-600 shadow-lg lg:hidden"><x-icon name="menu" class="h-5 w-5" aria-hidden="true" /></button>
@@ -119,7 +124,7 @@
                 <option value="50">Within 50 km</option>
             </select>
 
-            <button type="button" wire:click="clearLocation" class="grid h-10 w-10 place-items-center rounded-md bg-white text-rose-600 shadow-lg transition hover:bg-rose-50" title="Clear location" aria-label="Clear location">
+            <button type="button" wire:click="clearLocation" @click="locationNotice = ''; locationError = ''" class="grid h-10 w-10 place-items-center rounded-md bg-white text-rose-600 shadow-lg transition hover:bg-rose-50" title="Clear location" aria-label="Clear location">
                 <x-icon name="x-mark" class="h-5 w-5" />
             </button>
         </div>

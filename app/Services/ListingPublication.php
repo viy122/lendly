@@ -19,11 +19,11 @@ class ListingPublication
         }
     }
 
-    public static function rules(): array
+    public static function rules(?int $categoryId = null): array
     {
         return [
-            'category_id' => ['required', 'exists:categories,id'],
-            'subcategory_id' => ['nullable', 'exists:categories,id'],
+            'category_id' => ['required', Rule::exists('categories', 'id')->whereNull('parent_id')],
+            'subcategory_id' => ['nullable', Rule::exists('categories', 'id')->where('parent_id', $categoryId)],
             'name' => ['required', 'string', 'max:255'],
             'brand' => ['nullable', 'string', 'max:255'],
             'model' => ['nullable', 'string', 'max:255'],
@@ -33,8 +33,6 @@ class ListingPublication
             'estimated_original_price' => ['nullable', 'numeric', 'min:0'],
             'price_per_day' => ['required', 'numeric', 'gt:0'],
             'allows_daily_rentals' => ['boolean'],
-            'min_rental_duration_hours' => ['sometimes', 'required', 'integer', 'min:1', 'max:8760'],
-            'max_rental_duration_hours' => ['sometimes', 'required', 'integer', 'gte:min_rental_duration_hours', 'max:8760'],
             'available_time_from' => ['sometimes', 'required', 'date_format:H:i'],
             'available_time_until' => ['sometimes', 'required', 'date_format:H:i', 'after:available_time_from'],
             'price_per_hour' => ['nullable', 'numeric', 'gt:0'],
@@ -77,7 +75,7 @@ class ListingPublication
         $data['photos'] = $listing->images()->pluck('id')->all();
 
         $validator = Validator::make($data, [
-            ...self::rules(),
+            ...self::rules($listing->category_id),
             'photos' => ['array', 'min:1'],
         ], self::messages());
 

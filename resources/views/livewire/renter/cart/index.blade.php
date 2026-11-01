@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-slate-50">
+<div class="min-h-screen bg-slate-50" wire:poll.15s.visible>
     <x-page-header eyebrow="Renting" title="My rental cart" subtitle="Choose your items, rental dates and handover, then send requests to their owners." />
     <x-identity-review-notice />
     <x-input-error :messages="$errors->get('identity')" class="mx-4 mt-4" role="alert" />
@@ -65,7 +65,7 @@
                                 @foreach ($ownerItems as $item)
                                     @php
                                         $listing = $item->listing;
-                                        $unavailable = ! $listing || $listing->trashed() || ! $listing->isPublished() || ! $listing->is_available || ! $listing->owner || $listing->owner->trashed() || $listing->owner->isSuspended();
+                                        $unavailable = ! $listing || $listing->trashed() || ! $listing->isPublished() || ! $listing->is_available || $listing->reopen_required || $listing->hasPhysicalBlocker() || ! $listing->owner || $listing->owner->trashed() || $listing->owner->isSuspended();
                                         $photo = $listing?->images->first();
                                         $savedMethod = $edits[$item->id]['fulfillment_method'] ?? $item->fulfillment_method;
                                     @endphp
@@ -99,19 +99,19 @@
                                         <form wire:submit="updateItem({{ $item->id }})" class="mt-5 space-y-3">
                                             <div class="grid gap-3 sm:grid-cols-3">
                                                 <div>
-                                                    <x-input-label :for="'cart-start-'.$item->id" value="Start date" />
-                                                    <x-text-input :id="'cart-start-'.$item->id" type="date" wire:model="edits.{{ $item->id }}.start_date" min="{{ max(now()->addDay()->toDateString(), $listing?->available_from?->toDateString() ?? '') }}" max="{{ $listing?->available_until?->toDateString() }}" :disabled="$unavailable" class="mt-1 w-full text-sm" />
+                                                    <x-input-label required :for="'cart-start-'.$item->id" value="Start date" />
+                                                    <x-text-input :id="'cart-start-'.$item->id" type="date" wire:model="edits.{{ $item->id }}.start_date" min="{{ max(now('Asia/Manila')->toDateString(), $listing?->available_from?->toDateString() ?? '') }}" max="{{ $listing?->available_until?->toDateString() }}" :disabled="$unavailable" class="mt-1 w-full text-sm" />
                                                     <x-input-error :messages="$errors->get('items.'.$item->id.'.start_date')" class="mt-1" />
                                                     <x-input-error :messages="$errors->get('edits.'.$item->id.'.start_date')" class="mt-1" />
                                                 </div>
                                                 <div>
-                                                    <x-input-label :for="'cart-end-'.$item->id" value="End date" />
-                                                    <x-text-input :id="'cart-end-'.$item->id" type="date" wire:model="edits.{{ $item->id }}.end_date" min="{{ max($edits[$item->id]['start_date'] ?? '', now()->addDay()->toDateString(), $listing?->available_from?->toDateString() ?? '') }}" max="{{ $listing?->available_until?->toDateString() }}" :disabled="$unavailable" class="mt-1 w-full text-sm" />
+                                                    <x-input-label required :for="'cart-end-'.$item->id" value="End date" />
+                                                    <x-text-input :id="'cart-end-'.$item->id" type="date" wire:model="edits.{{ $item->id }}.end_date" min="{{ max($edits[$item->id]['start_date'] ?? '', now('Asia/Manila')->toDateString(), $listing?->available_from?->toDateString() ?? '') }}" max="{{ $listing?->available_until?->toDateString() }}" :disabled="$unavailable" class="mt-1 w-full text-sm" />
                                                     <x-input-error :messages="$errors->get('items.'.$item->id.'.end_date')" class="mt-1" />
                                                     <x-input-error :messages="$errors->get('edits.'.$item->id.'.end_date')" class="mt-1" />
                                                 </div>
                                                 <div>
-                                                    <x-input-label :for="'cart-handover-'.$item->id" value="Handover" />
+                                                    <x-input-label required :for="'cart-handover-'.$item->id" value="Handover" />
                                                     <select id="cart-handover-{{ $item->id }}" wire:model="edits.{{ $item->id }}.fulfillment_method" @disabled($unavailable) class="mt-1 block w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-400">
                                                         <option value="">Choose handover</option>
                                                         @if ($listing?->pickup_available)<option value="pickup">Pickup</option>@elseif ($savedMethod === 'pickup')<option value="pickup" disabled>Pickup (unavailable)</option>@endif
@@ -121,16 +121,16 @@
                                                     <x-input-error :messages="$errors->get('edits.'.$item->id.'.fulfillment_method')" class="mt-1" />
                                                 </div>
                                             </div>
-                                            @if ($item->rental_unit === 'hour')
+                                            @if ($item->starts_at || $item->rental_unit === 'hour')
                                                 <div class="grid gap-3 sm:grid-cols-2">
-                                                    <div><x-input-label :for="'cart-start-time-'.$item->id" value="Start time (Philippine time)" /><x-text-input :id="'cart-start-time-'.$item->id" type="time" wire:model="edits.{{ $item->id }}.start_time" class="mt-1 w-full" /><x-input-error :messages="$errors->get('items.'.$item->id.'.start_time')" /></div>
-                                                    <div><x-input-label :for="'cart-end-time-'.$item->id" value="Return time (Philippine time)" /><x-text-input :id="'cart-end-time-'.$item->id" type="time" wire:model="edits.{{ $item->id }}.end_time" class="mt-1 w-full" /><x-input-error :messages="$errors->get('items.'.$item->id.'.end_time')" /></div>
+                                                    <div><x-input-label required :for="'cart-start-time-'.$item->id" value="Start time (Philippine time)" /><x-text-input :id="'cart-start-time-'.$item->id" type="time" wire:model="edits.{{ $item->id }}.start_time" class="mt-1 w-full" /><x-input-error :messages="$errors->get('items.'.$item->id.'.start_time')" /></div>
+                                                    <div><x-input-label required :for="'cart-end-time-'.$item->id" value="Return time (Philippine time)" /><x-text-input :id="'cart-end-time-'.$item->id" type="time" wire:model="edits.{{ $item->id }}.end_time" class="mt-1 w-full" /><x-input-error :messages="$errors->get('items.'.$item->id.'.end_time')" /></div>
                                                 </div>
                                             @endif
                                             <p class="text-xs leading-5 text-slate-500"><x-rental-period :booking="$item" /></p>
                                             <div class="flex flex-wrap items-center justify-between gap-3">
                                                 <x-secondary-button type="submit" wire:loading.attr="disabled" wire:target="updateItem({{ $item->id }})" :disabled="$unavailable" class="min-h-10 text-xs">Update dates &amp; handover</x-secondary-button>
-                                                @if (! $unavailable)<button type="button" wire:click="joinWaitlist({{ $item->id }})" wire:loading.attr="disabled" class="min-h-10 rounded px-2 text-xs font-semibold text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100">Join waitlist for saved dates</button>@endif
+                                                @if (! $unavailable && in_array($item->id, $waitlistableIds, true))<button type="button" wire:click="joinWaitlist({{ $item->id }})" wire:loading.attr="disabled" class="min-h-10 rounded px-2 text-xs font-semibold text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100">Join waitlist for saved dates</button>@endif
                                                 <button type="button" wire:click="remove({{ $item->id }})" wire:loading.attr="disabled" wire:target="remove({{ $item->id }})" class="inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 focus:outline-none focus:ring-4 focus:ring-rose-100 disabled:opacity-60"><x-icon name="trash" class="h-4 w-4" aria-hidden="true" /> Remove</button>
                                             </div>
                                         </form>
@@ -143,7 +143,7 @@
                                             <summary class="cursor-pointer rounded font-medium text-slate-600 focus:outline-none focus:ring-4 focus:ring-blue-100">Charges and item rules</summary>
                                             <dl class="mt-3 space-y-2 text-xs">
                                                 <div class="flex justify-between gap-3"><dt class="text-slate-500">Rental fee</dt><dd class="font-medium text-slate-800">₱{{ number_format($item->rentalFee(), 2) }}</dd></div>
-                                                <div class="flex justify-between gap-3"><dt class="text-slate-500">Platform fee ({{ rtrim(rtrim(number_format($item->terms['commission_rate'], 2), '0'), '.') }}%)</dt><dd class="font-medium text-slate-800">₱{{ number_format($item->commissionAmount(), 2) }}</dd></div>
+                                                <div class="flex justify-between gap-3"><dt class="text-slate-500">Processing fee ({{ rtrim(rtrim(number_format($item->terms['commission_rate'], 2), '0'), '.') }}%)</dt><dd class="font-medium text-slate-800">₱{{ number_format($item->commissionAmount(), 2) }}</dd></div>
                                                 <div class="flex justify-between gap-3"><dt class="text-slate-500">Refundable security deposit</dt><dd class="font-medium text-slate-800">₱{{ number_format($item->terms['security_deposit'], 2) }}</dd></div>
                                             </dl>
                                             <p class="mt-4 text-xs font-semibold text-slate-700">Item rules</p>
@@ -164,13 +164,13 @@
                         <div class="mt-5 border-y border-slate-100 py-4" aria-live="polite">
                             <p class="text-sm text-slate-500">Selected estimate</p>
                             <p class="mt-1 text-2xl font-bold tracking-tight text-slate-900">₱{{ number_format($selectedTotal, 2) }}</p>
-                            <p class="mt-2 text-xs leading-5 text-slate-500">Includes rental fees, platform fees and refundable deposits. Update changed dates and handover before sending. Availability and quotes are checked again when you send.</p>
+                            <p class="mt-2 text-xs leading-5 text-slate-500">Includes rental fees, processing fees and refundable deposits. Update changed dates and handover before sending. Availability and quotes are checked again when you send.</p>
                         </div>
                         <form wire:submit="checkout" class="mt-5 space-y-4">
                             <label for="cart-accept-terms" class="flex items-start gap-3 text-sm leading-6 text-slate-700">
                                 <input id="cart-accept-terms" type="checkbox" wire:model="accept_terms" class="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
                                 <span>I have reviewed the selected items, saved dates, handover, rates, fees, deposits and item rules.</span>
-                            </label>
+                            <x-required-mark /></label>
                             <x-input-error :messages="$errors->get('accept_terms')" role="alert" />
                             <x-primary-button wire:loading.attr="disabled" wire:target="checkout" :disabled="count($selected) === 0" class="min-h-11 w-full justify-center rounded-xl disabled:cursor-not-allowed disabled:opacity-50">Send rental requests</x-primary-button>
                             <p class="text-center text-xs font-medium text-slate-500">No payment is taken now.</p>

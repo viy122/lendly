@@ -98,6 +98,35 @@ test('retry after permission denial clears the error when location succeeds', ()
     assert.match(state.component.locationError, /denied/);
     state.component.useMyLocation();
     assert.equal(state.component.locationError, '');
+    assert.match(state.component.locationNotice, /Location updated/);
     assert.equal(state.component.locating, false);
     assert.deepEqual(state.locationMarkers, [[0, 0]]);
+});
+
+test('successful location clears any stale error and shows a dismissible success notice', () => {
+    let finish;
+    const state = locationHarness({ getCurrentPosition(success) { finish = success; } });
+    state.component.locationNotice = 'Old success';
+    state.component.useMyLocation();
+    assert.equal(state.component.locationNotice, '');
+    state.component.locationError = 'Old error';
+    finish({ coords: { latitude: 14, longitude: 120 } });
+    assert.equal(state.component.locationError, '');
+    assert.match(state.component.locationNotice, /Location updated/);
+    assert.deepEqual(state.events, ['location-found']);
+});
+
+test('failed or invalid location never reports success or changes the map', () => {
+    for (const coords of [{ latitude: NaN, longitude: 120 }, { latitude: 91, longitude: 120 }, { latitude: 0, longitude: Infinity }]) {
+        const state = locationHarness({ getCurrentPosition(success) { success({ coords }); } });
+        state.component.useMyLocation();
+        assert.equal(state.component.locationNotice, '');
+        assert.match(state.component.locationError, /could not be found/);
+        assert.deepEqual(state.requests, []);
+        assert.deepEqual(state.events, []);
+    }
+    const state = locationHarness({ getCurrentPosition(success, failure) { failure({ code: 1 }); } });
+    state.component.useMyLocation();
+    assert.equal(state.component.locationNotice, '');
+    assert.deepEqual(state.events, []);
 });

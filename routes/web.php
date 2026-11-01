@@ -38,6 +38,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome');
 
+Route::post('interface', \App\Http\Controllers\SwitchInterfaceController::class)
+    ->middleware(['auth', 'verified'])->name('interface.switch');
+
 Route::get('dashboard', MemberDashboard::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard');

@@ -394,7 +394,7 @@ class RentalRequestTest extends TestCase
             ->test(OwnerRentalRequestsIndex::class)
             ->call('approve', $firstRequest->id);
 
-        $this->assertSame(RentalRequestStatus::Approved, $firstRequest->fresh()->status);
+        $this->assertSame(RentalRequestStatus::AwaitingAgreement, $firstRequest->fresh()->status);
 
         // Overlapping dates for a different renter should now be rejected at request time.
         Livewire::actingAs($renterB)
@@ -434,7 +434,7 @@ class RentalRequestTest extends TestCase
             ->test(OwnerRentalRequestsIndex::class)
             ->call('approve', $requestA->id);
 
-        $this->assertSame(RentalRequestStatus::Approved, $requestA->fresh()->status);
+        $this->assertSame(RentalRequestStatus::AwaitingAgreement, $requestA->fresh()->status);
         $this->assertSame(RentalRequestStatus::Rejected, $requestB->fresh()->status);
         $this->assertNotNull($requestB->fresh()->rejection_reason);
     }

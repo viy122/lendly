@@ -67,6 +67,7 @@ class RentalPolicy
     public function adminVerifyPayment(User $user, Rental $rental): bool
     {
         return $this->manage($user, $rental) && $rental->isPaymentPending()
+            && ! $rental->paymentSubmissions()->where('status', 'pending')->where('payment_destination->source', 'owner_wallet')->exists()
             && $rental->paid_at === null && $rental->hasAcceptedAgreement()
             && ! $rental->payment()->exists() && ! $rental->securityDeposit()->exists()
             && $rental->paymentSubmissions()->where('status', 'pending')->exists();
@@ -75,6 +76,7 @@ class RentalPolicy
     public function adminRejectPayment(User $user, Rental $rental): bool
     {
         return $this->manage($user, $rental)
+            && ! $rental->paymentSubmissions()->where('status', 'pending')->where('payment_destination->source', 'owner_wallet')->exists()
             && $rental->paymentSubmissions()->where('status', 'pending')->exists();
     }
 
@@ -160,7 +162,18 @@ class RentalPolicy
     public function releaseDeposit(User $user, Rental $rental): bool
     {
         return $user->id === $rental->owner_id
+            && ! $user->trashed() && ! $user->isSuspended() && $user->hasVerifiedEmail()
             && $rental->isCompleted()
-            && $rental->securityDeposit?->status === SecurityDepositStatus::ReturnEligible;
+            && $rental->securityDeposit?->status === SecurityDepositStatus::ReturnEligible
+            && ! $rental->disputes()->where('status', DisputeStatus::Open)->exists()
+            && ! $rental->damageReport()->where('status', '!=', DamageReportStatus::Rejected)->exists();
+    }
+
+    public function confirmDepositReceipt(User $user, Rental $rental): bool
+    {
+        return $user->id === $rental->renter_id && ! $user->trashed() && ! $user->isSuspended() && $user->hasVerifiedEmail()
+            && in_array($rental->securityDeposit?->status, [SecurityDepositStatus::Released, SecurityDepositStatus::Refunded, SecurityDepositStatus::Deducted], true)
+            && $rental->securityDeposit->amount > $rental->securityDeposit->deducted_amount
+            && $rental->securityDeposit->received_at === null;
     }
 }

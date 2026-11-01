@@ -30,6 +30,7 @@ class Listing extends Model
     protected $attributes = [
         'status' => 'pending_approval',
         'is_available' => true,
+        'reopen_required' => false,
         'pickup_available' => true,
         'delivery_available' => false,
         'security_deposit' => 0,
@@ -37,6 +38,7 @@ class Listing extends Model
         'allows_daily_rentals' => true,
         'min_rental_duration_hours' => 1,
         'max_rental_duration_hours' => 24,
+        'max_rental_duration_days' => 7,
         'available_time_from' => '00:00',
         'available_time_until' => '23:59',
     ];
@@ -65,6 +67,7 @@ class Listing extends Model
         'rental_rules',
         'max_rental_duration_days',
         'is_available',
+        'reopen_required',
         'available_from',
         'available_until',
         'status',
@@ -78,6 +81,7 @@ class Listing extends Model
             'condition' => ListingCondition::class,
             'status' => ListingStatus::class,
             'is_available' => 'boolean',
+            'reopen_required' => 'boolean',
             'allows_daily_rentals' => 'boolean', 'min_rental_duration_hours' => 'integer', 'max_rental_duration_hours' => 'integer',
             'available_from' => 'date',
             'available_until' => 'date',
@@ -138,8 +142,8 @@ class Listing extends Model
     public function reservingRequests(): HasMany
     {
         return $this->rentalRequests()
-            ->where('status', RentalRequestStatus::Approved)
-            ->where('end_date', '>=', now()->toDateString())
+            ->whereIn('status', [RentalRequestStatus::AwaitingAgreement, RentalRequestStatus::Approved])
+            ->where('end_date', '>=', now('Asia/Manila')->toDateString())
             ->whereDoesntHave('rental', fn ($query) => $query->whereIn('status', [
                 RentalStatus::Returned, RentalStatus::Completed, RentalStatus::Cancelled,
             ]));
@@ -152,7 +156,7 @@ class Listing extends Model
             ->whereIn('status', [RentalStatus::Paid, RentalStatus::Active, RentalStatus::Overdue])
             ->whereNotNull('paid_at')
             ->whereHas('payment', fn ($query) => $query->where('status', 'paid')->whereNotNull('paid_at'))
-            ->where('end_date', '>=', now()->toDateString())
+            ->where('end_date', '>=', now('Asia/Manila')->toDateString())
             ->orderBy('start_date')
             ->orderBy('id');
     }
@@ -180,7 +184,7 @@ class Listing extends Model
             return ListingAvailabilityStatus::Rented;
         }
 
-        if (! $this->is_available || ! $this->hasRequestableDates()) {
+        if (! $this->is_available || $this->reopen_required || $this->rentals()->where('status', RentalStatus::Returned)->exists() || ! $this->hasRequestableDates()) {
             return ListingAvailabilityStatus::Unavailable;
         }
 
@@ -213,19 +217,17 @@ class Listing extends Model
     }
 
     /**
-     * Whether the given date range overlaps an already-approved rental for
-     * this listing. Only approved bookings block new requests — multiple
-     * renters may have overlapping pending requests, and the owner's
-     * approval is what actually confirms the dates (see business-rule
-     * discussion in Phase 4 rental request handling).
+     * Requests selected for agreement hold dates before final approval.
+     * Other pending requests may coexist until an owner selects one.
      */
     public function hasApprovedOverlap($startDate, $endDate, ?int $excludingRequestId = null, $startsAt = null, $endsAt = null): bool
     {
+        $lastDate = $endsAt ? Carbon::parse($endsAt, 'UTC')->setTimezone('Asia/Manila')->subMicrosecond()->toDateString() : $endDate;
         $requests = $this->reservingRequests()->when($excludingRequestId, fn ($query) => $query->whereKeyNot($excludingRequestId));
-        RentalPeriod::applyOverlap($requests, $startDate, $endDate, $startsAt, $endsAt);
+        RentalPeriod::applyOverlap($requests, $startDate, $lastDate);
         $rentals = $this->rentals()->whereIn('status', [RentalStatus::PaymentPending, RentalStatus::Paid, RentalStatus::Active, RentalStatus::Overdue])
             ->when($excludingRequestId, fn ($query) => $query->where('rental_request_id', '!=', $excludingRequestId));
-        RentalPeriod::applyOverlap($rentals, $startDate, $endDate, $startsAt, $endsAt);
+        RentalPeriod::applyOverlap($rentals, $startDate, $lastDate);
 
         return $requests->lockForUpdate()->first(['rental_requests.id']) !== null || $rentals->lockForUpdate()->first(['rentals.id']) !== null;
     }
@@ -275,7 +277,10 @@ class Listing extends Model
 
     public function hasRequestableDates(): bool
     {
-        $first = now()->addDay()->startOfDay();
+        $first = now('Asia/Manila')->startOfDay();
+        if (now('Asia/Manila')->format('H:i') >= $this->available_time_until) {
+            $first->addDay();
+        }
         if ($this->available_from && $this->available_from->greaterThan($first)) {
             $first = $this->available_from;
         }
@@ -302,7 +307,19 @@ class Listing extends Model
     {
         return $query->where('is_available', true)
             ->where(fn ($query) => $query->whereNull('available_until')
-                ->orWhereDate('available_until', '>=', now()->addDay()->toDateString()));
+                ->orWhereDate('available_until', '>=', now('Asia/Manila')->toDateString()));
+    }
+
+    public function hasPhysicalBlocker(): bool
+    {
+        return $this->occupyingRentals()->exists()
+            || $this->rentals()->where('status', RentalStatus::Returned)->exists();
+    }
+
+    public function acceptsNewRequests(): bool
+    {
+        return ! $this->trashed() && $this->isPublished() && $this->is_available
+            && ! $this->reopen_required && ! $this->hasPhysicalBlocker() && $this->hasRequestableDates();
     }
 
     public function scopePendingApproval(Builder $query): Builder

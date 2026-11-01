@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin\IdentitySubmissions;
 
+use App\Livewire\Concerns\FiltersRecords;
 use App\Models\IdentitySubmission;
 use App\Models\User;
 use App\Services\ManualIdentityReview;
@@ -14,6 +15,7 @@ use Livewire\WithPagination;
 #[Layout('layouts.app')]
 class Index extends Component
 {
+    use FiltersRecords;
     use WithPagination;
 
     public string $filter = 'pending';
@@ -76,9 +78,9 @@ class Index extends Component
         abort_unless(in_array($this->filter, ['pending', 'approved', 'rejected', 'cancelled', 'all'], true), 403);
 
         return view('livewire.admin.identity-submissions.index', [
-            'submissions' => IdentitySubmission::query()->with('user')
+            'submissions' => $this->filterRecords(IdentitySubmission::query()->with('user')
                 ->when($this->filter !== 'all', fn ($query) => $query->where('status', $this->filter))
-                ->orderBy('id', $this->filter === 'pending' ? 'asc' : 'desc')->paginate(10),
+                ->orderBy('id', $this->filter === 'pending' ? 'asc' : 'desc'), ['id'], ['user' => ['name', 'email']])->paginate(10),
             'selected' => $this->selectedId ? IdentitySubmission::with(['user', 'reviewer'])->find($this->selectedId) : null,
         ]);
     }

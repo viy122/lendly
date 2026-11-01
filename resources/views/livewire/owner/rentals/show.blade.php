@@ -59,20 +59,20 @@
                             <p class="mt-2 text-sm">Owner: {{ $rental->owner->name }} · Renter: {{ $rental->renter->name }}</p>
                             <p class="mt-2 font-semibold">Payment total: ₱{{ number_format($rental->payment->amount, 2) }}</p>
                             @if (($rental->payment_destination['source'] ?? null) === 'owner_wallet')
-                                <p class="mt-3 text-sm leading-6 text-slate-600">You received the full booking amount in your e-wallet, including the platform fee and refundable security deposit. You hold the deposit and arrange any refund manually after return and inspection. Remit the platform fee manually; it is not automatically deducted from your wallet.</p>
+                                <p class="mt-3 text-sm leading-6 text-slate-600">You received the full booking amount in your e-wallet, including the processing fee and refundable security deposit. You hold the deposit and arrange any refund manually after return and inspection. Remit the processing fee manually; it is not automatically deducted from your wallet.</p>
                             @endif
                         </x-rental-panel>
                     @else
                         <p class="text-sm text-slate-500">No receipt is available for this payment.</p>
                     @endif
-                    <x-rental-panel title="Earnings breakdown" icon="calculator" subtitle="Rental income and the held deposit.">
+                    <x-rental-panel title="Earnings breakdown" icon="calculator" subtitle="Rental income and the refundable deposit.">
                         <dl class="mt-5 space-y-4 text-sm">
                             <div class="flex flex-wrap justify-between gap-x-4 gap-y-1">
                                 <dt class="text-slate-500">Net rental earnings</dt>
                                 <dd class="font-medium text-slate-800">₱{{ number_format($rental->ownerEarnings(), 2) }}</dd>
                             </div>
                             <div class="flex flex-wrap justify-between gap-x-4 gap-y-1">
-                                <dt class="text-slate-500">Security deposit (held, not your revenue)</dt>
+                                <dt class="text-slate-500">Security deposit (not rental earnings)</dt>
                                 <dd class="font-medium text-slate-800">₱{{ number_format($rental->security_deposit, 2) }}</dd>
                             </div>
                             @if ($rental->currentLateFee() > 0)
@@ -117,7 +117,7 @@
 
                 @if ($rental->isPaymentPending())
                     @if (($rental->payment_destination['source'] ?? null) === 'owner_wallet')
-                        <x-rental-panel title="Payment receipt acknowledgement" icon="calculator" subtitle="Check your e-wallet balance and transaction history before confirming receipt.">
+                        <x-rental-panel title="Confirm rental payment" icon="calculator" subtitle="Check your e-wallet balance and transaction history before confirming receipt.">
                             @forelse ($rental->paymentSubmissions->where('status', 'pending')->filter(fn ($submission) => ($submission->payment_destination['source'] ?? null) === 'owner_wallet') as $submission)
                                 <div class="mt-4 space-y-4 border-t border-slate-100 pt-4 text-sm" wire:key="owner-payment-{{ $submission->id }}">
                                     <x-payment-destination :destination="$submission->payment_destination" :rental="$rental" :show-qr="false" />
@@ -127,29 +127,40 @@
                                     </dl>
                                     <a href="{{ route('payment-proofs.show', $submission) }}" class="inline-flex min-h-11 items-center rounded-lg font-semibold text-blue-700 hover:underline focus:outline-none focus:ring-4 focus:ring-blue-100">Download submitted proof</a>
 
-                                    @if ($submission->recipient_confirmed_at)
-                                        <p role="status" class="rounded-xl bg-amber-50 p-4 leading-6 text-amber-800">Receipt acknowledged on {{ $submission->recipient_confirmed_at->setTimezone('Asia/Manila')->format('M d, Y \a\t g:i A') }} (Philippine time). Final admin review is still required before this booking is paid and hand-over is available.</p>
-                                    @elseif ((int) ($submission->payment_destination['payee_user_id'] ?? 0) === auth()->id())
-                                        <form wire:submit="confirmPaymentReceipt({{ $submission->id }})" class="space-y-3" wire:confirm="Confirm that the full booking amount has arrived in your e-wallet? Final admin review will still be required.">
+                                    @if ((int) ($submission->payment_destination['payee_user_id'] ?? 0) === auth()->id())
+                                        <form wire:submit="confirmPaymentReceipt({{ $submission->id }})" class="space-y-3" wire:confirm="Confirm that the full booking amount has arrived in your e-wallet? This will mark the booking paid.">
                                             <label class="flex items-start gap-3 leading-6 text-slate-700">
                                                 <input type="checkbox" wire:model="owner_funds_received" class="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
                                                 <span>I checked my e-wallet and received the full ₱{{ number_format($submission->amount, 2) }} for this booking.</span>
-                                            </label>
+                                            <x-required-mark /></label>
                                             <x-input-error :messages="$errors->get('owner_funds_received')" />
                                             <x-input-error :messages="$errors->get('funds_received')" />
                                             <x-input-error :messages="$errors->get('payment')" />
-                                            <p class="text-slate-500">This acknowledges receipt only. Final admin review is still required before the booking is paid or ready for hand-over.</p>
+                                            <p class="text-slate-500">Confirm only after checking that the full payment reached your account. This marks the booking paid without admin approval.</p>
                                             <x-primary-button wire:loading.attr="disabled" wire:target="confirmPaymentReceipt">Confirm funds received</x-primary-button>
                                         </form>
+                                        @if (! $submission->recipient_confirmed_at)
+                                        <form wire:submit="rejectPaymentProof({{ $submission->id }})" class="mt-4 space-y-3 border-t border-slate-100 pt-4" wire:confirm="Reject this proof and ask the renter to correct it? Only reject when the full payment has not been received.">
+                                            <x-input-label required :for="'payment-rejection-'.$submission->id" value="Reason payment proof needs correction" />
+                                            <textarea id="payment-rejection-{{ $submission->id }}" wire:model="payment_rejection_reason" required maxlength="1000" class="w-full rounded-lg border-slate-300"></textarea>
+                                            <x-input-error :messages="$errors->get('payment_rejection_reason')" />
+                                            <x-secondary-button type="submit" wire:loading.attr="disabled">Request corrected proof</x-secondary-button>
+                                        </form>
+                                        @endif
                                     @endif
                                 </div>
                             @empty
-                                <p role="status" class="mt-4 rounded-xl bg-amber-50 p-4 text-sm leading-6 text-amber-800">Waiting for the renter to submit payment proof. Acknowledge receipt only after the full booking amount reaches your e-wallet. Final admin review follows your acknowledgement.</p>
+                                <p role="status" class="mt-4 rounded-xl bg-amber-50 p-4 text-sm leading-6 text-amber-800">Waiting for the renter to submit payment proof. Acknowledge receipt only after the full booking amount reaches your e-wallet. Your confirmation marks the booking paid.</p>
                             @endforelse
                         </x-rental-panel>
                     @else
                         <div class="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-800" role="status">
-                            Waiting for the renter’s offline payment to be verified. Hand-over is available after an admin confirms receipt of the full booking amount.
+                            @if (($rental->rentalRequest?->agreement_terms['payment_review'] ?? null) === 'owner')
+                                Add or enable your payment QR so the renter can pay you directly. You will confirm the payment yourself.
+                                <a href="{{ route('owner.payments.settings') }}" wire:navigate class="font-semibold underline">Manage Payment QR</a>
+                            @else
+                                This legacy booking uses the saved platform payment instructions. Its existing collection record remains available for review.
+                            @endif
                         </div>
                     @endif
                 @endif
@@ -189,7 +200,7 @@
 
                         <form wire:submit="recordBeforeCondition" class="mt-4 space-y-4">
                             <div>
-                                <x-input-label for="before_condition" value="Condition" />
+                                <x-input-label required for="before_condition" value="Condition" />
                                 <select wire:model="before_condition" id="before_condition" class="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                     @foreach (\App\Enums\ListingCondition::cases() as $option)
                                         <option value="{{ $option->value }}">{{ $option->label() }}</option>
@@ -280,7 +291,7 @@
 
                         <form wire:submit="recordAfterCondition" class="mt-4 space-y-4">
                             <div>
-                                <x-input-label for="after_condition" value="Condition" />
+                                <x-input-label required for="after_condition" value="Condition" />
                                 <select wire:model="after_condition" id="after_condition" class="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                     @foreach (\App\Enums\ListingCondition::cases() as $option)
                                         <option value="{{ $option->value }}">{{ $option->label() }}</option>
@@ -305,17 +316,17 @@
                             @if ($after_has_damage)
                                 <div class="space-y-4 rounded-lg border border-rose-200 bg-rose-50 p-4">
                                     <div>
-                                        <x-input-label for="damage_type" value="Damage type" />
+                                        <x-input-label required for="damage_type" value="Damage type" />
                                         <x-text-input wire:model="damage_type" id="damage_type" type="text" placeholder="e.g. Cracked casing" class="mt-1 block w-full" />
                                         <x-input-error :messages="$errors->get('damage_type')" class="mt-2" />
                                     </div>
                                     <div>
-                                        <x-input-label for="damage_description" value="Description" />
+                                        <x-input-label required for="damage_description" value="Description" />
                                         <textarea wire:model="damage_description" id="damage_description" rows="2" class="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-rose-500 focus:ring-rose-500"></textarea>
                                         <x-input-error :messages="$errors->get('damage_description')" class="mt-2" />
                                     </div>
                                     <div>
-                                        <x-input-label for="damage_estimated_cost" value="Estimated repair cost (₱)" />
+                                        <x-input-label required for="damage_estimated_cost" value="Estimated repair cost (₱)" />
                                         <x-text-input wire:model="damage_estimated_cost" id="damage_estimated_cost" type="number" step="0.01" class="mt-1 block w-40" />
                                         <x-input-error :messages="$errors->get('damage_estimated_cost')" class="mt-2" />
                                     </div>
@@ -338,14 +349,18 @@
 
                         <div class="mt-2 flex items-center gap-2">
                             <x-badge :color="$rental->securityDeposit->status->badgeColor()">{{ $rental->securityDeposit->status->label() }}</x-badge>
-                            <span class="text-sm text-slate-500">₱{{ number_format($rental->securityDeposit->amount, 2) }} held</span>
+                            <span class="text-sm text-slate-500">₱{{ number_format($rental->securityDeposit->amount, 2) }} deposit amount</span>
                         </div>
 
-                        @if ($rental->securityDeposit->status->value === 'return_eligible')
-                            <button type="button" wire:click="releaseDeposit" wire:loading.attr="disabled" wire:target="releaseDeposit" wire:confirm="Release the full deposit back to the renter?" class="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-wait disabled:opacity-60">
+                        @if ($rental->securityDeposit->released_at)
+                            <p class="mt-3 text-sm text-slate-600">Release recorded {{ $rental->securityDeposit->released_at->setTimezone('Asia/Manila')->format('M d, Y g:i A') }} (Philippine time). {{ $rental->securityDeposit->received_at ? 'The renter confirmed receipt.' : ($rental->securityDeposit->amount > $rental->securityDeposit->deducted_amount ? 'Awaiting renter receipt confirmation.' : 'No refundable balance is due.') }}</p>
+                        @endif
+                        @can('releaseDeposit', $rental)
+                            <button type="button" wire:click="releaseDeposit" wire:loading.attr="disabled" wire:target="releaseDeposit" wire:confirm="Have you sent the full deposit back to the renter? This records release only; it does not transfer money. The renter will confirm receipt separately." class="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-wait disabled:opacity-60">
                                 Release deposit
                             </button>
-                        @elseif ($rental->securityDeposit->status->value === 'deducted')
+                        @endcan
+                        @if ($rental->securityDeposit->status->value === 'deducted')
                             <p class="mt-2 text-sm text-slate-600">
                                 Deducted ₱{{ number_format($rental->securityDeposit->deducted_amount, 2) }} &middot;
                                 Refunded to renter: ₱{{ number_format($rental->securityDeposit->amount - $rental->securityDeposit->deducted_amount, 2) }}
@@ -364,7 +379,7 @@
                                 @endif
                             @else
                                 <form wire:submit="submitRenterReview" class="mt-3 space-y-3">
-                                    <x-input-label for="renter_rating" value="Rating" />
+                                    <x-input-label required for="renter_rating" value="Rating" />
                                     <select id="renter_rating" wire:model="renter_rating" class="block w-full max-w-xs rounded-lg border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                         @for ($i = 5; $i >= 1; $i--)
                                             <option value="{{ $i }}">{{ $i }} star{{ $i === 1 ? '' : 's' }}</option>
@@ -394,7 +409,7 @@
                             </div>
                             <p class="mt-1 text-sm text-slate-500">{{ $dispute->description }}</p>
                             @if ($dispute->status->value === 'resolved')
-                                <p class="mt-1 text-sm text-blue-700">Resolution: {{ $dispute->resolution?->label() }}</p>
+                                <p class="mt-1 text-sm text-blue-700">Resolution: {{ $dispute->resolutionLabel() }}</p>
                                 @if ($dispute->resolution_notes)
                                     <p class="mt-1 text-sm text-slate-500">{{ $dispute->resolution_notes }}</p>
                                 @endif
@@ -411,7 +426,7 @@
                     @else
                         <form wire:submit="createDispute" class="mt-3 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
                             <div>
-                                <x-input-label for="dispute_reason" value="Reason" />
+                                <x-input-label required for="dispute_reason" value="Reason" />
                                 <select wire:model="dispute_reason" id="dispute_reason" class="mt-1 block w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                     <option value="">Select a reason</option>
                                     @foreach (\App\Enums\DisputeReason::cases() as $reason)
@@ -421,7 +436,7 @@
                                 <x-input-error :messages="$errors->get('dispute_reason')" class="mt-2" />
                             </div>
                             <div>
-                                <x-input-label for="dispute_description" value="Describe what happened" />
+                                <x-input-label required for="dispute_description" value="Describe what happened" />
                                 <textarea wire:model="dispute_description" id="dispute_description" rows="3" class="mt-1 block w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
                                 <x-input-error :messages="$errors->get('dispute_description')" class="mt-2" />
                             </div>

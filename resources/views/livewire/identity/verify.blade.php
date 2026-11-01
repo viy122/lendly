@@ -98,7 +98,7 @@
                             <label class="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
                                 <input id="identity-consent" type="checkbox" wire:model.live="consent" class="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500" aria-describedby="identity-consent-help" />
                                 <span class="text-sm leading-6 text-slate-700">I consent to the private storage and administrator review of my National ID and selfie, the official QR check, and local face comparison for my Lendly account.</span>
-                            </label>
+                            <x-required-mark /></label>
                             <x-input-error :messages="$errors->get('consent')" class="mt-2" />
                         </section>
 
@@ -106,7 +106,7 @@
                             <legend class="sr-only">ID photos and selfie</legend>
                             <p id="identity-file-help" class="text-xs leading-5 text-slate-500">Accept the consent above before choosing photos. JPG, PNG or WebP; up to 8 MB each; 200–6,000 pixels on each side. Keep all ID text and the QR code readable.</p>
                             <div>
-                                <x-input-label for="identity-front" value="National ID front" />
+                                <x-input-label required for="identity-front" value="National ID front" />
                                 <input id="identity-front" type="file" wire:model="front" accept="image/jpeg,image/png,image/webp" required aria-describedby="identity-file-help" class="mt-2 block w-full rounded-lg border border-slate-300 text-sm text-slate-600 file:mr-3 file:border-0 file:bg-blue-50 file:px-4 file:py-3 file:font-semibold file:text-blue-700" />
                                 <x-input-error :messages="$errors->get('front')" class="mt-2" />
                             </div>
@@ -116,7 +116,7 @@
                                 <x-input-error :messages="$errors->get('back')" class="mt-2" />
                             </div>
                             <div>
-                                <x-input-label for="identity-selfie" value="Clear selfie" />
+                                <x-input-label required for="identity-selfie" value="Clear selfie" />
                                 <p class="mt-2 text-sm leading-6 text-slate-500">Face the camera in good light, with your face visible. Take a photo now or upload one.</p>
                                 <div class="mt-3 flex flex-wrap gap-3">
                                     <button type="button" @click="startCamera()" :disabled="cameraOpen || uploading" class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:opacity-50"><x-icon name="camera" class="h-4 w-4" aria-hidden="true" /> Open selfie camera</button>

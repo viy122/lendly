@@ -175,6 +175,7 @@ class Index extends Component
         $this->reviewed = $reviewed;
 
         return view('livewire.renter.cart.index', [
+            'waitlistableIds' => $items->filter(fn (CartItem $item) => RentalWaitlist::canJoin($this->member(), $item->listing_id, $this->details($item)))->pluck('id')->all(),
             'waitlistEntries' => RentalWaitlistEntry::where('user_id', $this->member()->id)->with('listing')->orderBy('created_at')->orderBy('id')->get(),
             'items' => $items, 'groups' => $items->groupBy('listing.owner_id'),
             'selectedTotal' => round($items->whereIn('id', $this->selected)->sum(fn (CartItem $item) => $item->totalAmount()), 2),

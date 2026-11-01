@@ -23,6 +23,7 @@ class PruneIdentityDocuments extends Command
                         $submission = IdentitySubmission::whereKey($snapshot->id)->lockForUpdate()->first();
                         if ($submission->status === 'pending' && $submission->created_at->lte(now()->subDays(30))) {
                             $submission->update(['status' => 'cancelled']);
+                            $submission->notifyProgress();
                         }
                     });
                 }

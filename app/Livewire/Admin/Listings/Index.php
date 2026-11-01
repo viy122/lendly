@@ -3,8 +3,10 @@
 namespace App\Livewire\Admin\Listings;
 
 use App\Enums\ListingStatus;
+use App\Livewire\Concerns\FiltersRecords;
 use App\Models\Listing;
 use App\Models\User;
+use App\Services\ListingProgress;
 use App\Services\ListingPublication;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +17,7 @@ use Livewire\WithPagination;
 #[Layout('layouts.app')]
 class Index extends Component
 {
+    use FiltersRecords;
     use WithPagination;
 
     public string $filter = 'published';
@@ -28,6 +31,12 @@ class Index extends Component
         $this->resetPage();
     }
 
+    private function admin(): void
+    {
+        $admin = User::find(auth()->id());
+        abort_unless($admin && $admin->isAdmin() && ! $admin->isSuspended() && $admin->hasVerifiedEmail(), 403);
+    }
+
     public function approve(int $listingId): void
     {
         $admin = User::find(auth()->id());
@@ -37,23 +46,29 @@ class Index extends Component
             ListingPublication::ensureVerifiedOwner($snapshot->owner_id);
             $listing = Listing::lockForUpdate()->findOrFail($listingId);
             abort_unless($listing->owner_id === $snapshot->owner_id, 409);
-            $listing->update(['status' => ListingStatus::Published, 'rejection_reason' => null]);
+            if ($listing->status !== ListingStatus::Published || $listing->rejection_reason !== null) {
+                $listing->update(['status' => ListingStatus::Published, 'rejection_reason' => null]);
+                ListingProgress::notify($listing, 'status');
+            }
         });
     }
 
     public function startRejecting(int $listingId): void
     {
+        $this->admin();
         $this->rejecting = $listingId;
         $this->rejection_reason = '';
     }
 
     public function confirmReject(): void
     {
+        $this->admin();
         $this->validate(['rejection_reason' => ['required', 'string', 'max:255']]);
 
         $listing = Listing::findOrFail($this->rejecting);
 
         $listing->update(['status' => ListingStatus::Rejected, 'rejection_reason' => $this->rejection_reason]);
+        ListingProgress::notify($listing, 'status');
 
         $this->rejecting = null;
         $this->rejection_reason = '';
@@ -61,18 +76,20 @@ class Index extends Component
 
     public function remove(int $listingId): void
     {
+        $this->admin();
         $listing = Listing::findOrFail($listingId);
 
         $listing->update(['status' => ListingStatus::Inactive]);
+        ListingProgress::notify($listing, 'status');
     }
 
     public function render(): View
     {
-        $listings = Listing::query()
+        $this->admin();
+        $listings = $this->filterRecords(Listing::query()
             ->when($this->filter !== 'all', fn ($query) => $query->where('status', $this->filter))
             ->with(['category', 'owner', 'images'])
-            ->orderByDesc('created_at')
-            ->paginate(10);
+            ->orderByDesc('created_at'), ['name', 'brand', 'location'], ['owner' => ['name', 'email'], 'category' => ['name']])->paginate(10);
 
         return view('livewire.admin.listings.index', [
             'listings' => $listings,

@@ -6,6 +6,7 @@ enum NotificationType: string
 {
     case RentalRequestSubmitted = 'rental_request_submitted';
     case RequestApproved = 'request_approved';
+    case AgreementReady = 'agreement_ready';
     case RequestRejected = 'request_rejected';
     case BookingConfirmed = 'booking_confirmed';
     case PaymentConfirmed = 'payment_confirmed';
@@ -24,12 +25,27 @@ enum NotificationType: string
     case RentalCancelled = 'rental_cancelled';
     case AdminTransactionUpdate = 'admin_transaction_update';
     case NewMessage = 'new_message';
+    case VerificationUpdate = 'verification_update';
+    case ListingUpdate = 'listing_update';
+
+    public function category(): string
+    {
+        return match ($this) {
+            self::VerificationUpdate => 'verification',
+            self::ListingUpdate => 'listings',
+            self::RentalRequestSubmitted, self::RequestApproved, self::RequestRejected, self::AgreementReady, self::BookingConfirmed => 'requests',
+            self::PaymentConfirmed, self::PaymentSubmitted, self::PaymentRejected, self::DepositUpdate => 'payments',
+            self::NewMessage => 'messages',
+            default => 'rentals',
+        };
+    }
 
     public function icon(): string
     {
         return match ($this) {
             self::RentalRequestSubmitted => '📩',
             self::RequestApproved => '✅',
+            self::AgreementReady => '📋',
             self::RequestRejected => '❌',
             self::BookingConfirmed => '✅',
             self::PaymentConfirmed => '💳',
@@ -48,6 +64,8 @@ enum NotificationType: string
             self::RentalCancelled => '🚫',
             self::AdminTransactionUpdate => '🛠️',
             self::NewMessage => '💬',
+            self::VerificationUpdate => '🪪',
+            self::ListingUpdate => '📦',
         };
     }
 }

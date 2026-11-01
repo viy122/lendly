@@ -1,5 +1,8 @@
 document.addEventListener('alpine:init', () => {
-    Alpine.data('availabilityCalendar', (bookedRanges, reservedRanges = [], availableFrom = null, availableUntil = null, earliestDate) => ({
+    Alpine.data('availabilityCalendar', (bookedRanges, reservedRanges = [], availableFrom = null, availableUntil = null, earliestDate, maximumDays = null, requestsOpen = true, rentalUnit = 'day') => ({
+        maximumDays,
+        requestsOpen,
+        rentalUnit,
         viewDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
         minimumDate: new Date(earliestDate + 'T00:00:00'),
         selectedStart: null,
@@ -24,7 +27,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         canSelect(date) {
-            return !!date && date >= this.minimumDate && !this.isOutsideWindow(date) && !this.isBooked(date);
+            return this.requestsOpen && !!date && date >= this.minimumDate && !this.isOutsideWindow(date) && !this.isBooked(date);
         },
 
         isSelected(date) {
@@ -38,6 +41,13 @@ document.addEventListener('alpine:init', () => {
                 this.selectedStart = date;
                 this.selectedEnd = null;
             } else {
+                const days = Math.round((Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) - Date.UTC(this.selectedStart.getFullYear(), this.selectedStart.getMonth(), this.selectedStart.getDate())) / 86400000) + 1;
+                if (this.maximumDays && days > this.maximumDays + (this.rentalUnit === 'hour' ? 1 : 0)) {
+                    this.selectionError = this.rentalUnit === 'hour'
+                        ? `Choose dates within the ${this.maximumDays * 24}-hour maximum. Exact times are checked in your request.`
+                        : `This item can be rented for at most ${this.maximumDays} calendar days. Choose an earlier end date.`;
+                    return;
+                }
                 if ([...this.ranges, ...this.reservations].some((range) => range.start <= date && range.end >= this.selectedStart)) {
                     this.selectionError = 'These dates include an unavailable day. Choose an earlier end date or a new start date.';
                     return;
@@ -47,6 +57,7 @@ document.addEventListener('alpine:init', () => {
             this.$dispatch('rental-dates-selected', {
                 startDate: this.dateString(this.selectedStart),
                 endDate: this.dateString(this.selectedEnd ?? this.selectedStart),
+                rentalUnit: this.rentalUnit,
             });
         },
 

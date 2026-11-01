@@ -1,5 +1,13 @@
 <div wire:poll.5s.visible>
     <x-page-header title="Notifications" subtitle="Updates about your requests, rentals, and disputes." maxWidth="max-w-3xl" />
+    <div class="px-4 sm:px-6 lg:px-8">
+        <x-record-controls :filters="['all' => 'All notifications', 'unread' => 'Unread', 'read' => 'Read']" />
+        <label class="block text-sm font-medium text-slate-600">Notification category
+            <select wire:model.live="typeFilter" class="mt-1 rounded-lg border-slate-300 text-sm">
+                <option value="all">All categories</option><option value="verification">Verification</option><option value="listings">Listings</option><option value="requests">Requests and approvals</option><option value="payments">Payments and deposits</option><option value="messages">Messages</option><option value="rentals">Rentals and disputes</option>
+            </select>
+        </label>
+    </div>
 
     <div class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
         <div class="mb-4 flex justify-end">

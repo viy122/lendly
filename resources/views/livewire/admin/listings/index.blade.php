@@ -1,5 +1,6 @@
 <div>
     <x-page-header eyebrow="Administration" title="Listings" subtitle="Review pending listings and moderate published ones." />
+    <div class="px-4 sm:px-6 lg:px-8"><x-record-controls /></div>
 
     <div class="w-full px-4 py-8 sm:px-6 lg:px-8">
         <div class="flex flex-wrap gap-2">
@@ -48,7 +49,7 @@
 
                             @if ($rejecting === $listing->id)
                                 <div class="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4">
-                                    <x-input-label for="rejection_reason" value="Reason for rejection" />
+                                    <x-input-label required for="rejection_reason" value="Reason for rejection" />
                                     <textarea wire:model="rejection_reason" id="rejection_reason" rows="2" class="mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-rose-500 focus:ring-rose-500"></textarea>
                                     <x-input-error :messages="$errors->get('rejection_reason')" class="mt-2" />
                                     <div class="mt-4 flex flex-wrap justify-end gap-2">

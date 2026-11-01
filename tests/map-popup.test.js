@@ -4,7 +4,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 // Replace only browser/Leaflet boundaries; run the actual Alpine component code.
-function mapComponents() {
+function mapComponents(navigator = {}) {
     const components = {};
     const pins = [];
     const navigated = [];
@@ -56,17 +56,100 @@ function mapComponents() {
     vm.runInNewContext(`${pinsSource}\n${source}`, {
         L, document, markerIcon2x: '', markerIcon: '', markerShadow: '',
         Alpine: { data(name, factory) { components[name] = factory; } },
-        setTimeout() {}, navigator: {},
+        setTimeout() {}, navigator,
         window: { location: { assign(url) { navigated.push(url); } } },
     });
     function component(name, ...args) {
         return Object.assign(components[name](...args), {
             $refs: { map: {} }, $watch() {},
-            $wire: { set(name, value) { wireValues[name] = value; } },
+            $wire: { set(name, value) { wireValues[name] = value; }, get(name) { return wireValues[name]; } },
         });
     }
     return { component, pins, navigated, wireValues };
 }
+
+test('owner pin fills address while retaining precise coordinates', async () => {
+    const { component, wireValues } = mapComponents();
+    const picker = component('locationPicker', null, null);
+    picker.$wire.resolvePinnedAddress = async () => ({ address: 'Manila, Philippines' });
+    await picker.reportPosition({ lat: 14.599512345, lng: 120.984212345 });
+    assert.equal(wireValues.latitude, 14.5995123);
+    assert.equal(wireValues.longitude, 120.9842123);
+    assert.equal(wireValues.location, 'Manila, Philippines');
+    assert.equal(picker.addressLoading, false);
+});
+
+test('late lookup cannot overwrite the latest pin address', async () => {
+    const { component, wireValues } = mapComponents();
+    const picker = component('locationPicker', null, null);
+    const resolve = [];
+    picker.$wire.resolvePinnedAddress = () => new Promise(done => resolve.push(done));
+    const old = picker.reportPosition({ lat: 1, lng: 1 });
+    const latest = picker.reportPosition({ lat: 2, lng: 2 });
+    resolve[1]({ address: 'Latest address' });
+    await latest;
+    resolve[0]({ address: 'Stale address' });
+    await old;
+    assert.equal(wireValues.location, 'Latest address');
+    assert.equal(wireValues.latitude, 2);
+    assert.equal(picker.addressLoading, false);
+});
+
+test('manual edits made during lookup survive its response', async () => {
+    const { component, wireValues } = mapComponents();
+    const picker = component('locationPicker', null, null);
+    let resolve;
+    picker.$wire.resolvePinnedAddress = () => new Promise(done => { resolve = done; });
+    const pending = picker.reportPosition({ lat: 0, lng: 0 });
+    wireValues.location = 'My pickup gate';
+    resolve({ address: 'Provider address' });
+    await pending;
+    assert.equal(wireValues.location, 'My pickup gate');
+    assert.match(picker.locationStatus, /edited address was kept/);
+});
+
+test('failed lookup retains manual address and pin and permits retry', async () => {
+    const { component, wireValues } = mapComponents();
+    const picker = component('locationPicker', null, null);
+    wireValues.location = 'Manual pickup';
+    picker.$wire.resolvePinnedAddress = async () => { throw new Error('Unavailable'); };
+    await picker.reportPosition({ lat: 0, lng: 0 });
+    assert.equal(wireValues.location, 'Manual pickup');
+    assert.equal(wireValues.latitude, 0);
+    assert.equal(picker.addressLoading, false);
+    picker.$wire.resolvePinnedAddress = async () => ({ address: 'Resolved address' });
+    await picker.reportPosition({ lat: 0, lng: 0 });
+    assert.equal(wireValues.location, 'Resolved address');
+});
+
+test('owner location denial offers map fallback and stale location cannot move a newer manual pin', async () => {
+    let success, failure;
+    const { component, wireValues } = mapComponents({ geolocation: { getCurrentPosition(ok, error) { success = ok; failure = error; } } });
+    const picker = component('locationPicker', null, null);
+    picker.init();
+    picker.useMyLocation();
+    failure({ code: 1 });
+    assert.equal(picker.locating, false);
+    assert.match(picker.locationError, /denied/);
+    picker.useMyLocation();
+    await picker.reportPosition({ lat: 2, lng: 2 });
+    success({ coords: { latitude: 1, longitude: 1 } });
+    assert.equal(wireValues.latitude, 2);
+    assert.equal(picker.locating, false);
+});
+
+test('late device location failure cannot add an error after a newer manual pin', async () => {
+    let fail;
+    const { component } = mapComponents({ geolocation: { getCurrentPosition(ok, error) { fail = error; } } });
+    const picker = component('locationPicker', null, null);
+    picker.init();
+    picker.useMyLocation();
+    await picker.reportPosition({ lat: 14, lng: 120 });
+    fail({ code: 1 });
+    assert.equal(picker.locationError, '');
+    assert.equal(picker.locationStatus, 'Pin updated.');
+    assert.equal(picker.locating, false);
+});
 
 for (const [lat, lng] of [[0, 120], [14, 0], [0, 0]]) {
     test(`owner picker initializes at valid coordinates ${lat}, ${lng}`, () => {
